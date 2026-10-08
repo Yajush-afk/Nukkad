@@ -10,6 +10,7 @@ from nukkad.cards import router as cards_router
 from nukkad.config import Config
 from nukkad.jobs import Busy, Jobs
 from nukkad.ollama import Ollama
+from nukkad.outcomes import router as outcomes_router
 from nukkad.planning_api import router as planning_router
 from nukkad.quests_api import router as quests_router
 from nukkad.storage import Store
@@ -34,6 +35,7 @@ def create_app(config: Config | None = None) -> FastAPI:
     app.include_router(planning_router)
     app.include_router(quests_router)
     app.include_router(cards_router)
+    app.include_router(outcomes_router)
     static = Path(__file__).parent / "static"
     app.mount("/static", StaticFiles(directory=static), name="static")
 
