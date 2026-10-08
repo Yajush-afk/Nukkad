@@ -1,3 +1,4 @@
+import json
 import re
 import time
 from dataclasses import replace
@@ -18,7 +19,7 @@ TEMPLATES = {
 }
 # Restrict prose to observation language. Facts are rendered separately from registry data.
 PROSE_WORDS = set(
-    "pause and listen what sounds stand out around you notice the shapes visible from your public stopping point look which colours colors catch attention activity without photographing people find a small detail would usually overlook if have been here before seems different today take moment to compare surroundings textures patterns light shadow changes near at this stop explore observe how feel sound color shape rhythm contrast movement choose one describe it quietly focus on something new familiar with or that is in nearby scene environment spend time be curious about try spotting seeing hearing looking listening an interesting subtle gently simply for can do as then also there first together enjoy reflecting eyes close up distant soft loud repeating natural urban overall its between more less same usual now along a few surface lines use think of any details place perspective remember than last visit noticed earlier stay outside visible side do not enter restricted areas".split()
+    "colour present space shades area surrounding differences features aspects elements momentarily textures listen observe pause and listen what sounds stand out around you notice the shapes visible from your public stopping point look which colours colors catch attention activity without photographing people find a small detail would usually overlook if have been here before seems different today take moment to compare surroundings textures patterns light shadow changes near at this stop explore observe how feel sound color shape rhythm contrast movement choose one describe it quietly focus on something new familiar with or that is in nearby scene environment spend time be curious about try spotting seeing hearing looking listening an interesting subtle gently simply for can do as then also there first together enjoy reflecting eyes close up distant soft loud repeating natural urban overall its between more less same usual now along a few surface lines use think of any details place perspective remember than last visit noticed earlier stay outside visible side do not enter restricted areas".split()
 )
 
 
@@ -47,25 +48,35 @@ def validate_prose(text: str):
         raise ValueError("Write an observation invitation")
 
 
-def validate_reasons(value: Ranking, candidates):
-    facts = " ".join(
-        str(item) for place in candidates for item in [place.name, place.kind, *place.descriptors]
-    )
-    allowed = set(re.findall(r"[a-z]+", facts.lower())) | set(
-        "a an the and or for of to with your interests interest matches fit variety novelty new unvisited visited revisit nearby closest closer overlooked different familiar nature trees quiet art architecture markets food sports history short walk mapped entrance destination public outside observation stop explore worth considering previously reached reported balance offers adds supports this place kind route candidate distance less more than preference preferences return useful purposeful change context notes note aligns local location park garden landmark artwork attraction tree market court sports centre walking time budget".split()
-    )
+def reason_options(candidates, interests):
+    from nukkad.planning import INTEREST_KINDS
+
+    tokens = {word.lower() for interest in interests for word in interest.split()}
+    options = {}
+    for place in candidates:
+        choices = [
+            "Nearby destination with a mapped entrance.",
+            "Previously reached; consider a purposeful revisit."
+            if place.visited
+            else "Unvisited mapped destination.",
+        ]
+        choices += [
+            f"Interest match: {theme}."
+            for theme, kinds in INTEREST_KINDS.items()
+            if theme in tokens and place.kind in kinds
+        ]
+        options[place.id] = choices
+    return options
+
+
+def validate_reasons(value: Ranking, candidates, interests=()):
+    options = reason_options(candidates, interests)
     for item in value.places:
-        if (
-            len(item.reason.split()) > 12
-            or re.search(r"\d", item.reason)
-            or not set(re.findall(r"[a-z]+", item.reason.lower())) <= allowed
-        ):
-            raise ValueError(
-                "Reasons must use supplied place facts and ranking language, without numbers"
-            )
+        if item.reason not in options[item.id]:
+            raise ValueError("Select an exact allowed reason for that place ID")
 
 
-def validated_task(model, response_type, collection, ids, prompt, deadline, validator):
+def validated_task(model, response_type, collection, ids, prompt, deadline, validator, schema=None):
     error = ""
     for _ in range(2):
         try:
@@ -73,7 +84,7 @@ def validated_task(model, response_type, collection, ids, prompt, deadline, vali
                 response_type,
                 prompt + error,
                 deadline,
-                bounded_schema(response_type, collection, ids),
+                schema or bounded_schema(response_type, collection, ids),
             )
             validate_ids([item.id for item in getattr(value, collection)], ids)
             validator(value)
@@ -129,15 +140,24 @@ def generate(
     ranking_mode, prose_mode = "local AI", "local AI"
     metrics, reasons = {}, {}
     stage("Ranking eligible places with local AI")
+    options = reason_options(candidates, interests)
+    rank_schema = bounded_schema(Ranking, "places", [place.id for place in candidates])
+    rank_schema["$defs"]["RankedPlace"]["properties"]["reason"] = {
+        "type": "string",
+        "enum": sorted({reason for choices in options.values() for reason in choices}),
+    }
     try:
         value, metrics["ranking"] = validated_task(
             model,
             Ranking,
             "places",
             [place.id for place in candidates],
-            ranking_prompt([place.model_dump() for place in candidates], data),
+            ranking_prompt([place.model_dump() for place in candidates], data)
+            + "\nSelect each reason EXACTLY from the allowed reasons for its ID: "
+            + json.dumps(options),
             deadline,
-            lambda value: validate_reasons(value, candidates),
+            lambda value: validate_reasons(value, candidates, interests),
+            schema=rank_schema,
         )
         ranked = [item.id for item in value.places]
         reasons = {item.id: item.reason for item in value.places}
@@ -166,7 +186,7 @@ def generate(
             "stops",
             ids,
             observation_prompt(quest["stops"], data)
-            + "\nUse general observation words only, without named objects.",
+            + "\nUse general observation words only, without named objects. Examples: Notice the sounds present in this space. Observe the shades of colour in this area.",
             deadline,
             validate,
         )

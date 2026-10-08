@@ -62,3 +62,8 @@ def test_prose_rejects_invented_features_and_numbers():
     ]:
         with pytest.raises(ValueError):
             validate_prose(text)
+
+
+def test_general_observation_vocabulary_accepts_real_model_examples():
+    validate_prose("Notice the sounds present in this space.")
+    validate_prose("Observe the shades of colour in this area.")
