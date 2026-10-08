@@ -89,7 +89,7 @@ def svg_card(quest: dict, snapshot: dict) -> str:
         y = lines(y, f"{index:02d}  {stop['name']}", width=48, size=32, maximum=2, step=38)
         y = lines(y + 8, quest["prompts"][stop["id"]]["text"], maximum=2)
         street = " → ".join(quest["legs"][index - 1]["streets"])
-        y = lines(y + 6, "Via " + street, width=76, size=23, step=28, maximum=2) + 22
+        y = lines(y + 6, "Via " + street, width=76, size=23, step=28, maximum=1) + 18
     y = lines(
         y,
         "Return via " + " → ".join(quest["legs"][-1]["streets"]),

@@ -17,3 +17,5 @@ Sources:
 - https://ai.google.dev/gemma/docs/core/model_card_4
 - https://ai.google.dev/gemma/terms
 - https://docs.ollama.com/faq
+
+Leaflet 1.9.4 is bundled under its BSD 2-Clause license, preserved in `src/nukkad/static/vendor/LEAFLET-LICENSE`. Map data remains attributed to OpenStreetMap contributors. No external tiles or fonts are fetched at runtime.
