@@ -172,3 +172,23 @@ def job_status(key: str, request: Request):
 @router.post("/jobs/{key}/cancel")
 def cancel_job(key: str, request: Request):
     return request.app.state.jobs.cancel(key)
+
+
+@router.post("/areas/reuse")
+def reuse_extract(area: AreaInput, request: Request):
+    registry = maps(request)
+    old = registry.snapshot()
+    source = request.app.state.config.data_dir / "snapshots" / old["id"] / "source.osm"
+
+    def action(stage):
+        stage("Processing saved extract with the selected public start")
+        snapshot = registry.acquire(area, source, activate=False)
+        return Result(
+            {"snapshot_id": snapshot["id"]},
+            [
+                ("snapshot", snapshot["id"], snapshot),
+                ("area", "active", {**area.model_dump(), "snapshot_id": snapshot["id"]}),
+            ],
+        )
+
+    return request.app.state.jobs.submit("Update public starting point", action)
