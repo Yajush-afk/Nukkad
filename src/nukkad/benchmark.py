@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 
 from nukkad.config import Config
 from nukkad.domain import Observations, Ranking, validate_ids
-from nukkad.ollama import ModelFailure, Ollama, observation_prompt, ranking_prompt
+from nukkad.ollama import ModelFailure, Ollama, bounded_schema, observation_prompt, ranking_prompt
 
 CASES = [
     {"interests": ["trees", "quiet"], "state": "tired", "minutes": 20},
@@ -67,7 +67,10 @@ def benchmark(config: Config) -> dict:
                 result["attempts"] += 1
                 try:
                     ranked, rank_metrics = model.generate(
-                        Ranking, ranking_prompt(candidates, context), deadline
+                        Ranking,
+                        ranking_prompt(candidates, context),
+                        deadline,
+                        bounded_schema(Ranking, "places", [place["id"] for place in candidates]),
                     )
                     validate_ids(
                         [place.id for place in ranked.places], [place["id"] for place in candidates]
@@ -82,7 +85,10 @@ def benchmark(config: Config) -> dict:
                 result["attempts"] += 1
                 try:
                     prompts, prompt_metrics = model.generate(
-                        Observations, observation_prompt(stops, context), deadline
+                        Observations,
+                        observation_prompt(stops, context),
+                        deadline,
+                        bounded_schema(Observations, "stops", [stop["id"] for stop in stops]),
                     )
                     validate_ids(
                         [stop.id for stop in prompts.stops], [stop["id"] for stop in stops]
