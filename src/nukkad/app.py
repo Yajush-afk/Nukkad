@@ -1,9 +1,12 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from nukkad.areas_api import router as areas_router
+from nukkad.cards import router as cards_router
 from nukkad.config import Config
 from nukkad.jobs import Busy, Jobs
 from nukkad.ollama import Ollama
@@ -30,6 +33,13 @@ def create_app(config: Config | None = None) -> FastAPI:
     app.include_router(areas_router)
     app.include_router(planning_router)
     app.include_router(quests_router)
+    app.include_router(cards_router)
+    static = Path(__file__).parent / "static"
+    app.mount("/static", StaticFiles(directory=static), name="static")
+
+    @app.get("/")
+    def home():
+        return FileResponse(static / "index.html")
 
     @app.exception_handler(ValueError)
     async def invalid_input(request: Request, error: ValueError):
