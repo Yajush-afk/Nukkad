@@ -116,12 +116,29 @@ class Planner:
                 nodes = nx.shortest_path(self.graph, start, end, weight="length")
                 length = sum(
                     min(data["length"] for data in self.graph[u][v].values())
-                    for u, v in zip(nodes, nodes[1:])
+                    for u, v in zip(nodes, nodes[1:], strict=False)
                 )
             except (nx.NetworkXNoPath, nx.NodeNotFound) as error:
                 raise NoQuest("No eligible mapped walking connection") from error
             self.paths[key] = nodes, length
         return self.paths[key]
+
+    def turns(self, path: list[int]) -> int:
+        bearings = []
+        for a, b in zip(path, path[1:], strict=False):
+            first, second = self.graph.nodes[a], self.graph.nodes[b]
+            bearings.append(
+                math.degrees(
+                    math.atan2(
+                        (second["x"] - first["x"]) * math.cos(math.radians(first["y"])),
+                        second["y"] - first["y"],
+                    )
+                )
+            )
+        return sum(
+            abs((b - a + 180) % 360 - 180) > 35
+            for a, b in zip(bearings, bearings[1:], strict=False)
+        )
 
     def candidates(self, request: QuestInput, interests: list[str]) -> list[Place]:
         result = []
@@ -152,7 +169,7 @@ class Planner:
         near_order = baseline(result, interests, "nearest")
         lookup = {place.id: place for place in result}
         selected = []
-        for pair in zip(interest_order, near_order):
+        for pair in zip(interest_order, near_order, strict=True):
             for key in pair:
                 if key not in selected:
                     selected.append(key)
@@ -203,7 +220,7 @@ class Planner:
                     self.start_node,
                 ]
                 try:
-                    paths = [self.path(a, b) for a, b in zip(nodes, nodes[1:])]
+                    paths = [self.path(a, b) for a, b in zip(nodes, nodes[1:], strict=False)]
                 except NoQuest:
                     continue
                 meters = sum(length for _, length in paths)
@@ -216,7 +233,7 @@ class Planner:
                     > daylight["sunset"]
                 ):
                     continue
-                turns = sum(max(0, len(path) - 2) for path, _ in paths)
+                turns = sum(self.turns(path) for path, _ in paths)
                 score = (-sum(points[key] for key in order), minutes, turns, order)
                 if best is None or score < best[0]:
                     best = score, order, paths, meters, minutes
@@ -231,7 +248,7 @@ class Planner:
         legs = []
         for index, (path, length) in enumerate(paths):
             streets = []
-            for u, v in zip(path, path[1:]):
+            for u, v in zip(path, path[1:], strict=False):
                 data = min(self.graph[u][v].values(), key=lambda value: value["length"])
                 name = data.get("name", "Unnamed mapped path")
                 if isinstance(name, list):
@@ -243,7 +260,7 @@ class Planner:
                     "number": index + 1,
                     "meters": round(length, 1),
                     "coordinates": [
-                        [self.graph[node]["x"], self.graph[node]["y"]] for node in path
+                        [self.graph.nodes[node]["x"], self.graph.nodes[node]["y"]] for node in path
                     ],
                     "streets": streets,
                 }

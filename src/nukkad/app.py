@@ -7,6 +7,7 @@ from nukkad.areas_api import router as areas_router
 from nukkad.config import Config
 from nukkad.jobs import Busy, Jobs
 from nukkad.ollama import Ollama
+from nukkad.planning_api import router as planning_router
 from nukkad.storage import Store
 
 
@@ -26,6 +27,7 @@ def create_app(config: Config | None = None) -> FastAPI:
     app.state.store = store
     app.state.jobs = jobs
     app.include_router(areas_router)
+    app.include_router(planning_router)
 
     @app.exception_handler(ValueError)
     async def invalid_input(request: Request, error: ValueError):

@@ -63,6 +63,7 @@ def parse_extract(path: Path, area: AreaInput) -> tuple[nx.MultiDiGraph, list[Pl
                 "foot:conditional",
                 "surface",
                 "construction",
+                "oneway:foot",
             ]
         )
     )
