@@ -18,6 +18,7 @@ class Cancelled(RuntimeError):
 class Result:
     payload: dict
     records: list[tuple[str, str, dict]] = field(default_factory=list)
+    expected: list[tuple[str, str, dict]] = field(default_factory=list)
 
 
 class Jobs:
@@ -85,7 +86,8 @@ class Jobs:
                                     "finished_at": now(),
                                 },
                             ),
-                        ]
+                        ],
+                        expected=result.expected,
                     )
         except Exception as error:
             with self.lock:

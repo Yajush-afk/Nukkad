@@ -65,8 +65,15 @@ class Store:
         self.atomic([(kind, key, value)])
         return value
 
-    def atomic(self, records: list[tuple[str, str, dict]]) -> None:
+    def atomic(self, records: list[tuple[str, str, dict]], expected=None) -> None:
         with self.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            for kind, key, expected_value in expected or []:
+                row = connection.execute(
+                    "SELECT data FROM records WHERE kind=? AND id=?", (kind, key)
+                ).fetchone()
+                if (json.loads(row[0]) if row else None) != expected_value:
+                    raise ValueError("Source data changed during generation; start a fresh request")
             connection.executemany(
                 "INSERT INTO records(kind,id,data,updated) VALUES(?,?,?,?) ON CONFLICT(kind,id) DO UPDATE SET data=excluded.data, updated=excluded.updated",
                 [
