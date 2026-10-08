@@ -25,7 +25,7 @@ def test_readiness_handles_unavailable_model(tmp_path, monkeypatch):
         raise RuntimeError("offline")
 
     monkeypatch.setattr("nukkad.ollama.Ollama.models", unavailable)
-    with TestClient(create_app(Config(data_dir=tmp_path))) as client:
+    with TestClient(create_app(Config(data_dir=tmp_path)), base_url="http://127.0.0.1") as client:
         response = client.get("/api/readiness")
     assert response.status_code == 200
     assert response.json()["model_status"] == "unavailable"

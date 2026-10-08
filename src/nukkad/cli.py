@@ -21,4 +21,4 @@ def main() -> None:
 
         benchmark(config)
     else:
-        uvicorn.run(create_app(config), host="127.0.0.1", port=args.port)
+        uvicorn.run(create_app(config), host="127.0.0.1", port=args.port, access_log=False)
