@@ -18,6 +18,11 @@ def create_app(config: Config | None = None) -> FastAPI:
             model_status = "ready" if config.model in model_names else "missing"
         except Exception:
             model_names, model_status = [], "unavailable"
-        return {"application": "ready", "model_status": model_status, "models": model_names, "selected_model": config.model}
+        return {
+            "application": "ready",
+            "model_status": model_status,
+            "models": model_names,
+            "selected_model": config.model,
+        }
 
     return app
