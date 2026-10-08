@@ -43,6 +43,9 @@ def save_profile(value: Profile, request: Request):
 
 @router.post("/quests/route-preview")
 def route_preview(value: QuestInput, request: Request):
+    from nukkad.air_quality import enforce
+
+    enforce(request.app.state.store, maps(request).snapshot(), settings(request))
     planner = Planner(maps(request), settings(request))
     interests = get_profile(request)["interests"]
     candidates = planner.candidates(value, interests)

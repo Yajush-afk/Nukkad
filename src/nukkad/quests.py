@@ -111,6 +111,9 @@ def active_interests(store):
 def generate(maps, store, config, settings: Settings, request: QuestInput, stage, model=None):
     began = time.monotonic()
     deadline = began + 120
+    from nukkad.air_quality import enforce
+
+    environment = enforce(store, maps.snapshot(), settings)
     planner = Planner(maps, settings)
     interests = active_interests(store)
     candidates = planner.candidates(request, interests)
@@ -119,6 +122,7 @@ def generate(maps, store, config, settings: Settings, request: QuestInput, stage
     if model is None:
         model = Ollama(replace(config, model=settings.model))
     data = context(store, request, interests)
+    data["tone"] = settings.tone
     ranked = baseline(candidates, interests)
     ranking_mode, prose_mode = "local AI", "local AI"
     metrics, reasons = {}, {}
@@ -173,6 +177,7 @@ def generate(maps, store, config, settings: Settings, request: QuestInput, stage
     stage("Saving quest preview")
     return {
         **quest,
+        "environment": environment,
         "id": identity(),
         "status": "draft",
         "ranking_mode": ranking_mode,
@@ -188,6 +193,9 @@ def generate(maps, store, config, settings: Settings, request: QuestInput, stage
 
 
 def accept(quest, maps, settings):
+    from nukkad.air_quality import enforce
+
+    enforce(maps.store, maps.snapshot(), settings)
     if quest["snapshot_id"] != maps.snapshot()["id"]:
         raise ValueError("The neighbourhood map changed; generate a fresh quest")
     planner = Planner(maps, settings)
