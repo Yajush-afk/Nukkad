@@ -11,7 +11,7 @@ class Config:
         default_factory=lambda: Path(os.environ.get("NUKKAD_DATA_DIR", user_data_path("nukkad")))
     )
     ollama_url: str = "http://127.0.0.1:11434"
-    model: str = "gemma3:4b-it-q4_K_M"
+    model: str = "gemma4:e2b"
 
     def prepare(self) -> None:
         self.data_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
