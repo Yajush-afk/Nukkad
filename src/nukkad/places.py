@@ -11,6 +11,7 @@ class AreaInput(Record):
     start: Point
     radius_meters: int = Field(default=2000, ge=200, le=3000)
     timezone: str = "Asia/Kolkata"
+    public_start_confirmed: bool = False
 
     @field_validator("timezone")
     @classmethod

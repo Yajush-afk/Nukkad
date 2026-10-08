@@ -29,7 +29,12 @@ def registry(tmp_path):
     source = tmp_path / "fixture.osm"
     source.write_text(XML)
     maps = Maps(config, store)
-    area = AreaInput(name="Synthetic area", start={"lat": 28.639, "lon": 77.360}, radius_meters=500)
+    area = AreaInput(
+        name="Synthetic area",
+        start={"lat": 28.639, "lon": 77.360},
+        radius_meters=500,
+        public_start_confirmed=True,
+    )
     snapshot = maps.acquire(area, source)
     return maps, store, snapshot, area, source
 
