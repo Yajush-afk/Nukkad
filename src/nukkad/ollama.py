@@ -17,6 +17,10 @@ class ModelFailure(RuntimeError):
 
 class Ollama:
     def __init__(self, config: Config):
+        if config.ollama_url != "http://127.0.0.1:11434":
+            raise ValueError("Only the local Ollama server is supported")
+        if "cloud" in config.model.lower():
+            raise ModelFailure("Cloud models are disabled; choose a locally installed model")
         self.config = config
 
     def models(self) -> list[dict]:
@@ -32,6 +36,14 @@ class Ollama:
         deadline: float,
         schema: dict | None = None,
     ) -> tuple[Response, dict]:
+        try:
+            installed = next(
+                (item for item in self.models() if item["name"] == self.config.model), None
+            )
+        except (httpx.HTTPError, ValueError, KeyError) as error:
+            raise ModelFailure("Local model inventory unavailable") from error
+        if not installed or installed.get("remote_host") or installed.get("remote_model"):
+            raise ModelFailure("Selected model must be installed locally without a remote host")
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise ModelFailure("Generation deadline exceeded")

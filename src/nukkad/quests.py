@@ -116,7 +116,8 @@ def generate(maps, store, config, settings: Settings, request: QuestInput, stage
     candidates = planner.candidates(request, interests)
     if not candidates:
         planner.build([], [], request)
-    model = model or Ollama(replace(config, model=settings.model))
+    if model is None:
+        model = Ollama(replace(config, model=settings.model))
     data = context(store, request, interests)
     ranked = baseline(candidates, interests)
     ranking_mode, prose_mode = "local AI", "local AI"
