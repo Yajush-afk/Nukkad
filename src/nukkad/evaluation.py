@@ -1,4 +1,5 @@
 import json
+import math
 import random
 import socket
 from contextlib import contextmanager
@@ -32,8 +33,10 @@ def synthetic_map(path: Path):
     nodes = []
     ways = []
     for index in range(1, 10):
-        lat = 28.6 + (index // 3) * 0.0015
-        lon = 77.3 + (index % 3) * 0.0015
+        angle = (index - 2) * math.pi / 4
+        radius = 0.0015 + (index - 2) * 0.00018 if index > 1 else 0
+        lat = 28.6 + math.sin(angle) * radius
+        lon = 77.3 + math.cos(angle) * radius / math.cos(math.radians(28.6))
         tags = '<tag k="entrance" v="yes"/>' if index > 1 else ""
         nodes.append(f'<node id="{index}" lat="{lat}" lon="{lon}">{tags}</node>')
     kinds = [
@@ -48,7 +51,7 @@ def synthetic_map(path: Path):
     ]
     for index in range(1, 9):
         ways.append(
-            f'<way id="{100 + index}"><nd ref="{index}"/><nd ref="{index + 1}"/><tag k="highway" v="residential"/><tag k="name" v="Synthetic lane {index}"/></way>'
+            f'<way id="{100 + index}"><nd ref="1"/><nd ref="{index + 1}"/><tag k="highway" v="residential"/><tag k="name" v="Synthetic lane {index}"/></way>'
         )
     for index, (key, value) in enumerate(kinds, 2):
         # Node POIs on walking vertices provide clear street-frontage anchors in this fixture.
@@ -90,7 +93,7 @@ def evaluate(config: Config, output: Path):
     snapshot = maps.acquire(
         AreaInput(
             name="Synthetic evaluation neighbourhood",
-            start={"lat": 28.6, "lon": 77.3015},
+            start={"lat": 28.6, "lon": 77.3},
             radius_meters=1500,
             public_start_confirmed=True,
         ),
@@ -182,6 +185,8 @@ def evaluate(config: Config, output: Path):
                         )
                     row["results"][mode] = {
                         "stops": [stop["id"] for stop in quest["stops"]],
+                        "ranked_ids": quest["ranked_ids"],
+                        "prompts": quest["prompts"],
                         "meters": quest["meters"],
                         "minutes": quest["estimated_minutes"],
                         "ranking_mode": quest["ranking_mode"],

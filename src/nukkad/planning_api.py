@@ -13,7 +13,10 @@ class Profile(Record):
 
 
 def settings(request: Request) -> Settings:
-    return Settings.model_validate(request.app.state.store.get("settings", "active") or {})
+    return Settings.model_validate(
+        request.app.state.store.get("settings", "active")
+        or {"model": request.app.state.config.model}
+    )
 
 
 @router.get("/settings")

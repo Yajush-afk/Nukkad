@@ -152,7 +152,10 @@ def generate(
             Ranking,
             "places",
             [place.id for place in candidates],
-            ranking_prompt([place.model_dump() for place in candidates], data)
+            ranking_prompt(
+                [place.model_dump() for place in sorted(candidates, key=lambda place: place.id)],
+                data,
+            )
             + "\nSelect each reason EXACTLY from the allowed reasons for its ID: "
             + json.dumps(options),
             deadline,

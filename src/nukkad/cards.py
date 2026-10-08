@@ -8,6 +8,9 @@ import cairosvg
 from fastapi import APIRouter, Request
 from fastapi.responses import Response
 
+from nukkad.areas_api import maps
+from nukkad.planning_api import settings
+from nukkad.quests import accept
 from nukkad.quests_api import quest_by_id
 
 router = APIRouter(prefix="/api/quests")
@@ -134,6 +137,7 @@ def card_png(key: str, request: Request):
     if quest["status"] != "accepted":
         raise ValueError("Accept the quest after reviewing its route before downloading")
     snapshot = request.app.state.store.get("snapshot", quest["snapshot_id"])
+    accept(quest, maps(request), settings(request))
     content = cairosvg.svg2png(bytestring=svg_card(quest, snapshot).encode())
     return Response(
         content,
