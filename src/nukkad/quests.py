@@ -108,13 +108,15 @@ def active_interests(store):
     return list(dict.fromkeys([*explicit, *accepted]))[:20]
 
 
-def generate(maps, store, config, settings: Settings, request: QuestInput, stage, model=None):
+def generate(
+    maps, store, config, settings: Settings, request: QuestInput, stage, model=None, planner=None
+):
     began = time.monotonic()
     deadline = began + 120
     from nukkad.air_quality import enforce
 
     environment = enforce(store, maps.snapshot(), settings)
-    planner = Planner(maps, settings)
+    planner = planner or Planner(maps, settings)
     interests = active_interests(store)
     candidates = planner.candidates(request, interests)
     if not candidates:

@@ -11,12 +11,16 @@ from nukkad.config import Config
 def main() -> None:
     parser = argparse.ArgumentParser(description="Local neighbourhood discovery")
     parser.add_argument(
-        "command", choices=["serve", "benchmark", "backup", "restore"], nargs="?", default="serve"
+        "command",
+        choices=["serve", "benchmark", "backup", "restore", "evaluate"],
+        nargs="?",
+        default="serve",
     )
     parser.add_argument("--model")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--archive", type=Path)
     parser.add_argument("--destination", type=Path)
+    parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     config = Config()
     if args.model:
@@ -25,6 +29,12 @@ def main() -> None:
         from nukkad.benchmark import benchmark
 
         benchmark(config)
+    elif args.command == "evaluate":
+        from nukkad.evaluation import evaluate
+
+        if not args.output:
+            parser.error("evaluate requires --output (a new private directory)")
+        evaluate(config, args.output)
     elif args.command == "backup":
         from nukkad.backups import backup
 
