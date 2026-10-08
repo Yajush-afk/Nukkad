@@ -24,7 +24,9 @@ class Ollama:
             response.raise_for_status()
             return response.json()["models"]
 
-    def generate(self, response_type: type[Response], prompt: str, deadline: float) -> tuple[Response, dict]:
+    def generate(
+        self, response_type: type[Response], prompt: str, deadline: float
+    ) -> tuple[Response, dict]:
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise ModelFailure("Generation deadline exceeded")
@@ -44,7 +46,16 @@ class Ollama:
                 response.raise_for_status()
                 body = response.json()
             value = response_type.model_validate_json(body["message"]["content"])
-            return value, {key: body.get(key) for key in ("model", "total_duration", "load_duration", "prompt_eval_count", "eval_count")}
+            return value, {
+                key: body.get(key)
+                for key in (
+                    "model",
+                    "total_duration",
+                    "load_duration",
+                    "prompt_eval_count",
+                    "eval_count",
+                )
+            }
         except (httpx.HTTPError, ValidationError, ValueError, KeyError) as error:
             raise ModelFailure(f"Local model request failed ({type(error).__name__})") from error
 
