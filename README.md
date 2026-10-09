@@ -9,3 +9,5 @@ After the walk, record the places you reached and what you noticed. Your persona
 Personal notes stay on your laptop. OpenStreetMap supplies the geography, local code plans the walk, and Ollama runs the model. After setup, the core experience is designed to work without an internet connection.
 
 Built for the DEV Hacktoberfest “Touch Grass” challenge.
+
+[Setup and project guides](docs/README.md)
