@@ -64,28 +64,28 @@ Use the same directory on later launches. One running application owns each data
 3. Use `Asia/Kolkata`, a 2,000 m radius and the default walking policy initially. The extract includes an additional 700 m routing buffer. Generation does not automatically expand the area.
 4. Select **Fetch my neighbourhood** while online; no uploaded file is required. The background task downloads relevant streets/places as OSM XML and saves an immutable graph, geometry, registry, acquisition time and graph fingerprint. It preserves the selected radius and 700 m routing buffer, and tries an independent Overpass instance if the primary fails.
 5. Inspect the map and entrances. Imported places are unverified. A polygon centre is for display, never an assumed entrance. A place without a credible mapped or supplied entrance stays out of routing.
-6. If the public start needs adjusting, click the saved map to select coordinates, update the setup form, confirm it and choose **Use saved extract with this start**. This creates a new snapshot from the existing extract without a new download. Coordinates must still fall within its useful coverage.
-7. Add a personally known public place using **Add a public place**. Supply an entrance and confirm access. Optional observed features become explicit evidence for Seek mode. A public-access confirmation cannot override an OSM prohibition.
+6. If the public start needs adjusting, select a point on the saved map, choose **Use as my start**, confirm it in Neighbourhood and choose **Save start without downloading again**. This creates a new snapshot from the existing extract without a new download. Coordinates must still fall within its useful coverage.
+7. Add a personally known public place using **Add a place I know** in Neighbourhood. Supply an entrance and confirm access. Optional observed features become explicit evidence for Seek mode. A public-access confirmation cannot override an OSM prohibition.
 
 Download errors identify the provider and response status or network failure, rather than claiming that every map service is down. Requests target the walking network, supported places and entrances instead of every unrelated building/node. Public providers can still time out or rate-limit; a saved area remains intact on failure.
 
-As an optional recovery path, open **Advanced: import a saved map** and choose a neighbourhood `.osm` or `.xml` extract. The action changes to **Import saved map**. It must contain walking ways and their referenced nodes, entrances and relevant place features; images, GeoJSON and road-only extracts are not substitutes. Uploads are limited to 32 MiB. The selected start must snap within 50 m of an eligible graph node. Missing coverage or sparse vertices require a better extract or an accurately chosen start, not an arbitrary confirmation.
+As an optional recovery path, open **Map options & local time** in Neighbourhood and choose a neighbourhood `.osm` or `.xml` extract. The action changes to **Import saved map**. It must contain walking ways and their referenced nodes, entrances and relevant place features; images, GeoJSON and road-only extracts are not substitutes. Uploads are limited to 32 MiB. The selected start must snap within 50 m of an eligible graph node. Missing coverage or sparse vertices require a better extract or an accurately chosen start, not an arbitrary confirmation.
 
 Refresh deliberately by submitting a new download/import. Each refresh creates a new baseline, keeps past snapshots/history and resnaps stored entrances. It does not verify that a place is open today.
 
 ## Generate, review and go
 
-1. Choose **Make a little adventure**, enter 20–60 available minutes and your explicit interests. Add optional context such as a slow walk or a familiar destination.
+1. Choose **Plan a walk**, enter 20–60 available minutes and your explicit interests. Add optional context such as a slow walk or a familiar destination.
 2. **Wander** uses bounded observation invitations. **Seek** requires recorded feature evidence and uses at most two stops to keep the card readable. Seek may have no eligible destinations in a sparse map.
 3. Wait for the local generation job. The model orders eligible place IDs and selects grounded reasons; code computes every walking leg, return, distance, stop time, reserve and daylight allowance. Ranking and wording fallbacks are labelled separately.
 4. Review numbered stops, streets, return, access uncertainty, generation time and latest departure. Inspect the actual surroundings yourself; mapped eligibility cannot guarantee safe or public access.
-5. **Accept this walk** rechecks current eligibility and timing. A delayed or next-day card may be declined; generate a fresh one. PNG export also revalidates.
-6. Download the 1080 × 1920 **phone image**, or use **Print A4** with A4 portrait and inspect print preview. Transfer the image by USB or Bluetooth, open it on the actual phone and check legibility before leaving. Keep a full-resolution copy. The card has no live map tiles, directions updates or GPS.
+5. **Use this walk** rechecks current eligibility and timing. A delayed or next-day card may be declined; generate a fresh one. PNG export also revalidates.
+6. Download the 1080 × 1920 **Save phone image**, or use **Print walk** with A4 portrait and inspect print preview. Transfer the image by USB or Bluetooth, open it on the actual phone and check legibility before leaving. Keep a full-resolution copy. The card has no live map tiles, directions updates or GPS.
 7. Take the card outside and turn back or skip a destination when access or conditions differ. Settings uses an assumed walking speed, not a measured pace.
 
-After returning, choose **I’m back / record outcome**. Report reached, skipped or unresolved stops and completed, turned-back or not-taken status. Notes, outdoor minutes and manually measured screen minutes are optional. Editing updates the same outcome; it does not add another visit.
+After returning, choose **I’m back — add a note**. Report **Reached this stop**, **Skipped this stop** or **Not recorded** and completed, turned-back or not-taken status. Notes, outdoor minutes and manually measured screen minutes are optional. Editing updates the same outcome; it does not add another visit.
 
-Review a journal extract and exact-quote interest proposals individually. Explicit interests apply immediately; inferred interests apply only after acceptance. Pending/rejected interests are excluded, removal stops future use, and note edits invalidate derived drafts. Open Field notes to revisit outcomes. See [field-notebook.md](field-notebook.md) for the actual-use evidence to collect.
+Review a journal extract and exact-quote interest proposals individually. Explicit interests apply immediately; inferred interests apply only after acceptance. Pending/rejected interests are excluded, removal stops future use, and note edits invalidate derived drafts. Open **My walks** to revisit routes and notes. Each walk has one entry; use **Edit note & visits** to update its report. See [field-notebook.md](field-notebook.md) for the actual-use evidence to collect.
 
 ## Offline preparation
 

@@ -53,3 +53,27 @@ runtime and output quality separately. Blinded comparisons use identical
 candidates and planners. Offline claims require an actual disconnected run.
 Outdoor results require a person's real observations; fixtures and automated
 checks must never be described as field trials.
+
+## Interface language and hierarchy
+
+The main flow is set up a neighbourhood, plan a walk, review it, save a phone image
+or print a card, and record a note after returning. Buttons describe the action
+and the home action reflects whether a map and confirmed start exist. Selecting
+map coordinates is separate from confirming or saving public access.
+
+Forms group related decisions and explain units beside the fields. Local model
+configuration, distance/time limits, air-quality settings, saved-map import,
+source metadata and generation diagnostics remain available in labelled
+expandable sections. An invalid field opens its containing section before focus
+moves to it. Route length, total time, latest departure, access uncertainty,
+daylight policy and independently labelled AI/fallback behaviour remain visible
+when reviewing a walk.
+
+My walks presents one entry per quest with its outcome and note. Visits remain
+self-reported and added places remain counted separately. Reflections and
+inferred interests still require explicit review; source notes can be inspected.
+
+The two supplied PNG logos are bundled locally without image edits:
+`static/brand/nukkad-light.png` in the header and `static/brand/nukkad-dark.png`
+in the footer. The paper and ink colours match their backgrounds. No fonts,
+logos or other interface assets are fetched from third-party hosts at runtime.
