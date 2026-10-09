@@ -8,7 +8,8 @@ let area,
   placesLayer,
   routeLayer,
   sessionToken,
-  questMap;
+  questMap,
+  questLayers;
 const node = (tag, text, className) => {
   const e = document.createElement(tag);
   if (text !== undefined) e.textContent = text;
@@ -690,13 +691,17 @@ async function renderRouteMap(value) {
   const saved = await api(`/snapshots/${value.snapshot_id}/map`);
   if (quest?.id !== value.id) return;
   if (!questMap) {
-    questMap = L.map("quest-map", { attributionControl: false });
+    questMap = L.map("quest-map", { attributionControl: false }).setView(
+      [value.start.lat, value.start.lon],
+      16,
+    );
+    questLayers = L.featureGroup().addTo(questMap);
     L.control
       .attribution({ prefix: false })
       .addAttribution("Map data © OpenStreetMap contributors")
       .addTo(questMap);
   }
-  questMap.eachLayer((layer) => questMap.removeLayer(layer));
+  questLayers.clearLayers();
   L.geoJSON(saved.geometry, {
     style: {
       color: "#c3cdbd",
@@ -704,7 +709,7 @@ async function renderRouteMap(value) {
       fillColor: "#dce2d6",
       fillOpacity: 0.4,
     },
-  }).addTo(questMap);
+  }).addTo(questLayers);
   const routes = [];
   for (const [index, leg] of value.legs.entries()) {
     routes.push(
@@ -714,7 +719,7 @@ async function renderRouteMap(value) {
           color: index === value.legs.length - 1 ? "#537560" : "#cb6034",
           weight: 4,
         },
-      ).addTo(questMap),
+      ).addTo(questLayers),
     );
   }
   for (const [index, stop] of value.stops.entries()) {
@@ -727,7 +732,7 @@ async function renderRouteMap(value) {
         iconAnchor: [15, 15],
       }),
     })
-      .addTo(questMap)
+      .addTo(questLayers)
       .bindTooltip(node("span", stop.name));
   }
   L.circleMarker([value.start.lat, value.start.lon], {
@@ -736,7 +741,7 @@ async function renderRouteMap(value) {
     fillColor: "#f6f2e8",
     fillOpacity: 1,
   })
-    .addTo(questMap)
+    .addTo(questLayers)
     .bindTooltip("Start + return");
   setTimeout(() => {
     questMap.invalidateSize();
