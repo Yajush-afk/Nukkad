@@ -227,7 +227,13 @@ class Maps:
             else:
                 source = self.download(area, raw_path)
             graph, places, geometry = parse_extract(raw_path, area)
-            start_node = nearest_node(graph, area.start)
+            from nukkad.planning import pedestrian_graph
+
+            walking = pedestrian_graph(graph)
+            start_node = nearest_node(walking, area.start)
+            connected = (
+                nx.descendants(walking, start_node) & nx.ancestors(walking, start_node)
+            ) | {start_node}
             ox.save_graphml(graph, staging / "walking.graphml")
             fingerprint = hashlib.sha256((staging / "walking.graphml").read_bytes()).hexdigest()
             snapshot = {
@@ -239,7 +245,7 @@ class Maps:
                 "graph_fingerprint": fingerprint,
                 "places": [place.model_dump() for place in places],
                 "eligible_mapped_ids": [
-                    place.id for place in places if place.valid and place.entrance_node is not None
+                    place.id for place in places if place.valid and place.entrance_node in connected
                 ],
                 "geometry": geometry,
             }
@@ -352,6 +358,21 @@ class Maps:
             if value["source"] == "user"
             and distance(area.start, Point.model_validate(value["point"])) <= area.radius_meters
         )
+        if corrections:
+            from nukkad.planning import pedestrian_graph
+
+            walking = pedestrian_graph(self.graph(snapshot))
+            for index, place in enumerate(result):
+                if place.id not in corrections or place.entrance is None:
+                    continue
+                try:
+                    node = nearest_node(walking, place.entrance)
+                    entrance = Point(lat=walking.nodes[node]["y"], lon=walking.nodes[node]["x"])
+                except ValueError:
+                    node, entrance = None, None
+                result[index] = place.model_copy(
+                    update={"entrance_node": node, "entrance": entrance}
+                )
         visited = {
             key for outcome in self.store.list("outcome") for key in outcome.get("reached_ids", [])
         }

@@ -3,6 +3,7 @@ import re
 import time
 from dataclasses import replace
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from nukkad.domain import Observations, Ranking, validate_ids
 from nukkad.ollama import ModelFailure, Ollama, bounded_schema, observation_prompt, ranking_prompt
@@ -226,7 +227,9 @@ def accept(quest, maps, settings):
     planner = Planner(maps, settings)
     available = {
         place.id: place
-        for place in planner.candidates(QuestInput.model_validate(quest["input"]), [])
+        for place in planner.candidates(
+            QuestInput.model_validate(quest["input"]), [], shortlist=False
+        )
     }
     ids = [place["id"] for place in quest["stops"]]
     if not set(ids) <= set(available):
@@ -237,7 +240,11 @@ def accept(quest, maps, settings):
     )
     if {place["id"] for place in current["stops"]} != set(ids):
         raise ValueError("The complete quest no longer fits; generate a fresh quest")
-    if datetime.fromisoformat(quest["generated_at"]).date() != planner.clock().date():
+    zone = ZoneInfo(quest["timezone"])
+    if (
+        datetime.fromisoformat(quest["generated_at"]).astimezone(zone).date()
+        != planner.clock().astimezone(zone).date()
+    ):
         raise ValueError("Saved cards are dated; generate a fresh quest today")
     if current["legs"] != quest["legs"] or current["settings"] != quest["settings"]:
         raise ValueError("Route settings changed; generate a fresh quest")

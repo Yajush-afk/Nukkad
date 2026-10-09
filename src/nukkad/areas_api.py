@@ -42,9 +42,9 @@ def acquire(area: AreaInput, request: Request):
 
 @router.post("/areas/import", status_code=202)
 async def import_area(
-    request: Request, area: Annotated[str, Form()], extract: Annotated[UploadFile, File()]
+    request: Request, metadata: Annotated[str, Form()], extract: Annotated[UploadFile, File()]
 ):
-    metadata = AreaInput.model_validate(json.loads(area))
+    parsed = AreaInput.model_validate(json.loads(metadata))
     with tempfile.NamedTemporaryFile(
         suffix=".osm", dir=request.app.state.config.data_dir, delete=False
     ) as output:
@@ -60,7 +60,7 @@ async def import_area(
             path.unlink(missing_ok=True)
             raise
     try:
-        return start_acquisition(request, metadata, path)
+        return start_acquisition(request, parsed, path)
     except Exception:
         path.unlink(missing_ok=True)
         raise
@@ -112,7 +112,9 @@ def add_place(value: CustomPlace, request: Request):
     if not value.public_access_confirmed:
         raise ValueError("Confirm that the destination has a public entrance")
     registry = maps(request)
-    graph = registry.graph()
+    from nukkad.planning import pedestrian_graph
+
+    graph = pedestrian_graph(registry.graph())
     node = nearest_node(graph, value.entrance)
     point = {"lat": graph.nodes[node]["y"], "lon": graph.nodes[node]["x"]}
     place = Place(
@@ -135,6 +137,8 @@ def correct_place(key: str, value: Correction, request: Request):
     place = next((place for place in registry.places() if place.id == key), None)
     if place is None:
         raise HTTPException(404, "Unknown place")
+    if value.action == "entrance" and value.entrance is None:
+        raise ValueError("An entrance correction requires entrance coordinates")
     data = place.model_dump()
     if value.action in {"not_there", "closed", "not_accessible"}:
         data["valid"] = False
@@ -143,7 +147,9 @@ def correct_place(key: str, value: Correction, request: Request):
             raise ValueError("A verification cannot override explicit prohibited access tags")
         data.update(verification="verified", access="confirmed", valid=True, verified_at=now())
         if value.entrance:
-            graph = registry.graph()
+            from nukkad.planning import pedestrian_graph
+
+            graph = pedestrian_graph(registry.graph())
             node = nearest_node(graph, value.entrance)
             data.update(
                 entrance_node=node,

@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Annotated, Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import Field, field_validator
@@ -31,7 +31,9 @@ class Place(Record):
     entrance: Point | None = None
     entrance_node: int | None = None
     tags: dict[str, str] = Field(default_factory=dict)
-    descriptors: list[str] = Field(default_factory=list, max_length=8)
+    descriptors: list[Annotated[str, Field(min_length=1, max_length=180)]] = Field(
+        default_factory=list, max_length=8
+    )
     source: Literal["osm", "user"] = "osm"
     verification: Literal["unverified", "verified"] = "unverified"
     access: Literal["unknown", "mapped", "confirmed", "prohibited"] = "unknown"
@@ -46,7 +48,9 @@ class CustomPlace(Record):
     name: str = Field(min_length=1, max_length=200)
     kind: str = Field(min_length=1, max_length=40)
     entrance: Point
-    descriptors: list[str] = Field(default_factory=list, max_length=8)
+    descriptors: list[Annotated[str, Field(min_length=1, max_length=180)]] = Field(
+        default_factory=list, max_length=8
+    )
     public_access_confirmed: bool
 
 
@@ -63,6 +67,7 @@ def prohibited(tags: dict) -> bool:
         or tags.get("landuse") in {"military", "construction"}
         or tags.get("highway")
         in {"construction", "proposed", "motorway", "motorway_link", "trunk", "trunk_link"}
+        or tags.get("barrier") in {"wall", "fence", "hedge", "block", "retaining_wall"}
         or bool(tags.get("access:conditional"))
         or bool(tags.get("foot:conditional"))
     )
