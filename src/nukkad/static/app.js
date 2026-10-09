@@ -544,7 +544,18 @@ async function loadHistory() {
         "hint",
       ),
     );
-    if (outcome?.note) item.append(node("p", outcome.note));
+    if (outcome?.note) {
+      item.append(
+        node(
+          "p",
+          outcome.note.length > 280
+            ? outcome.note.slice(0, 280) + "…"
+            : outcome.note,
+        ),
+      );
+      if (outcome.note.length > 280)
+        item.append(disclosure("Read the full note", node("p", outcome.note)));
+    }
     const actions = node("div", undefined, "buttonrow");
     const open = node("button", "View walk");
     open.onclick = () => renderQuest(value);

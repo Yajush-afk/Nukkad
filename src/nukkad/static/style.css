@@ -494,6 +494,17 @@ summary::marker {
 .entry h2 {
   font-size: 25px;
 }
+.entry p,
+.entry h2,
+.stop h2 {
+  overflow-wrap: anywhere;
+}
+.stop-heading h2 {
+  min-width: 0;
+}
+.stop-number {
+  flex-shrink: 0;
+}
 .entry button {
   font-size: 13px;
   margin-top: 6px;
