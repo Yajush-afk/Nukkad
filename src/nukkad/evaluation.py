@@ -59,7 +59,9 @@ def synthetic_map(path: Path):
         nodes[index - 1] = nodes[index - 1].replace(
             old, old + f'<tag k="{key}" v="{value}"/><tag k="name" v="Sample destination {index}"/>'
         )
-    path.write_text('<osm version="0.6">' + "".join(nodes + ways) + "</osm>")
+    path.write_text(
+        '<osm version="0.6" nukkad_synthetic="true">' + "".join(nodes + ways) + "</osm>"
+    )
 
 
 @contextmanager
@@ -99,8 +101,6 @@ def evaluate(config: Config, output: Path):
         ),
         source,
     )
-    snapshot["synthetic"] = True
-    store.put("snapshot", snapshot["id"], snapshot)
     report = {
         "scope": "Synthetic map cases with actual local inference and process-level non-loopback socket denial; not physical field trials",
         "model": config.model,

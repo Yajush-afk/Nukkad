@@ -78,6 +78,7 @@ def parse_extract(path: Path, area: AreaInput) -> tuple[nx.MultiDiGraph, list[Pl
     finally:
         ox.settings.useful_tags_way = original_tags
         ox.settings.useful_tags_node = original_node_tags
+    graph.graph["nukkad_synthetic"] = root.attrib.get("nukkad_synthetic") == "true"
     graph.remove_edges_from(
         [
             (u, v, key)
@@ -213,7 +214,13 @@ class Maps:
     def __init__(self, config: Config, store: Store):
         self.config, self.store = config, store
 
-    def acquire(self, area: AreaInput, imported: Path | None = None, activate: bool = True) -> dict:
+    def acquire(
+        self,
+        area: AreaInput,
+        imported: Path | None = None,
+        activate: bool = True,
+        synthetic: bool = False,
+    ) -> dict:
         snapshot_id = identity()
         staging = self.config.data_dir / "snapshots" / f".{snapshot_id}"
         staging.mkdir()
@@ -227,6 +234,9 @@ class Maps:
             else:
                 source = self.download(area, raw_path)
             graph, places, geometry = parse_extract(raw_path, area)
+            synthetic = synthetic or graph.graph.get("nukkad_synthetic", False)
+            if synthetic:
+                source = "Synthetic fixture XML; not real-world OpenStreetMap data"
             from nukkad.planning import pedestrian_graph
 
             walking = pedestrian_graph(graph)
@@ -242,6 +252,7 @@ class Maps:
                 "start_node": start_node,
                 "acquired_at": now(),
                 "source": source,
+                "synthetic": synthetic,
                 "graph_fingerprint": fingerprint,
                 "places": [place.model_dump() for place in places],
                 "eligible_mapped_ids": [
