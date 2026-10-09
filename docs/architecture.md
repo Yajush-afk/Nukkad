@@ -54,7 +54,7 @@ Ranking receives bounded local context: explicit/accepted interests, reported vi
 | Action | Destination and data |
 | --- | --- |
 | Install dependencies / pull weights | Package and model providers during deliberate setup; these are separate installation tools |
-| Download or refresh neighbourhood | Overpass API, then OSM map API fallback; neighbourhood bounding box is sent |
+| Download or refresh neighbourhood | Main Overpass API, then the independent Private.coffee Overpass instance; neighbourhood bounding box is sent |
 | Core generation / reflection | Ollama at **127.0.0.1:11434**; selected candidate/context data stays on this machine when using local weights |
 | Browser UI, map, card and history | The localhost Nukkad server; local files and saved graph, no external map tiles/fonts |
 | Enable and refresh AQI | Open-Meteo air-quality endpoint receives the selected start coordinates, never notes/interests |
