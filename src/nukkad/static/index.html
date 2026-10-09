@@ -10,349 +10,666 @@
     <script defer src="/static/app.js"></script>
   </head>
   <body>
-    <header>
-      <a href="#" class="wordmark">nukkad<span>●</span></a
-      ><span class="strap">YOUR NEIGHBOURHOOD, NOTICED</span>
-      <nav>
-        <button data-panel="home">Explore</button
-        ><button data-panel="history">Field notes</button
-        ><button data-panel="settings">Settings</button>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <a href="#home" data-panel="home" class="brand" aria-label="Nukkad home">
+        <img
+          src="/static/brand/nukkad-light.png"
+          alt="Nukkad — Your neighbourhood is a map you haven't finished."
+          width="1400"
+          height="452"
+        />
+      </a>
+      <nav aria-label="Main navigation">
+        <button data-panel="home" aria-current="page">Explore</button>
+        <button data-panel="setup">Neighbourhood</button>
+        <button data-panel="history">My walks</button>
+        <button data-panel="settings">Settings</button>
       </nav>
     </header>
-    <main>
+    <main id="main">
       <div id="message" role="status" aria-live="polite" hidden></div>
-      <section id="home" class="panel">
+      <section id="home" class="panel" aria-labelledby="home-title">
         <div class="intro">
-          <p class="eyebrow">A SMALL INVITATION TO GO OUTSIDE</p>
-          <h1>There’s more<br />around the corner.</h1>
+          <p class="eyebrow">A LITTLE TIME OUTSIDE</p>
+          <h1 id="home-title">Find something<br />around the corner.</h1>
           <p class="lede">
-            A short walk. A place you’ve overlooked.<br />Something new to
-            notice on the way.
+            Turn 20–60 minutes into a short neighbourhood walk, with a few stops
+            and something to notice.
           </p>
           <div class="intro-actions">
             <button class="primary" id="open-quest">
-              Make a little adventure ↗</button
-            ><button data-panel="setup" class="textbutton">
-              Set up my neighbourhood
+              Set up my neighbourhood <span aria-hidden="true">↗</span>
+            </button>
+            <button data-panel="setup" class="textbutton" id="edit-area" hidden>
+              Change neighbourhood
             </button>
           </div>
-          <p class="local-tag" id="area-name">
-            STARTING AT RAJHANS · INDIRAPURAM
+          <p class="next-step" id="home-next">
+            Start by downloading your local map. No file upload needed.
           </p>
+          <ol class="how-it-works" aria-label="How Nukkad works">
+            <li>
+              <span>01</span>
+              <div>
+                <strong>Plan a short walk</strong>
+                <p>Choose your time and interests.</p>
+              </div>
+            </li>
+            <li>
+              <span>02</span>
+              <div>
+                <strong>Save it and head out</strong>
+                <p>Take a phone image or printed card.</p>
+              </div>
+            </li>
+            <li>
+              <span>03</span>
+              <div>
+                <strong>Keep a little note</strong>
+                <p>Record what you noticed when you return.</p>
+              </div>
+            </li>
+          </ol>
         </div>
         <div class="map-section">
           <div class="map-heading">
-            <h2>Places I’ve visited</h2>
-            <span>SELF-REPORTED</span>
+            <div>
+              <p class="eyebrow">YOUR LOCAL MAP</p>
+              <h2 id="area-name">Your neighbourhood</h2>
+            </div>
+            <span class="status-pill" id="area-status">Not set up</span>
           </div>
-          <div id="map" aria-label="Saved neighbourhood map"></div>
+          <div class="map-wrap">
+            <div id="map" aria-label="Saved neighbourhood map"></div>
+            <div id="map-empty" class="map-empty">
+              <span class="map-empty-mark" aria-hidden="true">↗</span>
+              <h3>A place to begin.</h3>
+              <p>
+                Download your neighbourhood to see streets and nearby places
+                here.
+              </p>
+              <button data-panel="setup">Set up my map</button>
+            </div>
+          </div>
           <div class="map-footer">
-            <span id="progress">Set up your area to begin.</span
-            ><span>MAP DATA © OPENSTREETMAP</span>
+            <span id="progress"
+              >Your visits will appear here after your first walk.</span
+            >
+            <div class="map-legend" aria-label="Map legend">
+              <span><i class="legend-dot visited"></i>Visited</span
+              ><span><i class="legend-dot"></i>Mapped place</span>
+            </div>
           </div>
-          <p class="hint">
-            Click a place to inspect it. Click an empty point to select a start
-            or add a pin. Streets are mapped geometry, not a record of your
-            walks.
+          <p class="hint" id="map-help" hidden>
+            Select a place to see its details. Select a point on the map to
+            choose a start or add a place.
           </p>
-          <div id="place-detail"></div>
+          <div id="place-detail" aria-live="polite"></div>
+          <details class="quiet-details" id="map-details" hidden>
+            <summary>About this map</summary>
+            <p id="snapshot-info" class="hint"></p>
+            <p class="hint">
+              Visits come from your reports, not GPS tracking. A mapped place
+              may be closed or inaccessible. Streets show saved map data, not
+              the paths you have walked.
+            </p>
+          </details>
         </div>
       </section>
-      <section id="setup" class="panel" hidden>
-        <p class="eyebrow">01 / MAKE IT LOCAL</p>
-        <h1>Your corner of the world.</h1>
-        <p>
-          Start near Rajhans Apartments, Ahinsa Khand-1. The suggested
-          coordinates are approximate. Confirm an actual public starting point,
-          not a building interior.
-        </p>
-        <form id="area-form" class="form-grid">
-          <label
-            >Area name<input
-              name="name"
-              value="Rajhans neighbourhood"
-              required
-              maxlength="100" /></label
-          ><label
-            >Timezone<input
-              name="timezone"
-              value="Asia/Kolkata"
-              required /></label
-          ><label
-            >Start latitude<input
-              name="lat"
-              type="number"
-              step="any"
-              value="28.6394"
-              required /></label
-          ><label
-            >Start longitude<input
-              name="lon"
-              type="number"
-              step="any"
-              value="77.3606"
-              required /></label
-          ><label
-            >Radius (metres)<input
-              name="radius_meters"
-              type="number"
-              min="200"
-              max="3000"
-              value="2000"
-              required /></label
-          ><label class="check"
-            ><input name="public_start_confirmed" type="checkbox" />I checked
-            that this start is on a public walking path.</label
-          ><details class="wide">
-            <summary>Advanced: import a saved map</summary>
-            <label>Saved OSM XML (optional)<input name="extract" type="file" accept=".osm,.xml" /></label>
+      <section id="setup" class="panel" hidden aria-labelledby="setup-title">
+        <div class="panel-heading">
+          <p class="eyebrow">YOUR NEIGHBOURHOOD</p>
+          <h1 id="setup-title">Start close to home.</h1>
+          <p class="lede">
+            Choose a public starting point, then download the surrounding map.
+          </p>
+        </div>
+        <form id="area-form" class="form-stack">
+          <fieldset class="form-section">
+            <legend>Your area</legend>
+            <div class="form-grid">
+              <label
+                >Neighbourhood name<input
+                  name="name"
+                  value="Rajhans neighbourhood"
+                  required
+                  maxlength="100"
+              /></label>
+              <label
+                >Explore within (metres)<input
+                  name="radius_meters"
+                  type="number"
+                  min="200"
+                  max="3000"
+                  value="2000"
+                  required
+                /><small>2,000 metres = 2 km around your start.</small></label
+              >
+            </div>
+          </fieldset>
+          <fieldset class="form-section">
+            <legend>Where will you start?</legend>
+            <p class="hint" id="start-help">
+              The suggested point is near Rajhans Apartments, Ahinsa Khand-1. It
+              is approximate: check the actual public gate or street before
+              confirming.
+            </p>
+            <div class="form-grid">
+              <label
+                >Latitude<input
+                  name="lat"
+                  type="number"
+                  min="-90"
+                  max="90"
+                  step="any"
+                  value="28.6394"
+                  required
+              /></label>
+              <label
+                >Longitude<input
+                  name="lon"
+                  type="number"
+                  min="-180"
+                  max="180"
+                  step="any"
+                  value="77.3606"
+                  required
+              /></label>
+              <div class="wide">
+                <button type="button" id="choose-start" hidden>
+                  Choose a point on my saved map
+                </button>
+                <p class="hint" id="start-map-hint">
+                  After the first download, you can choose your start directly
+                  on the map.
+                </p>
+              </div>
+              <label class="check wide"
+                ><input name="public_start_confirmed" type="checkbox" /><span
+                  >I’ve checked that this point is on a public walking
+                  path.<small
+                    >You can download the map first and confirm your start
+                    later.</small
+                  ></span
+                ></label
+              >
+            </div>
+          </fieldset>
+          <details class="disclosure">
+            <summary>Map options &amp; local time</summary>
+            <div class="disclosure-body">
+              <label
+                >Timezone<input
+                  name="timezone"
+                  value="Asia/Kolkata"
+                  required
+                /><small
+                  >Used for daylight checks and departure times.</small
+                ></label
+              >
+              <label
+                >Import a saved map (optional)<input
+                  name="extract"
+                  type="file"
+                  accept=".osm,.xml"
+                /><small
+                  >Choose an OpenStreetMap .osm or .xml file, up to 32 MiB. A
+                  photo of a map won’t work.</small
+                ></label
+              >
+            </div>
           </details>
-          <div class="buttonrow">
-            <button class="primary" id="acquire-area">Fetch my neighbourhood</button
-            ><button type="button" id="reuse-map">
-              Use saved extract with this start
+          <div class="form-actions">
+            <button class="primary" id="acquire-area">
+              Fetch my neighbourhood</button
+            ><button type="button" id="reuse-map" hidden>
+              Save start without downloading again
             </button>
           </div>
+          <p class="hint">
+            Downloading needs internet. Once saved, your map is available
+            offline. A new download keeps your previous maps and walks.
+          </p>
+        </form>
+        <details class="disclosure form-stack" id="add-place-details">
+          <summary>Add a place I know</summary>
+          <div class="disclosure-body">
+            <p class="hint">
+              Missing a local spot? Add its public entrance. It will be counted
+              separately from places on the map.
+            </p>
+            <form id="pin-form" class="form-grid">
+              <label
+                >Place name<input name="name" required maxlength="200"
+              /></label>
+              <label
+                >Type of place<select name="kind">
+                  <option value="landmark">Landmark</option>
+                  <option value="park">Park</option>
+                  <option value="garden">Garden</option>
+                  <option value="market">Market</option>
+                  <option value="artwork">Artwork</option>
+                  <option value="tree">Tree</option>
+                  <option value="court">Sports court</option>
+                </select></label
+              >
+              <label
+                >Entrance latitude<input
+                  name="lat"
+                  type="number"
+                  min="-90"
+                  max="90"
+                  step="any"
+                  required
+              /></label>
+              <label
+                >Entrance longitude<input
+                  name="lon"
+                  type="number"
+                  min="-180"
+                  max="180"
+                  step="any"
+                  required
+              /></label>
+              <label class="wide"
+                >Something you’ve seen here (optional)<input
+                  name="descriptor"
+                  maxlength="120"
+                  placeholder="For example, a mural visible from the street"
+                /><small
+                  >Use your own observation. Nukkad can suggest looking for it
+                  on a walk.</small
+                ></label
+              >
+              <label class="check wide"
+                ><input type="checkbox" name="confirmed" required />I’ve checked
+                that this entrance is publicly accessible.</label
+              >
+              <button class="primary">Add this place</button>
+            </form>
+          </div>
+        </details>
+      </section>
+      <section
+        id="quest-form-panel"
+        class="panel"
+        hidden
+        aria-labelledby="plan-title"
+      >
+        <div class="panel-heading">
+          <p class="eyebrow">01 / PLAN YOUR WALK</p>
+          <h1 id="plan-title">What fits today?</h1>
+          <p class="lede">
+            Choose your time. We’ll suggest a few stops and a route back to your
+            start.
+          </p>
+          <p class="context-line" id="walk-context"></p>
+        </div>
+        <form id="quest-form" class="form-stack">
+          <div class="form-grid">
+            <label
+              >Time available (minutes)<input
+                name="minutes"
+                type="number"
+                min="20"
+                max="60"
+                value="30"
+                required
+              /><small
+                >20–60 minutes, including stops and the return walk.</small
+              ></label
+            >
+            <label
+              >What would you like to do?<select name="mode">
+                <option value="wander">
+                  Wander — notice what’s around you
+                </option>
+                <option value="seek">
+                  Seek — look for a recorded detail
+                </option></select
+              ><small id="mode-help"
+                >Open-ended invitations to notice sounds, colours and
+                shapes.</small
+              ></label
+            >
+            <label class="wide"
+              >What interests you? (optional)<input
+                id="interests"
+                placeholder="Trees, art, markets…"
+                maxlength="1200"
+              /><small
+                >Separate interests with commas. Interests you’ve approved from
+                past notes are also used.</small
+              ></label
+            >
+            <label class="wide"
+              >Anything else about today? (optional)<textarea
+                name="state"
+                maxlength="500"
+                placeholder="A slow walk, somewhere familiar, or a change of scene…"
+              ></textarea>
+            </label>
+          </div>
+          <div class="form-actions">
+            <button class="primary">
+              Plan my walk <span aria-hidden="true">↗</span></button
+            ><button type="button" data-panel="home">Back to map</button>
+          </div>
         </form>
         <p class="hint">
-          No map upload needed. Fetching needs internet. Saved extracts and the core walking loop work
-          locally. Unverified mapped entrances are not guarantees of access.
-        </p>
-        <h2>Add a public place</h2>
-        <form id="pin-form" class="form-grid">
-          <label>Name<input name="name" required maxlength="200" /></label
-          ><label
-            >Kind<select name="kind">
-              <option>landmark</option>
-              <option>park</option>
-              <option>garden</option>
-              <option>market</option>
-              <option>artwork</option>
-              <option>tree</option>
-              <option>court</option>
-            </select></label
-          ><label
-            >Entrance latitude<input
-              name="lat"
-              type="number"
-              step="any"
-              required /></label
-          ><label
-            >Entrance longitude<input
-              name="lon"
-              type="number"
-              step="any"
-              required /></label
-          ><label
-            >Observed feature<input
-              name="descriptor"
-              maxlength="120"
-              placeholder="Optional personally observed feature" /></label
-          ><label class="check"
-            ><input type="checkbox" name="confirmed" required />I confirm this
-            entrance is publicly accessible.</label
-          ><button class="primary">Add pin</button>
-        </form>
-      </section>
-      <section id="quest-form-panel" class="panel" hidden>
-        <p class="eyebrow">02 / TAKE THE SHORT WAY OUT</p>
-        <h1>What fits today?</h1>
-        <form id="quest-form" class="form-grid">
-          <label
-            >Available minutes<input
-              name="minutes"
-              type="number"
-              min="20"
-              max="60"
-              value="30"
-              required /></label
-          ><label
-            >Observation mode<select name="mode">
-              <option value="wander">Wander — notice the surroundings</option>
-              <option value="seek">Seek — use recorded feature evidence</option>
-            </select></label
-          ><label class="wide"
-            >Interests (comma separated)<input
-              id="interests"
-              placeholder="trees, art, markets"
-              maxlength="1200" /></label
-          ><label class="wide"
-            >How’s today? (optional)<textarea
-              name="state"
-              maxlength="500"
-              placeholder="A slow walk, somewhere familiar, or a change of scene…"
-            ></textarea></label
-          ><button class="primary">Create my walking quest ↗</button>
-        </form>
-        <p class="hint">
-          The model ranks eligible places. Code checks walking paths, the return
-          journey, time and daylight. A quest may be unavailable if those checks
-          fail.
+          Nukkad checks mapped walking paths, distance, return time and your
+          daylight settings. If no complete route fits, it will ask you to
+          adjust your plan.
         </p>
       </section>
-      <section id="preview" class="panel" hidden>
-        <p class="eyebrow">03 / REVIEW, THEN GO</p>
-        <h1>Your little adventure.</h1>
+      <section
+        id="preview"
+        class="panel"
+        hidden
+        aria-labelledby="preview-title"
+      >
+        <div class="panel-heading">
+          <p class="eyebrow" id="preview-stage">02 / REVIEW YOUR WALK</p>
+          <h1 id="preview-title">Your walk, at a glance.</h1>
+          <p class="lede" id="preview-help">
+            Check the route and stops before you save this walk.
+          </p>
+        </div>
+        <div id="quest-summary" class="walk-summary"></div>
         <div
           id="quest-map"
-          aria-label="Numbered quest route on its saved map"
+          aria-label="Numbered walking route on its saved map"
         ></div>
         <div id="quest-content"></div>
-        <div class="buttonrow">
-          <button class="primary" id="accept">Accept this walk</button
-          ><a id="download" class="button" hidden>Download phone image ↓</a
-          ><button id="print" hidden>Print A4</button
-          ><button id="return" hidden>I’m back / record outcome</button>
+        <div class="form-actions">
+          <button class="primary" id="accept">Use this walk</button
+          ><a id="download" class="button primary" hidden>Save phone image ↓</a
+          ><button id="print" hidden>Print walk</button
+          ><button id="return" hidden>I’m back — add a note</button>
         </div>
-        <p class="hint">
-          Save the image to your phone by USB or Bluetooth before closing the
-          laptop. Access is uncertain; stay on public paths and turn back if
-          blocked. This card is dated and has no live navigation.
+        <p class="hint" id="take-along-help">
+          Stay on public paths. Skip a stop or turn back if access is blocked.
+          The saved card has no live navigation.
         </p>
-        <img id="card-preview" alt="Portrait walking quest card" hidden />
+        <details class="disclosure card-details">
+          <summary>Preview the take-along card</summary>
+          <img
+            id="card-preview"
+            alt="Portrait walking card with stops and return route"
+            hidden
+          />
+        </details>
       </section>
-      <section id="history" class="panel" hidden>
-        <p class="eyebrow">YOUR FIELD NOTEBOOK</p>
-        <h1>Little walks add up.</h1>
+      <section
+        id="history"
+        class="panel"
+        hidden
+        aria-labelledby="history-title"
+      >
+        <div class="panel-heading">
+          <p class="eyebrow">YOUR NOTEBOOK</p>
+          <h1 id="history-title">Walks worth remembering.</h1>
+          <p class="lede">
+            Revisit a route, update your visit report, or keep an observation.
+          </p>
+        </div>
         <div id="history-list"></div>
-        <h2>Reviewed interests</h2>
-        <div id="interest-review"></div>
+        <details class="disclosure form-stack">
+          <summary>Interests from my notes</summary>
+          <div class="disclosure-body">
+            <p class="hint">
+              Nukkad may suggest an interest from something you wrote. Only
+              interests you approve influence future walks.
+            </p>
+            <div id="interest-review"></div>
+          </div>
+        </details>
       </section>
-      <section id="settings" class="panel" hidden>
-        <p class="eyebrow">MAKE IT YOURS</p>
-        <h1>Your walking rhythm.</h1>
-        <form id="settings-form" class="form-grid">
-          <label
-            >Local Ollama model<input
-              name="model"
-              value="gemma4:e2b"
-              required
-              list="models" /><datalist id="models"></datalist></label
-          ><label
-            >Walking speed (km/h)<input
-              name="walking_kmh"
-              type="number"
-              min="2"
-              max="6"
-              step=".1"
-              value="4"
-              required /></label
-          ><label
-            >Minutes per stop<input
-              name="stop_minutes"
-              type="number"
-              min="1"
-              max="10"
-              value="4"
-              required /></label
-          ><label
-            >Reserve minutes<input
-              name="reserve_minutes"
-              type="number"
-              min="5"
-              max="15"
-              value="5"
-              required /></label
-          ><label
-            >Maximum distance (m)<input
-              name="max_distance_meters"
-              type="number"
-              min="200"
-              max="10000"
-              value="4000"
-              required /></label
-          ><label
-            >Maximum stops<input
-              name="max_stops"
-              type="number"
-              min="1"
-              max="3"
-              value="3"
-              required /></label
-          ><label
-            >Return before sunset (minutes)<input
-              name="sunset_margin_minutes"
-              type="number"
-              min="15"
-              max="60"
-              value="15"
-              required /></label
-          ><label class="check"
-            ><input name="daylight_required" type="checkbox" checked />Require
-            daylight</label
-          ><label
-            >Prompt tone<input
-              name="tone"
-              maxlength="100"
-              value="friendly and observational" /></label
-          ><label class="check"
-            ><input name="air_quality_enabled" type="checkbox" />Enable regional
-            U.S. AQI policy</label
-          ><label
-            >My AQI threshold<input
-              name="air_quality_threshold"
-              type="number"
-              min="0"
-              max="500"
-              placeholder="Required when enabled" /></label
-          ><button class="primary">Save settings</button>
+      <section
+        id="settings"
+        class="panel"
+        hidden
+        aria-labelledby="settings-title"
+      >
+        <div class="panel-heading">
+          <p class="eyebrow">MAKE IT YOURS</p>
+          <h1 id="settings-title">Your walking rhythm.</h1>
+          <p class="lede">
+            These preferences help keep each walk within your limits.
+          </p>
+        </div>
+        <form id="settings-form" class="form-stack">
+          <fieldset class="form-section">
+            <legend>Walking pace &amp; stops</legend>
+            <div class="form-grid">
+              <label
+                >Walking speed (km/h)<input
+                  name="walking_kmh"
+                  type="number"
+                  min="2"
+                  max="6"
+                  step=".1"
+                  value="4"
+                  required
+                /><small
+                  >An estimate of your pace, not a measured speed.</small
+                ></label
+              >
+              <label
+                >Time at each stop (minutes)<input
+                  name="stop_minutes"
+                  type="number"
+                  min="1"
+                  max="10"
+                  value="4"
+                  required
+              /></label>
+              <label
+                >Maximum stops<select name="max_stops">
+                  <option value="1">1 stop</option>
+                  <option value="2">2 stops</option>
+                  <option value="3" selected>3 stops</option>
+                </select></label
+              >
+              <label class="check"
+                ><input name="daylight_required" type="checkbox" checked /><span
+                  >Plan walks in daylight<small
+                    >Includes time to return before sunset.</small
+                  ></span
+                ></label
+              >
+            </div>
+          </fieldset>
+          <details class="disclosure">
+            <summary>Distance &amp; time limits</summary>
+            <div class="disclosure-body form-grid">
+              <label
+                >Maximum total distance (metres)<input
+                  name="max_distance_meters"
+                  type="number"
+                  min="200"
+                  max="10000"
+                  value="4000"
+                  required
+                /><small
+                  >Includes the journey home. 4,000 metres = 4 km.</small
+                ></label
+              >
+              <label
+                >Extra time to spare (minutes)<input
+                  name="reserve_minutes"
+                  type="number"
+                  min="5"
+                  max="15"
+                  value="5"
+                  required
+              /></label>
+              <label
+                >Return before sunset by (minutes)<input
+                  name="sunset_margin_minutes"
+                  type="number"
+                  min="15"
+                  max="60"
+                  value="15"
+                  required
+                /><small>Applies when daylight planning is on.</small></label
+              >
+            </div>
+          </details>
+          <details class="disclosure">
+            <summary>
+              Local AI
+              <span id="model-status" class="summary-status">Checking…</span>
+            </summary>
+            <div class="disclosure-body">
+              <p class="hint">
+                The model runs through Ollama on this laptop. Choose a model
+                you’ve already downloaded.
+              </p>
+              <label
+                >Ollama model<input
+                  name="model"
+                  value="gemma4:e2b"
+                  required
+                  list="models" /><datalist id="models"></datalist
+              ></label>
+              <label
+                >Style of suggestions<input
+                  name="tone"
+                  maxlength="100"
+                  value="friendly and observational"
+              /></label>
+              <p class="hint" id="readiness"></p>
+            </div>
+          </details>
+          <details class="disclosure">
+            <summary>Air quality (optional)</summary>
+            <div class="disclosure-body">
+              <p class="hint">
+                Use a regional estimate to block walks above a limit you choose.
+                It needs internet to refresh and uses the U.S. AQI scale, not
+                India’s AQI scale.
+              </p>
+              <label class="check"
+                ><input name="air_quality_enabled" type="checkbox" /><span
+                  >Use an air-quality limit<small
+                    >When on, missing or outdated data also blocks new
+                    walks.</small
+                  ></span
+                ></label
+              >
+              <label
+                >My limit (U.S. AQI)<input
+                  name="air_quality_threshold"
+                  type="number"
+                  min="0"
+                  max="500"
+                  placeholder="Choose a limit to enable this"
+              /></label>
+              <div id="air-quality"></div>
+              <button type="button" id="refresh-air">
+                Refresh regional estimate
+              </button>
+              <p class="hint">
+                Save your settings before refreshing. Regional estimates cannot
+                tell you the conditions on your street.
+              </p>
+            </div>
+          </details>
+          <div class="form-actions">
+            <button class="primary">Save settings</button>
+          </div>
         </form>
-        <div id="readiness"></div>
-        <div id="air-quality"></div>
-        <button id="refresh-air">Refresh air-quality data (opt-in)</button>
-        <p class="hint">
-          When enabled, missing, stale or above-threshold estimates block
-          quests. Regional data cannot establish conditions on your street.
-        </p>
       </section>
-      <section id="outcome" class="panel" hidden>
-        <p class="eyebrow">04 / BACK AT YOUR CORNER</p>
-        <h1>What did you notice?</h1>
-        <form id="outcome-form" class="form-grid">
-          <label
-            >Outing status<select name="status">
-              <option value="completed">Completed</option>
-              <option value="turned_back">Turned back</option>
-              <option value="not_taken">Not taken</option>
-            </select></label
-          ><label
-            >Actual minutes (optional)<input
-              name="actual_minutes"
-              type="number"
-              min="0"
-              max="1440"
-          /></label>
-          <label
-            >Preparation / screen minutes (optional, manually measured)<input
-              name="screen_minutes"
-              type="number"
-              min="0"
-              max="1440"
-              step=".1"
-          /></label>
-          <div id="outcome-stops" class="wide"></div>
-          <label class="wide"
-            >Original note<textarea
-              name="note"
-              maxlength="8000"
-              rows="5"
-              placeholder="Keep a little observation, in your own words."
-            ></textarea></label
-          ><label
-            >Turn-back reason (optional)<input
-              name="reason"
-              maxlength="500" /></label
-          ><button class="primary">Save my outcome</button>
+      <section
+        id="outcome"
+        class="panel"
+        hidden
+        aria-labelledby="outcome-title"
+      >
+        <div class="panel-heading">
+          <p class="eyebrow">04 / AFTER YOUR WALK</p>
+          <h1 id="outcome-title">What did you notice?</h1>
+          <p class="lede">
+            Tell us where you went. A small observation is enough.
+          </p>
+        </div>
+        <form id="outcome-form" class="form-stack">
+          <div class="form-grid">
+            <label
+              >How did the walk go?<select name="status">
+                <option value="completed">Completed the walk</option>
+                <option value="turned_back">Turned back early</option>
+                <option value="not_taken">Didn’t take this walk</option>
+              </select></label
+            >
+            <label
+              >Time outside (minutes, optional)<input
+                name="actual_minutes"
+                type="number"
+                min="0"
+                max="1440"
+            /></label>
+            <fieldset class="form-section wide">
+              <legend>Which stops did you reach?</legend>
+              <p class="hint">
+                Only stops you mark as reached count as visited.
+              </p>
+              <div id="outcome-stops" class="form-grid"></div>
+            </fieldset>
+            <label class="wide"
+              >Your note (optional)<textarea
+                name="note"
+                maxlength="8000"
+                rows="4"
+                placeholder="A sound, a colour, a conversation, something unexpected…"
+              ></textarea
+              ><small>Your words are saved as written.</small></label
+            >
+            <label class="wide" id="reason-label"
+              >Why did you turn back? (optional)<input
+                name="reason"
+                maxlength="500"
+            /></label>
+            <details class="quiet-details wide">
+              <summary>Record time spent preparing (optional)</summary>
+              <label
+                >Screen / preparation time (minutes)<input
+                  name="screen_minutes"
+                  type="number"
+                  min="0"
+                  max="1440"
+                  step=".1"
+                /><small
+                  >Enter your own measurement; Nukkad does not track screen
+                  time.</small
+                ></label
+              >
+            </details>
+          </div>
+          <div class="form-actions">
+            <button class="primary">Save my note &amp; visits</button>
+          </div>
         </form>
-        <div id="journal-review"></div>
+        <div id="journal-review" class="form-stack"></div>
       </section>
     </main>
     <aside id="job" hidden aria-live="polite">
-      <span id="job-message"></span><button id="cancel-job">Cancel</button>
+      <div><strong>Working on it…</strong><span id="job-message"></span></div>
+      <button id="cancel-job">Cancel</button>
     </aside>
-    <footer>
-      <span>MADE FOR THE WORLD OUTSIDE.</span
-      ><span>Local AI · Open maps · Your own notebook</span>
+    <footer class="site-footer">
+      <img
+        src="/static/brand/nukkad-dark.png"
+        alt="Nukkad"
+        width="819"
+        height="319"
+      />
+      <div>
+        <p>Made for the world outside.</p>
+        <span>Local AI · Open maps · Your own notebook</span>
+      </div>
     </footer>
   </body>
 </html>
