@@ -118,6 +118,8 @@ def svg_card(quest: dict, snapshot: dict) -> str:
         size=23,
         maximum=2,
     )
+    if snapshot.get("synthetic"):
+        text(64, 1732, "SYNTHETIC DEMONSTRATION · DO NOT USE FOR NAVIGATION", 22)
     lines(
         1768,
         "Mapped access is uncertain. Stay on public paths; turn back if blocked. Recorded details may not be visible. This dated card has no live navigation.",

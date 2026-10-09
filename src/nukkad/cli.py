@@ -12,7 +12,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Local neighbourhood discovery")
     parser.add_argument(
         "command",
-        choices=["serve", "benchmark", "backup", "restore", "evaluate"],
+        choices=["serve", "benchmark", "backup", "restore", "evaluate", "demo"],
         nargs="?",
         default="serve",
     )
@@ -25,7 +25,13 @@ def main() -> None:
     config = Config()
     if args.model:
         config = replace(config, model=args.model)
-    if args.command == "benchmark":
+    if args.command == "demo":
+        from nukkad.demo import prepare_demo
+
+        if not args.destination:
+            parser.error("demo requires --destination (a new isolated directory)")
+        print(prepare_demo(args.destination, config.model))
+    elif args.command == "benchmark":
         from nukkad.benchmark import benchmark
 
         benchmark(config)

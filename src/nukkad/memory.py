@@ -22,7 +22,7 @@ class Proposal(Record):
 
 
 class Reflection(Record):
-    excerpt: str = Field(default="", max_length=1000)
+    excerpt: str = Field(min_length=1, max_length=1000)
     interests: list[Proposal] = Field(default_factory=list, max_length=3)
 
 
@@ -32,7 +32,7 @@ class Review(Record):
 
 
 def validate_reflection(value: Reflection, note: str):
-    if value.excerpt and value.excerpt not in note:
+    if not value.excerpt.strip() or value.excerpt not in note:
         raise ValueError("Journal excerpt must be copied exactly from the original note")
     for proposal in value.interests:
         if proposal.quote not in note:

@@ -16,9 +16,22 @@ def test_quotes_and_preference_evidence_are_required():
     )
     for quote in ["I loved birds.", "Passed a shrine."]:
         with pytest.raises(ValueError):
-            validate_reflection(Reflection(interests=[{"theme": "shrines", "quote": quote}]), note)
+            validate_reflection(
+                Reflection(
+                    excerpt="Passed a shrine.", interests=[{"theme": "shrines", "quote": quote}]
+                ),
+                note,
+            )
     with pytest.raises(ValueError):
         validate_reflection(Reflection(excerpt="I had a wonderful walk."), note)
+
+
+def test_empty_journal_extract_is_rejected():
+    for value in ({}, {"excerpt": ""}):
+        with pytest.raises(ValueError):
+            Reflection.model_validate(value)
+    with pytest.raises(ValueError):
+        validate_reflection(Reflection(excerpt="   "), "   I enjoyed trees.")
 
 
 def test_only_reviewed_memory_is_active_and_note_edits_invalidate(registry):

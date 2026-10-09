@@ -188,7 +188,9 @@ def reuse_extract(area: AreaInput, request: Request):
 
     def action(stage):
         stage("Processing saved extract with the selected public start")
-        snapshot = registry.acquire(area, source, activate=False)
+        snapshot = registry.acquire(
+            area, source, activate=False, synthetic=old.get("synthetic", False)
+        )
         return Result(
             {"snapshot_id": snapshot["id"]},
             [

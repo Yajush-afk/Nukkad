@@ -29,3 +29,15 @@ generation needs its separate prose validators and visibly labelled fallbacks;
 the full-product and blinded quality evaluations remain separate evidence.
 
 No outdoor use or health benefit is established by this synthetic benchmark.
+
+## Second-model generation check, 9 October 2026
+
+A separate, sequential production-generation call with `gemma3:4b-it-q4_K_M`
+produced validated local AI ranking **and** wording on the artificial demo graph
+in **19.03 seconds**. Its digest was
+`a2af6cc3eb7fa8be8504abaf9b04e88f17a119ec3f04a3addf55f92841195f5a`.
+The Python-process loopback guard recorded zero non-loopback attempts; it did
+not disable the independently running Ollama daemon's network. This single
+compatibility check supports swapping the selected local model through the
+same adapter. It is not a blinded quality comparison, a complete field trial,
+or a like-for-like latency comparison with the ten-case E2B run.

@@ -59,7 +59,9 @@ def synthetic_map(path: Path):
         nodes[index - 1] = nodes[index - 1].replace(
             old, old + f'<tag k="{key}" v="{value}"/><tag k="name" v="Sample destination {index}"/>'
         )
-    path.write_text('<osm version="0.6">' + "".join(nodes + ways) + "</osm>")
+    path.write_text(
+        '<osm version="0.6" nukkad_synthetic="true">' + "".join(nodes + ways) + "</osm>"
+    )
 
 
 @contextmanager
