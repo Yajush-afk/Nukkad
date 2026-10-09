@@ -1,5 +1,4 @@
 import math
-import textwrap
 from datetime import datetime
 from html import escape
 from zoneinfo import ZoneInfo
@@ -8,7 +7,11 @@ import cairosvg
 from fastapi import APIRouter, Request
 from fastapi.responses import Response
 
+from nukkad.areas_api import maps
+from nukkad.planning_api import settings
+from nukkad.quests import accept
 from nukkad.quests_api import quest_by_id
+from nukkad.typography import ellipsise, wrap_text
 
 router = APIRouter(prefix="/api/quests")
 
@@ -26,10 +29,10 @@ def svg_card(quest: dict, snapshot: dict) -> str:
         )
 
     def lines(y, value, width=64, size=27, step=34, maximum=3):
-        wrapped = textwrap.wrap(str(value), width=width) or [""]
+        wrapped = wrap_text(str(value), size)
         if len(wrapped) > maximum:
             wrapped = wrapped[:maximum]
-            wrapped[-1] = wrapped[-1][:-1] + "…"
+            wrapped[-1] = ellipsise(wrapped[-1], size)
         for line in wrapped:
             text(64, y, line, size)
             y += step
@@ -41,15 +44,15 @@ def svg_card(quest: dict, snapshot: dict) -> str:
     coslat = math.cos(math.radians(midlat))
     xs = [lon * coslat for lon in lons]
     minx, maxx, miny, maxy = min(xs), max(xs), min(lats), max(lats)
-    scale = min(880 / max(maxx - minx, 0.0001), 520 / max(maxy - miny, 0.0001))
+    scale = min(880 / max(maxx - minx, 0.0001), 470 / max(maxy - miny, 0.0001))
     centerx, centery = (minx + maxx) / 2, (miny + maxy) / 2
 
     def project(point):
-        return 540 + (point[0] * coslat - centerx) * scale, 535 - (point[1] - centery) * scale
+        return 540 + (point[0] * coslat - centerx) * scale, 510 - (point[1] - centery) * scale
 
-    parts.append('<rect x="48" y="230" width="984" height="610" rx="20" fill="#e9ece2"/>')
+    parts.append('<rect x="48" y="230" width="984" height="560" rx="20" fill="#e9ece2"/>')
     parts.append(
-        '<clipPath id="mapclip"><rect x="48" y="230" width="984" height="610" rx="20"/></clipPath><g clip-path="url(#mapclip)">'
+        '<clipPath id="mapclip"><rect x="48" y="230" width="984" height="560" rx="20"/></clipPath><g clip-path="url(#mapclip)">'
     )
     for feature in snapshot["geometry"]["features"]:
         geometry = feature["geometry"]
@@ -58,10 +61,11 @@ def svg_card(quest: dict, snapshot: dict) -> str:
             parts.append(
                 f'<polyline points="{points}" fill="none" stroke="#c8d0c5" stroke-width="3"/>'
             )
-    for leg in quest["legs"]:
+    for index, leg in enumerate(quest["legs"]):
         points = " ".join(f"{x:.1f},{y:.1f}" for x, y in map(project, leg["coordinates"]))
+        colour = "#537560" if index == len(quest["legs"]) - 1 else "#ce6336"
         parts.append(
-            f'<polyline points="{points}" fill="none" stroke="#ce6336" stroke-width="8" stroke-linejoin="round" opacity=".85" marker-end="url(#arrow)"/>'
+            f'<polyline points="{points}" fill="none" stroke="{colour}" stroke-width="8" stroke-linejoin="round" opacity=".85" marker-end="url(#arrow)"/>'
         )
     parts.append("</g>")
     for index, stop in enumerate(quest["stops"], 1):
@@ -83,13 +87,19 @@ def svg_card(quest: dict, snapshot: dict) -> str:
         f"{date:%d %b %Y}  ·  {quest['estimated_minutes']} min  ·  {quest['meters'] / 1000:.2f} km",
         29,
     )
-    text(64, 881, "START + RETURN · open circle on the map", 25)
-    y = 935
+    text(64, 827, f"START + RETURN · {quest['start']['lat']:.5f}, {quest['start']['lon']:.5f}", 23)
+    text(64, 858, "Open circle: start · Orange: outward · Green: return", 21)
+    y = 892
     for index, stop in enumerate(quest["stops"], 1):
         y = lines(y, f"{index:02d}  {stop['name']}", width=48, size=32, maximum=2, step=38)
         y = lines(y + 8, quest["prompts"][stop["id"]]["text"], maximum=2)
+        evidence = quest["prompts"][stop["id"]].get("evidence")
+        if evidence:
+            y = lines(
+                y + 4, "Recorded detail: " + evidence["description"], size=23, step=28, maximum=2
+            )
         street = " → ".join(quest["legs"][index - 1]["streets"])
-        y = lines(y + 6, "Via " + street, width=76, size=23, step=28, maximum=1) + 18
+        y = lines(y + 6, "Via " + street, width=76, size=23, step=28, maximum=2) + 18
     y = lines(
         y,
         "Return via " + " → ".join(quest["legs"][-1]["streets"]),
@@ -110,7 +120,7 @@ def svg_card(quest: dict, snapshot: dict) -> str:
     )
     lines(
         1768,
-        "Mapped access is uncertain. Stay on public paths; turn back if blocked. This dated card has no live navigation.",
+        "Mapped access is uncertain. Stay on public paths; turn back if blocked. Recorded details may not be visible. This dated card has no live navigation.",
         width=74,
         size=23,
         step=29,
@@ -134,6 +144,7 @@ def card_png(key: str, request: Request):
     if quest["status"] != "accepted":
         raise ValueError("Accept the quest after reviewing its route before downloading")
     snapshot = request.app.state.store.get("snapshot", quest["snapshot_id"])
+    accept(quest, maps(request), settings(request))
     content = cairosvg.svg2png(bytestring=svg_card(quest, snapshot).encode())
     return Response(
         content,

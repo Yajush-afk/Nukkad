@@ -10,7 +10,7 @@ from pydantic import Field
 
 from nukkad.domain import Point, Record
 from nukkad.maps import Maps
-from nukkad.places import Place, prohibited
+from nukkad.places import Place, prohibited, seek_features
 
 
 class Settings(Record):
@@ -49,7 +49,9 @@ def pedestrian_graph(graph: nx.MultiDiGraph) -> nx.MultiDiGraph:
             and data.get("foot") not in {"yes", "designated", "permissive"}
         ):
             remove.append((u, v, key))
-        elif data.get("oneway:foot") == "yes" and data.get("reversed"):
+        elif (data.get("oneway:foot") == "yes" and data.get("reversed")) or (
+            data.get("oneway:foot") == "-1" and not data.get("reversed")
+        ):
             remove.append((u, v, key))
     result.remove_edges_from(remove)
     return result
@@ -140,7 +142,9 @@ class Planner:
             for a, b in zip(bearings, bearings[1:], strict=False)
         )
 
-    def candidates(self, request: QuestInput, interests: list[str]) -> list[Place]:
+    def candidates(
+        self, request: QuestInput, interests: list[str], *, shortlist=True
+    ) -> list[Place]:
         result = []
         for place in self.maps.places(self.snapshot):
             if (
@@ -150,7 +154,7 @@ class Planner:
                 or place.entrance_node == self.start_node
             ):
                 continue
-            if request.mode == "seek" and not place.descriptors:
+            if request.mode == "seek" and not seek_features(place):
                 continue
             try:
                 _, outbound = self.path(self.start_node, place.entrance_node)
@@ -173,7 +177,7 @@ class Planner:
             for key in pair:
                 if key not in selected:
                     selected.append(key)
-        return [lookup[key] for key in selected[:15]]
+        return [lookup[key] for key in (selected[:15] if shortlist else selected)]
 
     def duration(self, meters: float, stops: int) -> float:
         return (
@@ -212,8 +216,11 @@ class Planner:
         lookup = {place.id: place for place in candidates}
         points = {key: len(ranked_ids) - index for index, key in enumerate(ranked_ids)}
         best = None
-        for count in range(1, min(len(candidates), self.settings.max_stops) + 1):
+        card_stop_limit = 2 if request.mode == "seek" else 3
+        for count in range(1, min(len(candidates), self.settings.max_stops, card_stop_limit) + 1):
             for order in itertools.permutations(ranked_ids, count):
+                if len({lookup[key].entrance_node for key in order}) != count:
+                    continue
                 nodes = [
                     self.start_node,
                     *[lookup[key].entrance_node for key in order],
@@ -267,7 +274,11 @@ class Planner:
             )
         return {
             "snapshot_id": self.snapshot["id"],
-            "start": self.snapshot["area"]["start"],
+            "start": {
+                "lat": self.graph.nodes[self.start_node]["y"],
+                "lon": self.graph.nodes[self.start_node]["x"],
+            },
+            "requested_start": self.snapshot["area"]["start"],
             "start_node": self.start_node,
             "timezone": self.snapshot["area"]["timezone"],
             "generated_at": started.isoformat(),

@@ -126,4 +126,4 @@ class Jobs:
         with self.lock:
             if self.active:
                 self.cancel(self.active)
-        self.executor.shutdown(wait=False, cancel_futures=True)
+        self.executor.shutdown(wait=True, cancel_futures=True)

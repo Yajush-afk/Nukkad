@@ -23,6 +23,7 @@ class Observation(Record):
     id: str
     activity: str = Field(pattern="^(sound|shape|colour|activity|detail|compare)$")
     text: str = Field(min_length=5, max_length=180)
+    feature_id: str | None = Field(default=None, max_length=100)
 
 
 class Observations(Record):

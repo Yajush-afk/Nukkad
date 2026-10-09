@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from dataclasses import replace
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -13,8 +14,10 @@ from nukkad.jobs import Busy, Jobs
 from nukkad.memory import router as memory_router
 from nukkad.ollama import Ollama
 from nukkad.outcomes import router as outcomes_router
+from nukkad.planning import Settings
 from nukkad.planning_api import router as planning_router
 from nukkad.quests_api import router as quests_router
+from nukkad.runtime_lock import RuntimeLock
 from nukkad.security import install_security
 from nukkad.storage import Store
 
@@ -23,17 +26,21 @@ def create_app(config: Config | None = None) -> FastAPI:
     config = config or Config()
     config.prepare()
     store = Store(config.data_dir)
-    jobs = Jobs(store)
+    runtime = RuntimeLock(config.data_dir)
 
     @asynccontextmanager
     async def lifespan(app):
-        yield
-        jobs.close()
+        runtime.acquire()
+        app.state.jobs = Jobs(store)
+        try:
+            yield
+        finally:
+            app.state.jobs.close()
+            runtime.release()
 
     app = FastAPI(title="Nukkad", lifespan=lifespan)
     app.state.config = config
     app.state.store = store
-    app.state.jobs = jobs
     app.include_router(areas_router)
     app.include_router(planning_router)
     app.include_router(quests_router)
@@ -59,17 +66,20 @@ def create_app(config: Config | None = None) -> FastAPI:
 
     @app.get("/api/readiness")
     def readiness():
+        selected = Settings.model_validate(
+            store.get("settings", "active") or {"model": config.model}
+        ).model
         try:
-            models = Ollama(config).models()
+            models = Ollama(replace(config, model=selected)).models()
             model_names = [model["name"] for model in models]
-            model_status = "ready" if config.model in model_names else "missing"
+            model_status = "ready" if selected in model_names else "missing"
         except Exception:
             model_names, model_status = [], "unavailable"
         return {
             "application": "ready",
             "model_status": model_status,
             "models": model_names,
-            "selected_model": config.model,
+            "selected_model": selected,
             "database": "ready",
             "area_ready": store.get("area", "active") is not None,
         }

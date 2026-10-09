@@ -85,3 +85,7 @@ class Store:
     def delete(self, kind: str, key: str) -> None:
         with self.connect() as connection:
             connection.execute("DELETE FROM records WHERE kind=? AND id=?", (kind, key))
+
+    def atomic_review(self, kind: str, key: str, value: dict, *, source, previous: dict):
+        self.atomic([(kind, key, value)], expected=[source, (kind, key, previous)])
+        return value

@@ -295,6 +295,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "astral" },
+    { name = "cairocffi" },
     { name = "cairosvg" },
     { name = "fastapi" },
     { name = "httpx" },
@@ -315,6 +316,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "astral", specifier = ">=3.2" },
+    { name = "cairocffi", specifier = ">=1.7" },
     { name = "cairosvg", specifier = ">=2.7" },
     { name = "fastapi", specifier = ">=0.115" },
     { name = "httpx", specifier = ">=0.28" },

@@ -1,12 +1,16 @@
+import json
 import re
 import time
 from dataclasses import replace
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from nukkad.domain import Observations, Ranking, validate_ids
 from nukkad.ollama import ModelFailure, Ollama, bounded_schema, observation_prompt, ranking_prompt
+from nukkad.places import seek_features
 from nukkad.planning import Planner, QuestInput, Settings, baseline
 from nukkad.storage import identity, now
+from nukkad.typography import wrap_text
 
 TEMPLATES = {
     "sound": "Pause and listen. What sounds stand out around you?",
@@ -18,11 +22,13 @@ TEMPLATES = {
 }
 # Restrict prose to observation language. Facts are rendered separately from registry data.
 PROSE_WORDS = set(
-    "pause and listen what sounds stand out around you notice the shapes visible from your public stopping point look which colours colors catch attention activity without photographing people find a small detail would usually overlook if have been here before seems different today take moment to compare surroundings textures patterns light shadow changes near at this stop explore observe how feel sound color shape rhythm contrast movement choose one describe it quietly focus on something new familiar with or that is in nearby scene environment spend time be curious about try spotting seeing hearing looking listening an interesting subtle gently simply for can do as then also there first together enjoy reflecting eyes close up distant soft loud repeating natural urban overall its between more less same usual now along a few surface lines use think of any details place perspective remember than last visit noticed earlier stay outside visible side do not enter restricted areas".split()
+    "colour present space shades area surrounding differences features aspects elements momentarily textures listen observe pause and listen what sounds stand out around you notice the shapes visible from your public stopping point look which colours colors catch attention activity without photographing people find a small detail would usually overlook if have been here before seems different today take moment to compare surroundings textures patterns light shadow changes near at this stop explore observe how feel sound color shape rhythm contrast movement choose one describe it quietly focus on something new familiar with or that is in nearby scene environment spend time be curious about try spotting seeing hearing looking listening an interesting subtle gently simply for can do as then also there first together enjoy reflecting eyes close up distant soft loud repeating natural urban overall its between more less same usual now along a few surface lines use think of any details place perspective remember than last visit noticed earlier stay outside visible side do not enter restricted areas".split()
 )
 
 
 def validate_prose(text: str):
+    if len(wrap_text(text, 27)) > 2:
+        raise ValueError("Keep this observation to two readable lines on the phone card")
     words = set(re.findall(r"[a-z]+", text.lower()))
     if re.search(r"\d", text) or not words <= PROSE_WORDS:
         raise ValueError("Use only general observation vocabulary; do not invent features or facts")
@@ -47,25 +53,35 @@ def validate_prose(text: str):
         raise ValueError("Write an observation invitation")
 
 
-def validate_reasons(value: Ranking, candidates):
-    facts = " ".join(
-        str(item) for place in candidates for item in [place.name, place.kind, *place.descriptors]
-    )
-    allowed = set(re.findall(r"[a-z]+", facts.lower())) | set(
-        "a an the and or for of to with your interests interest matches fit variety novelty new unvisited visited revisit nearby closest closer overlooked different familiar nature trees quiet art architecture markets food sports history short walk mapped entrance destination public outside observation stop explore worth considering previously reached reported balance offers adds supports this place kind route candidate distance less more than preference preferences return useful purposeful change context notes note aligns local location park garden landmark artwork attraction tree market court sports centre walking time budget".split()
-    )
+def reason_options(candidates, interests):
+    from nukkad.planning import INTEREST_KINDS
+
+    tokens = {word.lower() for interest in interests for word in interest.split()}
+    options = {}
+    for place in candidates:
+        choices = [
+            "Nearby destination with a mapped entrance.",
+            "Previously reached; consider a purposeful revisit."
+            if place.visited
+            else "Unvisited mapped destination.",
+        ]
+        choices += [
+            f"Interest match: {theme}."
+            for theme, kinds in INTEREST_KINDS.items()
+            if theme in tokens and place.kind in kinds
+        ]
+        options[place.id] = choices
+    return options
+
+
+def validate_reasons(value: Ranking, candidates, interests=()):
+    options = reason_options(candidates, interests)
     for item in value.places:
-        if (
-            len(item.reason.split()) > 12
-            or re.search(r"\d", item.reason)
-            or not set(re.findall(r"[a-z]+", item.reason.lower())) <= allowed
-        ):
-            raise ValueError(
-                "Reasons must use supplied place facts and ranking language, without numbers"
-            )
+        if item.reason not in options[item.id]:
+            raise ValueError("Select an exact allowed reason for that place ID")
 
 
-def validated_task(model, response_type, collection, ids, prompt, deadline, validator):
+def validated_task(model, response_type, collection, ids, prompt, deadline, validator, schema=None):
     error = ""
     for _ in range(2):
         try:
@@ -73,7 +89,7 @@ def validated_task(model, response_type, collection, ids, prompt, deadline, vali
                 response_type,
                 prompt + error,
                 deadline,
-                bounded_schema(response_type, collection, ids),
+                schema or bounded_schema(response_type, collection, ids),
             )
             validate_ids([item.id for item in getattr(value, collection)], ids)
             validator(value)
@@ -108,13 +124,15 @@ def active_interests(store):
     return list(dict.fromkeys([*explicit, *accepted]))[:20]
 
 
-def generate(maps, store, config, settings: Settings, request: QuestInput, stage, model=None):
+def generate(
+    maps, store, config, settings: Settings, request: QuestInput, stage, model=None, planner=None
+):
     began = time.monotonic()
     deadline = began + 120
     from nukkad.air_quality import enforce
 
     environment = enforce(store, maps.snapshot(), settings)
-    planner = Planner(maps, settings)
+    planner = planner or Planner(maps, settings)
     interests = active_interests(store)
     candidates = planner.candidates(request, interests)
     if not candidates:
@@ -127,15 +145,27 @@ def generate(maps, store, config, settings: Settings, request: QuestInput, stage
     ranking_mode, prose_mode = "local AI", "local AI"
     metrics, reasons = {}, {}
     stage("Ranking eligible places with local AI")
+    options = reason_options(candidates, interests)
+    rank_schema = bounded_schema(Ranking, "places", [place.id for place in candidates])
+    rank_schema["$defs"]["RankedPlace"]["properties"]["reason"] = {
+        "type": "string",
+        "enum": sorted({reason for choices in options.values() for reason in choices}),
+    }
     try:
         value, metrics["ranking"] = validated_task(
             model,
             Ranking,
             "places",
             [place.id for place in candidates],
-            ranking_prompt([place.model_dump() for place in candidates], data),
+            ranking_prompt(
+                [place.model_dump() for place in sorted(candidates, key=lambda place: place.id)],
+                data,
+            )
+            + "\nSelect each reason EXACTLY from the allowed reasons for its ID: "
+            + json.dumps(options),
             deadline,
-            lambda value: validate_reasons(value, candidates),
+            lambda value: validate_reasons(value, candidates, interests),
+            schema=rank_schema,
         )
         ranked = [item.id for item in value.places]
         reasons = {item.id: item.reason for item in value.places}
@@ -144,12 +174,26 @@ def generate(maps, store, config, settings: Settings, request: QuestInput, stage
     stage("Checking full walking route and daylight")
     quest = planner.build(candidates, ranked, request)
     ids = [place["id"] for place in quest["stops"]]
+    features = (
+        {place["id"]: seek_features(place) for place in quest["stops"]}
+        if request.mode == "seek"
+        else {}
+    )
+    prose_schema = bounded_schema(Observations, "stops", ids)
+    prose_schema["$defs"]["Observation"]["properties"]["feature_id"] = {
+        "type": ["string", "null"],
+        "enum": [None, *[key for options in features.values() for key in options]],
+    }
     stage("Writing observation prompts for the fixed route")
     try:
 
         def validate(value):
             for item in value.stops:
                 validate_prose(item.text)
+                if request.mode == "seek" and item.feature_id not in features[item.id]:
+                    raise ValueError("Choose a recorded feature ID belonging to this stop")
+                if request.mode == "wander" and item.feature_id is not None:
+                    raise ValueError("Wander prompts do not select recorded features")
                 if (
                     item.activity == "compare"
                     and not next(place for place in quest["stops"] if place["id"] == item.id)[
@@ -164,9 +208,16 @@ def generate(maps, store, config, settings: Settings, request: QuestInput, stage
             "stops",
             ids,
             observation_prompt(quest["stops"], data)
-            + "\nUse general observation words only, without named objects.",
+            + "\nUse general observation words only, without named objects. Examples: Notice the sounds present in this space. Observe the shades of colour in this area."
+            + (
+                "\nFor seek mode select one feature_id for each stop from these recorded options: "
+                + json.dumps(features)
+                if features
+                else "\nSet feature_id to null."
+            ),
             deadline,
             validate,
+            schema=prose_schema,
         )
         prompts = {item.id: item.model_dump() for item in value.stops}
     except ModelFailure:
@@ -174,6 +225,10 @@ def generate(maps, store, config, settings: Settings, request: QuestInput, stage
         prompts = {
             key: {"id": key, "activity": "detail", "text": TEMPLATES["detail"]} for key in ids
         }
+    if request.mode == "seek":
+        for key, prompt in prompts.items():
+            feature_id = prompt.get("feature_id") or next(iter(features[key]))
+            prompt["evidence"] = {"id": feature_id, **features[key][feature_id]}
     stage("Saving quest preview")
     return {
         **quest,
@@ -201,7 +256,9 @@ def accept(quest, maps, settings):
     planner = Planner(maps, settings)
     available = {
         place.id: place
-        for place in planner.candidates(QuestInput.model_validate(quest["input"]), [])
+        for place in planner.candidates(
+            QuestInput.model_validate(quest["input"]), [], shortlist=False
+        )
     }
     ids = [place["id"] for place in quest["stops"]]
     if not set(ids) <= set(available):
@@ -212,7 +269,11 @@ def accept(quest, maps, settings):
     )
     if {place["id"] for place in current["stops"]} != set(ids):
         raise ValueError("The complete quest no longer fits; generate a fresh quest")
-    if datetime.fromisoformat(quest["generated_at"]).date() != planner.clock().date():
+    zone = ZoneInfo(quest["timezone"])
+    if (
+        datetime.fromisoformat(quest["generated_at"]).astimezone(zone).date()
+        != planner.clock().astimezone(zone).date()
+    ):
         raise ValueError("Saved cards are dated; generate a fresh quest today")
     if current["legs"] != quest["legs"] or current["settings"] != quest["settings"]:
         raise ValueError("Route settings changed; generate a fresh quest")
