@@ -198,3 +198,11 @@ def reuse_extract(area: AreaInput, request: Request):
         )
 
     return request.app.state.jobs.submit("Update public starting point", action)
+
+
+@router.get("/snapshots/{key}/map")
+def snapshot_map(key: str, request: Request):
+    snapshot = request.app.state.store.get("snapshot", key)
+    if snapshot is None:
+        raise HTTPException(404, "Unknown map snapshot")
+    return {"snapshot_id": key, "area": snapshot["area"], "geometry": snapshot["geometry"]}

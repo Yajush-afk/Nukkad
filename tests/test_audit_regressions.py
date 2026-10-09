@@ -102,3 +102,68 @@ def test_card_date_uses_saved_timezone_across_utc_midnight(registry, monkeypatch
     quest = planner.build(pool, [place.id for place in pool], QuestInput())
     moment[0] = datetime(2026, 10, 9, 1, tzinfo=UTC)
     assert accept(quest, maps, settings)["status"] == "accepted"
+
+
+def test_seek_uses_recorded_features_and_labels_template_fallback(registry, monkeypatch):
+    import nukkad.quests as quests
+    from nukkad.ollama import ModelFailure
+
+    maps, store, snapshot, _, _ = registry
+    snapshot["places"][0]["tags"]["species"] = "Azadirachta indica"
+    store.put("snapshot", snapshot["id"], snapshot)
+    original = Planner
+    monkeypatch.setattr(
+        quests,
+        "Planner",
+        lambda maps, settings: original(
+            maps, settings, lambda: datetime(2026, 10, 9, 7, tzinfo=UTC)
+        ),
+    )
+
+    class Offline:
+        def generate(self, *args):
+            raise ModelFailure("Unavailable")
+
+    quest = quests.generate(
+        maps, store, maps.config, Settings(), QuestInput(mode="seek"), lambda _: None, Offline()
+    )
+    assert quest["prose_mode"] == "template fallback"
+    evidence = quest["prompts"]["osm-way-20"]["evidence"]
+    assert evidence["description"] == "species: Azadirachta indica"
+    assert evidence["source"] == "osm"
+
+
+def test_seek_does_not_treat_access_warning_as_feature_evidence(registry):
+    maps = registry[0]
+    planner = Planner(maps, Settings())
+    assert planner.candidates(QuestInput(mode="seek"), []) == []
+
+
+def test_phone_card_wraps_wide_names_inside_margins(registry):
+    from xml.etree import ElementTree
+
+    from nukkad.cards import svg_card
+    from nukkad.typography import text_width
+
+    planner = Planner(registry[0], Settings(), lambda: datetime(2026, 10, 9, 7, tzinfo=UTC))
+    candidates = planner.candidates(QuestInput(), [])
+    quest = planner.build(candidates, [place.id for place in candidates], QuestInput())
+    quest.update(
+        ranking_mode="local AI",
+        prose_mode="template fallback",
+        prompts={
+            place["id"]: {"text": "Notice the sounds present in this space."}
+            for place in quest["stops"]
+        },
+    )
+    quest["stops"][0]["name"] = "W" * 200
+    root = ElementTree.fromstring(svg_card(quest, registry[2]))
+    for item in root.findall("{http://www.w3.org/2000/svg}text"):
+        right = float(item.attrib["x"]) + text_width(
+            item.text or "", float(item.attrib["font-size"])
+        )
+        assert right <= 1032
+    assert quest["start"] == {
+        "lon": quest["legs"][0]["coordinates"][0][0],
+        "lat": quest["legs"][0]["coordinates"][0][1],
+    }

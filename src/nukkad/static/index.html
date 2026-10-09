@@ -195,6 +195,10 @@
       <section id="preview" class="panel" hidden>
         <p class="eyebrow">03 / REVIEW, THEN GO</p>
         <h1>Your little adventure.</h1>
+        <div
+          id="quest-map"
+          aria-label="Numbered quest route on its saved map"
+        ></div>
         <div id="quest-content"></div>
         <div class="buttonrow">
           <button class="primary" id="accept">Accept this walk</button
@@ -319,6 +323,14 @@
               type="number"
               min="0"
               max="1440"
+          /></label>
+          <label
+            >Preparation / screen minutes (optional, manually measured)<input
+              name="screen_minutes"
+              type="number"
+              min="0"
+              max="1440"
+              step=".1"
           /></label>
           <div id="outcome-stops" class="wide"></div>
           <label class="wide"

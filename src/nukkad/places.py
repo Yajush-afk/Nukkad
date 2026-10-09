@@ -60,6 +60,24 @@ class Correction(Record):
     entrance: Point | None = None
 
 
+def seek_features(place: Place | dict) -> dict[str, dict]:
+    place = Place.model_validate(place) if isinstance(place, dict) else place
+    descriptions = (
+        place.descriptors
+        if place.source == "user"
+        else [
+            f"{key}: {place.tags[key][:160]}"
+            for key in ("artwork_type", "sport", "species", "description")
+            if place.tags.get(key)
+        ]
+    )
+    return {
+        f"{place.id}#feature-{index}": {"description": value, "source": place.source}
+        for index, value in enumerate(descriptions)
+        if value.strip()
+    }
+
+
 def prohibited(tags: dict) -> bool:
     return (
         tags.get("access") in {"no", "private", "military"}

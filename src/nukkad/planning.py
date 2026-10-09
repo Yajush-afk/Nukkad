@@ -10,7 +10,7 @@ from pydantic import Field
 
 from nukkad.domain import Point, Record
 from nukkad.maps import Maps
-from nukkad.places import Place, prohibited
+from nukkad.places import Place, prohibited, seek_features
 
 
 class Settings(Record):
@@ -154,7 +154,7 @@ class Planner:
                 or place.entrance_node == self.start_node
             ):
                 continue
-            if request.mode == "seek" and not place.descriptors:
+            if request.mode == "seek" and not seek_features(place):
                 continue
             try:
                 _, outbound = self.path(self.start_node, place.entrance_node)
@@ -216,7 +216,8 @@ class Planner:
         lookup = {place.id: place for place in candidates}
         points = {key: len(ranked_ids) - index for index, key in enumerate(ranked_ids)}
         best = None
-        for count in range(1, min(len(candidates), self.settings.max_stops) + 1):
+        card_stop_limit = 2 if request.mode == "seek" else 3
+        for count in range(1, min(len(candidates), self.settings.max_stops, card_stop_limit) + 1):
             for order in itertools.permutations(ranked_ids, count):
                 if len({lookup[key].entrance_node for key in order}) != count:
                     continue

@@ -7,8 +7,10 @@ from zoneinfo import ZoneInfo
 
 from nukkad.domain import Observations, Ranking, validate_ids
 from nukkad.ollama import ModelFailure, Ollama, bounded_schema, observation_prompt, ranking_prompt
+from nukkad.places import seek_features
 from nukkad.planning import Planner, QuestInput, Settings, baseline
 from nukkad.storage import identity, now
+from nukkad.typography import wrap_text
 
 TEMPLATES = {
     "sound": "Pause and listen. What sounds stand out around you?",
@@ -25,6 +27,8 @@ PROSE_WORDS = set(
 
 
 def validate_prose(text: str):
+    if len(wrap_text(text, 27)) > 2:
+        raise ValueError("Keep this observation to two readable lines on the phone card")
     words = set(re.findall(r"[a-z]+", text.lower()))
     if re.search(r"\d", text) or not words <= PROSE_WORDS:
         raise ValueError("Use only general observation vocabulary; do not invent features or facts")
@@ -170,12 +174,26 @@ def generate(
     stage("Checking full walking route and daylight")
     quest = planner.build(candidates, ranked, request)
     ids = [place["id"] for place in quest["stops"]]
+    features = (
+        {place["id"]: seek_features(place) for place in quest["stops"]}
+        if request.mode == "seek"
+        else {}
+    )
+    prose_schema = bounded_schema(Observations, "stops", ids)
+    prose_schema["$defs"]["Observation"]["properties"]["feature_id"] = {
+        "type": ["string", "null"],
+        "enum": [None, *[key for options in features.values() for key in options]],
+    }
     stage("Writing observation prompts for the fixed route")
     try:
 
         def validate(value):
             for item in value.stops:
                 validate_prose(item.text)
+                if request.mode == "seek" and item.feature_id not in features[item.id]:
+                    raise ValueError("Choose a recorded feature ID belonging to this stop")
+                if request.mode == "wander" and item.feature_id is not None:
+                    raise ValueError("Wander prompts do not select recorded features")
                 if (
                     item.activity == "compare"
                     and not next(place for place in quest["stops"] if place["id"] == item.id)[
@@ -190,9 +208,16 @@ def generate(
             "stops",
             ids,
             observation_prompt(quest["stops"], data)
-            + "\nUse general observation words only, without named objects. Examples: Notice the sounds present in this space. Observe the shades of colour in this area.",
+            + "\nUse general observation words only, without named objects. Examples: Notice the sounds present in this space. Observe the shades of colour in this area."
+            + (
+                "\nFor seek mode select one feature_id for each stop from these recorded options: "
+                + json.dumps(features)
+                if features
+                else "\nSet feature_id to null."
+            ),
             deadline,
             validate,
+            schema=prose_schema,
         )
         prompts = {item.id: item.model_dump() for item in value.stops}
     except ModelFailure:
@@ -200,6 +225,10 @@ def generate(
         prompts = {
             key: {"id": key, "activity": "detail", "text": TEMPLATES["detail"]} for key in ids
         }
+    if request.mode == "seek":
+        for key, prompt in prompts.items():
+            feature_id = prompt.get("feature_id") or next(iter(features[key]))
+            prompt["evidence"] = {"id": feature_id, **features[key][feature_id]}
     stage("Saving quest preview")
     return {
         **quest,

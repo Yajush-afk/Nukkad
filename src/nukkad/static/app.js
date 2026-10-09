@@ -7,7 +7,8 @@ let area,
   geometryLayer,
   placesLayer,
   routeLayer,
-  sessionToken;
+  sessionToken,
+  questMap;
 const node = (tag, text, className) => {
   const e = document.createElement(tag);
   if (text !== undefined) e.textContent = text;
@@ -145,18 +146,24 @@ function inspectPlace(place) {
   target.append(select, detail, button);
 }
 function renderQuest(value) {
+  renderRouteMap(value).catch(report);
   quest = value;
   show("preview");
   const target = $("quest-content");
   target.replaceChildren(
     node(
       "p",
-      `${value.estimated_minutes} min · ${(value.meters / 1000).toFixed(2)} km · ${new Date(value.generated_at).toLocaleDateString()}`,
+      `${value.estimated_minutes} min · ${(value.meters / 1000).toFixed(2)} km · ${new Date(value.generated_at).toLocaleDateString(undefined, { timeZone: value.timezone })}`,
     ),
   );
   target.append(
     node("span", value.ranking_mode + " ranking", "badge"),
     node("span", value.prose_mode + " prompts", "badge"),
+    node(
+      "p",
+      `Model: ${value.model} · Generation: ${value.generation_seconds} seconds · Map saved ${new Date(area?.acquired_at || value.created_at).toLocaleDateString()}`,
+      "hint",
+    ),
   );
   routeLayer.clearLayers();
   for (const leg of value.legs)
@@ -172,6 +179,15 @@ function renderQuest(value) {
       node("p", "Via " + value.legs[index].streets.join(" → "), "hint"),
       node("p", `${place.verification} · access ${place.access}`, "hint"),
     );
+    const evidence = value.prompts[place.id].evidence;
+    if (evidence)
+      section.append(
+        node(
+          "p",
+          `Recorded detail (${evidence.source}): “${evidence.description}”. Look from the public path; skip if not visible.`,
+          "hint",
+        ),
+      );
     if (value.reasons[place.id])
       section.append(node("p", value.reasons[place.id], "hint"));
     target.append(section);
@@ -184,11 +200,13 @@ function renderQuest(value) {
         new Date(value.latest_departure).toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
+          timeZone: value.timezone,
         }) +
         " · Sunset " +
         new Date(value.sunset).toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
+          timeZone: value.timezone,
         }),
       "hint",
     ),
@@ -197,6 +215,21 @@ function renderQuest(value) {
   $("accept").hidden = accepted;
   $("download").hidden = !accepted;
   $("download").href = "/api/quests/" + value.id + "/card.png";
+  $("download").onclick = async (event) => {
+    event.preventDefault();
+    try {
+      const response = await fetch($("download").href);
+      if (!response.ok) throw Error((await response.json()).detail);
+      const url = URL.createObjectURL(await response.blob());
+      const link = node("a");
+      link.href = url;
+      link.download = `nukkad-${value.id}.png`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      report(error);
+    }
+  };
   $("print").hidden = !accepted;
   $("return").hidden = !accepted;
   $("card-preview").hidden = false;
@@ -327,7 +360,14 @@ $("accept").onclick = async () => {
     report(e);
   }
 };
-$("print").onclick = () => window.print();
+$("print").onclick = async () => {
+  try {
+    await api("/quests/" + quest.id + "/accept", { method: "POST" });
+    window.print();
+  } catch (error) {
+    report(error);
+  }
+};
 $("settings-form").onsubmit = async (event) => {
   event.preventDefault();
   try {
@@ -414,7 +454,13 @@ $("return").onclick = async () => {
       label.append(select);
       $("outcome-stops").append(label);
     }
-    for (const name of ["status", "note", "reason", "actual_minutes"])
+    for (const name of [
+      "status",
+      "note",
+      "reason",
+      "actual_minutes",
+      "screen_minutes",
+    ])
       $("outcome-form").elements[name].value =
         existing?.[name] ?? (name === "status" ? "completed" : "");
     $("journal-review").replaceChildren();
@@ -435,6 +481,8 @@ $("outcome-form").onsubmit = async (event) => {
         reason: v.reason,
         actual_minutes:
           v.actual_minutes === "" ? null : Number(v.actual_minutes),
+        screen_minutes:
+          v.screen_minutes === "" ? null : Number(v.screen_minutes),
         stops: quest.stops.map((place) => ({
           id: place.id,
           status: v["stop-" + place.id],
@@ -636,4 +684,62 @@ function renderAir(value) {
       "hint",
     ),
   );
+}
+
+async function renderRouteMap(value) {
+  const saved = await api(`/snapshots/${value.snapshot_id}/map`);
+  if (quest?.id !== value.id) return;
+  if (!questMap) questMap = L.map("quest-map", { attributionControl: false });
+  questMap.eachLayer((layer) => questMap.removeLayer(layer));
+  L.geoJSON(saved.geometry, {
+    style: {
+      color: "#c3cdbd",
+      weight: 2,
+      fillColor: "#dce2d6",
+      fillOpacity: 0.4,
+    },
+  }).addTo(questMap);
+  const routes = [];
+  for (const [index, leg] of value.legs.entries()) {
+    routes.push(
+      L.polyline(
+        leg.coordinates.map((point) => [point[1], point[0]]),
+        {
+          color: index === value.legs.length - 1 ? "#537560" : "#cb6034",
+          weight: 4,
+        },
+      ).addTo(questMap),
+    );
+  }
+  for (const [index, stop] of value.stops.entries()) {
+    const number = node("span", String(index + 1));
+    L.marker([stop.entrance.lat, stop.entrance.lon], {
+      icon: L.divIcon({
+        html: number,
+        className: "number-pin",
+        iconSize: [30, 30],
+        iconAnchor: [15, 15],
+      }),
+    })
+      .addTo(questMap)
+      .bindTooltip(node("span", stop.name));
+  }
+  L.circleMarker([value.start.lat, value.start.lon], {
+    radius: 8,
+    color: "#243a31",
+    fillColor: "#f6f2e8",
+    fillOpacity: 1,
+  })
+    .addTo(questMap)
+    .bindTooltip("Start + return");
+  L.control
+    .attribution({ prefix: false })
+    .addAttribution("Map data © OpenStreetMap contributors")
+    .addTo(questMap);
+  setTimeout(() => {
+    questMap.invalidateSize();
+    questMap.fitBounds(L.featureGroup(routes).getBounds(), {
+      padding: [35, 35],
+    });
+  }, 40);
 }

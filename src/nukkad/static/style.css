@@ -391,3 +391,20 @@ footer {
     box-shadow: none;
   }
 }
+
+#quest-map {
+  height: 380px;
+  max-width: 900px;
+  background: #e9ece2;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  margin: 25px 0;
+}
+#quest-map .leaflet-control-attribution {
+  font-size: 10px;
+}
+@media print {
+  #quest-map {
+    display: none !important;
+  }
+}
