@@ -35,7 +35,7 @@ def prepare_demo(destination: Path, model: str) -> Path:
             )
         )
         store = Store(staging)
-        Maps(config, store).acquire(
+        snapshot = Maps(config, store).acquire(
             AreaInput(
                 name="Synthetic demo — not a real walk",
                 start={"lat": 28.6, "lon": 77.3},
@@ -44,6 +44,7 @@ def prepare_demo(destination: Path, model: str) -> Path:
             ),
             source,
         )
+        store.put("snapshot", snapshot["id"], {**snapshot, "synthetic": True})
         store.put("profile", "active", {"interests": ["nature", "art"]})
         (staging / "demo.json").write_text(
             json.dumps(

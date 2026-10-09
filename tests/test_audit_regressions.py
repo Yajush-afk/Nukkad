@@ -157,7 +157,9 @@ def test_phone_card_wraps_wide_names_inside_margins(registry):
         },
     )
     quest["stops"][0]["name"] = "W" * 200
-    root = ElementTree.fromstring(svg_card(quest, registry[2]))
+    svg = svg_card(quest, {**registry[2], "synthetic": True})
+    assert "SYNTHETIC DEMONSTRATION" in svg
+    root = ElementTree.fromstring(svg)
     for item in root.findall("{http://www.w3.org/2000/svg}text"):
         right = float(item.attrib["x"]) + text_width(
             item.text or "", float(item.attrib["font-size"])

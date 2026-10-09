@@ -18,6 +18,7 @@ def test_demo_is_isolated_and_has_no_fabricated_history(tmp_path, monkeypatch):
     store = Store(destination)
     registry = Maps(Config(data_dir=destination), store)
     assert registry.snapshot()["area"]["name"].startswith("Synthetic demo")
+    assert registry.snapshot()["synthetic"] is True
     assert len(registry.places()) == 8
     assert sum(bool(seek_features(place)) for place in registry.places()) == 2
     for kind in ("quest", "outcome", "journal", "interest"):
