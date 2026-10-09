@@ -18,12 +18,12 @@ For another model, pass `--model EXACT_LOCAL_TAG` to both the demo command and t
 ## Walk through the interface
 
 1. Verify the synthetic area label and selected model readiness.
-2. Enter 30 minutes, nature/art interests and Wander. Generate, retaining visible ranking/prose modes and actual generation seconds.
+2. Enter 30 minutes, nature/art interests and Wander. Generate, retaining visible AI/fallback labels; expand **How this walk was made** for exact ranking/prose modes and generation seconds.
 3. Review the numbered route, full return and card. Accept and download the image. Open it locally at full resolution; a laptop inspection is not actual phone testing.
 4. Save **Not taken**, unresolved stops and a clearly fictional note, for example: `Synthetic demo only; no outing occurred. I enjoy architecture and would like to notice building shapes on a future walk.` Leave real outdoor timings empty.
 5. Generate a reflection. Inspect the exact original note, journal mode and quote-backed proposal. Accept or reject them individually. Only accept interpretations the fictional example actually supports.
 6. Generate another quest with explicit interests cleared. Inspect whether an accepted theme changes the ordering or chosen stops. A new ordering is possible, not guaranteed. Do not claim personalisation success from a reviewed proposal alone.
-7. Reload, open Field notes and reopen the outcome. Edit the same record and check it remains one record. Try Seek with its recorded sculpture/sport examples, or correct a place and observe its later exclusion.
+7. Reload, open **My walks** and choose **Edit note & visits**. Edit the same record and check it remains one record. Try Seek with its recorded sculpture/sport examples, or correct a place and observe its later exclusion.
 
 The test suite separately checks the reviewed-interest context and core loop with controlled responses. [Evaluation](evaluation.md) includes an actual local-model accepted-interest case and deliberately blinded comparisons. Neither is a human outing.
 
