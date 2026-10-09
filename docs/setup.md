@@ -39,7 +39,7 @@ OLLAMA_HOST=127.0.0.1:11434 OLLAMA_NO_CLOUD=1 ollama serve
 
 Do not start a second server if Ollama is already running as a service. Set those variables in the existing service or use Ollama's `disable_ollama_cloud` configuration, then restart it. [Official Ollama FAQ](https://docs.ollama.com/faq) documents both methods and the default localhost binding. Nukkad connects only to `http://127.0.0.1:11434`; it rejects cloud model names and remotely backed inventory entries.
 
-Gemma 4 E2B was selected after laptop measurements. Gemma 3 `gemma3:4b-it-q4_K_M` passed the separate response/ID benchmark; full-product prose and timing are not established by that benchmark. You may pull another local model and select it in Settings, but re-evaluate its structured output, latency and fallbacks. No API key or paid inference service is required. Hardware, electricity, downloads and storage still have costs.
+Gemma 4 E2B was selected after laptop measurements. Gemma 3 `gemma3:4b-it-q4_K_M` passed the separate response/ID benchmark and one sequential synthetic full-generation check with AI ranking and wording (19.03 s); this does not establish equivalent recommendation quality or repeatable performance. You may pull another local model and select it in Settings, but re-evaluate its structured output, latency and fallbacks. No API key or paid inference service is required. Hardware, electricity, downloads and storage still have costs.
 
 ## Launch
 

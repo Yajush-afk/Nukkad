@@ -27,6 +27,12 @@ For another model, pass `--model EXACT_LOCAL_TAG` to both the demo command and t
 
 The test suite separately checks the reviewed-interest context and core loop with controlled responses. [Evaluation](evaluation.md) includes an actual local-model accepted-interest case and deliberately blinded comparisons. Neither is a human outing.
 
+### Export example
+
+This full-resolution example was exported from the installed wheel using **controlled test responses** and the artificial graph. Its independent synthetic label stays visible after transfer. It is a layout example, not real-model or field evidence.
+
+![Synthetic phone card; never use for navigation](images/synthetic-card.png)
+
 ## A 2–3 minute final recording script
 
 | Time | Show | Evidence to retain |
