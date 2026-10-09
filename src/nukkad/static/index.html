@@ -103,21 +103,19 @@
           ><label class="check"
             ><input name="public_start_confirmed" type="checkbox" />I checked
             that this start is on a public walking path.</label
-          ><label
-            >Saved OSM XML (optional)<input
-              name="extract"
-              type="file"
-              accept=".osm,.xml"
-          /></label>
+          ><details class="wide">
+            <summary>Advanced: import a saved map</summary>
+            <label>Saved OSM XML (optional)<input name="extract" type="file" accept=".osm,.xml" /></label>
+          </details>
           <div class="buttonrow">
-            <button class="primary">Download / import area</button
+            <button class="primary" id="acquire-area">Fetch my neighbourhood</button
             ><button type="button" id="reuse-map">
               Use saved extract with this start
             </button>
           </div>
         </form>
         <p class="hint">
-          Downloads need internet. Saved extracts and the core walking loop work
+          No map upload needed. Fetching needs internet. Saved extracts and the core walking loop work
           locally. Unverified mapped entrances are not guarantees of access.
         </p>
         <h2>Add a public place</h2>

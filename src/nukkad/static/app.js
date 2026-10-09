@@ -300,6 +300,11 @@ $("area-form").onsubmit = async (event) => {
     report(e);
   }
 };
+$("area-form").elements.extract.onchange = (event) => {
+  $("acquire-area").textContent = event.target.files.length
+    ? "Import saved map"
+    : "Fetch my neighbourhood";
+};
 $("reuse-map").onclick = async () => {
   try {
     await runJob(

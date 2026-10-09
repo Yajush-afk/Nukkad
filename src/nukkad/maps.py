@@ -14,6 +14,36 @@ from nukkad.places import AreaInput, Place, place_kind, prohibited
 from nukkad.storage import Store, identity, now
 
 MAX_EXTRACT_BYTES = 32 * 1024 * 1024
+OVERPASS_PROVIDERS = (
+    ("Overpass (main)", "https://overpass-api.de/api/interpreter"),
+    ("Overpass (Private.coffee)", "https://overpass.private.coffee/api/interpreter"),
+)
+
+
+def neighbourhood_query(area: AreaInput) -> str:
+    radius = area.radius_meters + 700
+    delta_lat = radius / 111320
+    delta_lon = radius / (111320 * max(0.2, math.cos(math.radians(area.start.lat))))
+    bbox = (
+        f"{area.start.lat - delta_lat},{area.start.lon - delta_lon},"
+        f"{area.start.lat + delta_lat},{area.start.lon + delta_lon}"
+    )
+    # Download the routing network and supported destinations, not every
+    # building and unrelated node. Access filtering still happens in code.
+    selectors = [f'way["highway"]({bbox});', f'node["entrance"]({bbox});']
+    filters = (
+        '["leisure"~"^(park|garden|pitch|sports_centre)$"]',
+        '["amenity"~"^(marketplace|place_of_worship|food_court)$"]',
+        '["tourism"~"^(artwork|attraction)$"]',
+        '["historic"~"^(monument|memorial)$"]',
+        '["natural"="tree"]["name"]',
+        '["shop"]["name"]',
+    )
+    selectors.extend(
+        f"{kind}{condition}({bbox});" for condition in filters for kind in ("node", "way")
+    )
+    # Recurse to keep referenced way vertices and their access/entrance tags.
+    return "[out:xml][timeout:25];(" + "".join(selectors) + ");(._;>;);out meta;"
 
 
 def distance(a: Point, b: Point) -> float:
@@ -274,32 +304,10 @@ class Maps:
             raise
 
     def download(self, area: AreaInput, destination: Path) -> str:
-        radius = area.radius_meters + 700
-        delta_lat = radius / 111320
-        delta_lon = radius / (111320 * max(0.2, math.cos(math.radians(area.start.lat))))
-        west, south, east, north = (
-            area.start.lon - delta_lon,
-            area.start.lat - delta_lat,
-            area.start.lon + delta_lon,
-            area.start.lat + delta_lat,
-        )
-        bbox = f"{south},{west},{north},{east}"
-        query = f"[out:xml][timeout:25];(node({bbox});way({bbox}););(._;>;);out meta;"
-        attempts = [
-            (
-                "POST",
-                "https://overpass-api.de/api/interpreter",
-                {"data": {"data": query}},
-                "OpenStreetMap via Overpass",
-            ),
-            (
-                "GET",
-                f"https://api.openstreetmap.org/api/0.6/map?bbox={west},{south},{east},{north}",
-                {},
-                "OpenStreetMap map API",
-            ),
-        ]
-        for method, url, kwargs, source in attempts:
+        query = neighbourhood_query(area)
+        failures = []
+        last_error = None
+        for provider, url in OVERPASS_PROVIDERS:
             try:
                 with httpx.Client(
                     timeout=90,
@@ -307,7 +315,7 @@ class Maps:
                     follow_redirects=True,
                     trust_env=False,
                 ) as client:
-                    with client.stream(method, url, **kwargs) as response:
+                    with client.stream("POST", url, data={"data": query}) as response:
                         response.raise_for_status()
                         size = 0
                         with destination.open("wb") as output:
@@ -318,13 +326,34 @@ class Maps:
                                         "Map extract exceeds the neighbourhood size limit"
                                     )
                                 output.write(chunk)
-                ElementTree.parse(destination)
-                return source
-            except (httpx.HTTPError, ElementTree.ParseError):
-                continue
+                root = ElementTree.parse(destination).getroot()
+                if root.tag != "osm":
+                    raise ValueError("provider did not return map XML")
+                if root.find("remark") is not None:
+                    raise ValueError("provider returned an incomplete query result")
+                return f"OpenStreetMap via {provider}"
+            except (httpx.HTTPError, ElementTree.ParseError, ValueError) as error:
+                last_error = error
+                if isinstance(error, httpx.HTTPStatusError):
+                    status = error.response.status_code
+                    reasons = {429: "rate limit; retry later", 504: "provider query timed out"}
+                    reason = f"HTTP {status}" + (
+                        f" ({reasons[status]})" if status in reasons else ""
+                    )
+                elif isinstance(error, httpx.TimeoutException):
+                    reason = "connection or response timed out"
+                elif isinstance(error, httpx.HTTPError):
+                    reason = "network connection failed"
+                elif isinstance(error, ElementTree.ParseError):
+                    reason = "invalid map XML"
+                else:
+                    reason = str(error)
+                failures.append(f"{provider}: {reason}")
         raise ValueError(
-            "Map providers are unavailable. Import a saved OSM XML extract or retry later; your previous snapshot is preserved."
-        )
+            "Could not download this neighbourhood. "
+            + "; ".join(failures)
+            + ". Check your connection or retry later; your saved neighbourhood is unchanged."
+        ) from last_error
 
     def snapshot(self) -> dict:
         area = self.store.get("area", "active")
