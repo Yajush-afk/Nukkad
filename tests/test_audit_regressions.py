@@ -167,3 +167,18 @@ def test_phone_card_wraps_wide_names_inside_margins(registry):
         "lon": quest["legs"][0]["coordinates"][0][0],
         "lat": quest["legs"][0]["coordinates"][0][1],
     }
+
+
+def test_second_app_cannot_interrupt_an_existing_data_directory(registry):
+    import pytest
+
+    config = registry[0].config
+    with TestClient(create_app(config), base_url="http://127.0.0.1") as first:
+        with (
+            pytest.raises(ValueError, match="already running"),
+            TestClient(create_app(config), base_url="http://127.0.0.1"),
+        ):
+            pass
+        assert first.get("/api/area").status_code == 200
+    with TestClient(create_app(config), base_url="http://127.0.0.1") as restarted:
+        assert restarted.get("/api/area").status_code == 200

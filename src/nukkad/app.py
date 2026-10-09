@@ -17,6 +17,7 @@ from nukkad.outcomes import router as outcomes_router
 from nukkad.planning import Settings
 from nukkad.planning_api import router as planning_router
 from nukkad.quests_api import router as quests_router
+from nukkad.runtime_lock import RuntimeLock
 from nukkad.security import install_security
 from nukkad.storage import Store
 
@@ -25,17 +26,21 @@ def create_app(config: Config | None = None) -> FastAPI:
     config = config or Config()
     config.prepare()
     store = Store(config.data_dir)
-    jobs = Jobs(store)
+    runtime = RuntimeLock(config.data_dir)
 
     @asynccontextmanager
     async def lifespan(app):
-        yield
-        jobs.close()
+        runtime.acquire()
+        app.state.jobs = Jobs(store)
+        try:
+            yield
+        finally:
+            app.state.jobs.close()
+            runtime.release()
 
     app = FastAPI(title="Nukkad", lifespan=lifespan)
     app.state.config = config
     app.state.store = store
-    app.state.jobs = jobs
     app.include_router(areas_router)
     app.include_router(planning_router)
     app.include_router(quests_router)

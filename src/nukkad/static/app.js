@@ -161,7 +161,7 @@ function renderQuest(value) {
     node("span", value.prose_mode + " prompts", "badge"),
     node(
       "p",
-      `Model: ${value.model} · Generation: ${value.generation_seconds} seconds · Map saved ${new Date(area?.acquired_at || value.created_at).toLocaleDateString()}`,
+      `Model: ${value.model} · Generation: ${value.generation_seconds} seconds`,
       "hint",
     ),
   );
@@ -689,7 +689,13 @@ function renderAir(value) {
 async function renderRouteMap(value) {
   const saved = await api(`/snapshots/${value.snapshot_id}/map`);
   if (quest?.id !== value.id) return;
-  if (!questMap) questMap = L.map("quest-map", { attributionControl: false });
+  if (!questMap) {
+    questMap = L.map("quest-map", { attributionControl: false });
+    L.control
+      .attribution({ prefix: false })
+      .addAttribution("Map data © OpenStreetMap contributors")
+      .addTo(questMap);
+  }
   questMap.eachLayer((layer) => questMap.removeLayer(layer));
   L.geoJSON(saved.geometry, {
     style: {
@@ -732,10 +738,6 @@ async function renderRouteMap(value) {
   })
     .addTo(questMap)
     .bindTooltip("Start + return");
-  L.control
-    .attribution({ prefix: false })
-    .addAttribution("Map data © OpenStreetMap contributors")
-    .addTo(questMap);
   setTimeout(() => {
     questMap.invalidateSize();
     questMap.fitBounds(L.featureGroup(routes).getBounds(), {
