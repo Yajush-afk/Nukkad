@@ -12,7 +12,9 @@ My entry for the [Hacktoberfest Week 1 Touch Grass challenge](https://dev.to/cha
 
 Nukkad turns a little free time into a small neighbourhood walk. Give it your interests and 20–60 minutes; a local open-weight model orders nearby eligible destinations, and a walking planner checks the entire trip back to your start. You review it, save a phone image or print a card, and close the laptop.
 
-The idea starts with a familiar barrier: wanting to go outside without making a whole expedition out of it. I wanted to begin close to home around Rajhans Apartments in Indirapuram, rather than build another feed of places to scroll through. The suggested location still needs a personally confirmed public start and entrance checks.
+The idea began with memories of football, cricket, table tennis and pool in my society, and noticing fewer people gathering there now. An earlier idea focused on drafting game invitations; I wanted the shared places themselves to become the reason to step out. Nukkad keeps courts in the picture and extends that invitation to nearby trees, markets, artwork and public spaces.
+
+There is also a familiar barrier: wanting to go outside without making a whole expedition out of it. I wanted to begin close to home around Rajhans Apartments in Indirapuram, rather than build another feed of places to scroll through. The suggested location still needs a personally confirmed public start and entrance checks.
 
 After a walk, report what you reached, skipped or could not resolve, and keep a note in your own words. Your map marks reported destinations. A local journal extract and tentative interests are yours to review; accepted insights can help order a later quest. It never claims you walked every surrounding street because you visited one place.
 
