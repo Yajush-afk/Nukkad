@@ -1,3 +1,6 @@
+import re
+from urllib.parse import parse_qs
+
 import httpx
 import pytest
 from test_maps import XML
@@ -15,6 +18,7 @@ def test_dense_area_uses_a_selective_query_without_shrinking_radius(
     registry, monkeypatch, tmp_path
 ):
     maps, _, _, area, _ = registry
+    area = area.model_copy(update={"radius_meters": 2000})
     calls = []
 
     def provider(request):
@@ -33,7 +37,14 @@ def test_dense_area_uses_a_selective_query_without_shrinking_radius(
     assert maps.download(area, target).startswith("OpenStreetMap via Overpass")
     assert target.read_text() == XML
     assert len(calls) == 1
-    assert area.radius_meters == 500
+    query = parse_qs(calls[0][1])["data"][0]
+    bounds = re.search(r'way\["highway"\]\(([^)]+)\)', query)
+    assert bounds is not None
+    south, west, north, east = map(float, bounds.group(1).split(","))
+    assert north - south == pytest.approx(2 * (2000 + 700) / 111320)
+    assert east > west
+    assert "(._;>;);out meta;" in query
+    assert area.radius_meters == 2000
 
 
 def test_overloaded_primary_uses_an_independent_overpass_provider(registry, monkeypatch, tmp_path):
