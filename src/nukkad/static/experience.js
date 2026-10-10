@@ -95,6 +95,9 @@
       color = cloud(color, sky, p, aspect, 0.006, 0.80, 0.52, vec2(0.30, 0.15), 29.9, 0.45);
       color = cloud(color, sky, p, aspect, 0.008, 0.05, 0.30, vec2(0.46, 0.20), 91.1, 0.15);
       color = cloud(color, sky, p, aspect, 0.010, 0.48, 0.18, vec2(0.56, 0.24), 57.2, 0.0);
+      // Keep the wordmark and subline readable as bright clouds drift behind them.
+      float textZone = 1.0 - smoothstep(0.18, 0.60, length((uv - vec2(0.5, 0.57)) * vec2(1.0, 1.2)));
+      color = mix(color, sky, textZone * 0.85);
       gl_FragColor = vec4(color, 1.0);
     }
   `;

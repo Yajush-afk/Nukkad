@@ -254,6 +254,8 @@ button,
   inset: 0;
   z-index: -2;
   pointer-events: none;
+  -webkit-mask-image: radial-gradient(ellipse at 50% 43%, #0002 25%, #000 75%);
+  mask-image: radial-gradient(ellipse at 50% 43%, #0002 25%, #000 75%);
 }
 .sky-fallback span {
   position: absolute;
