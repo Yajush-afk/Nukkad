@@ -27,6 +27,7 @@ AI changes destination ordering and observation wording. It does not invent plac
 | --- | --- |
 | `app.py`, `security.py`, `runtime_lock.py` | Local FastAPI lifecycle, session/host/origin policy and one server owner per data directory |
 | `maps.py`, `places.py`, `areas_api.py` | XML acquisition/import, graph/snapshot provenance, entrances, corrections and custom pins |
+| `geocoding.py` | Explicit text search, provider-aware local cache, validated matches and per-process provider request spacing |
 | `planning.py`, `planning_api.py` | Eligibility, routes, budgets, daylight and deterministic ranking baselines |
 | `ollama.py`, `quests.py`, `quests_api.py` | Local model inventory/inference, ID/reason/prose validation, retries, fallbacks and acceptance |
 | `jobs.py`, `storage.py` | Single background worker, persistent status and atomic SQLite document updates |
@@ -54,6 +55,7 @@ Ranking receives bounded local context: explicit/accepted interests, reported vi
 | Action | Destination and data |
 | --- | --- |
 | Install dependencies / pull weights | Package and model providers during deliberate setup; these are separate installation tools |
+| Search for a place | Configurable Nominatim endpoint receives explicitly submitted public place/address text, never notes/interests. Valid unexpired local cache hits make no provider request |
 | Download or refresh neighbourhood | Main Overpass API, then the independent Private.coffee Overpass instance; neighbourhood bounding box is sent |
 | Core generation / reflection | Ollama at **127.0.0.1:11434**; selected candidate/context data stays on this machine when using local weights |
 | Browser UI, map, card and history | The localhost Nukkad server; local files and saved graph, no external map tiles/fonts |
@@ -65,6 +67,8 @@ Downloads/refreshes are explicit. AQI defaults disabled and sends no request whi
 With AQI enabled, cached retrieval age must be at most three hours and forecast-valid time within 90 minutes of now. Unknown, stale, invalid and above-threshold values block generation/acceptance. This is **U.S. AQI from CAMS global via Open-Meteo**, an approximately 45 km regional model estimate, not a sensor on your street. [Provider documentation](https://open-meteo.com/en/docs/air-quality-api) explains its scope. The user's threshold is a selected policy, not an app-issued medical recommendation.
 
 ## Local security boundary
+
+Text searches are explicit, with no autocomplete. Successful results are cached for 30 days, empty results for 10 minutes. Cache keys hash the normalized query and provider URL; returned public addresses remain in the local cache and backups. Failures do not replace the saved neighbourhood. The default public Nominatim endpoint has strict [usage limits](https://operations.osmfoundation.org/policies/nominatim/); see [setup.md](setup.md) for configuration and the single-process rate-limiter boundary. A search result locates the map centre, while a public walking start still requires separate confirmation.
 
 The server binds to 127.0.0.1, accepts localhost hosts/same-origin browsers, requires a per-process token for mutations and applies a content security policy. User notes and map names use escaped SVG text/DOM text nodes. Routine web access logs are disabled. Personal data, cards, maps and diagnostic exports are ignored in the normal data/artifact locations.
 

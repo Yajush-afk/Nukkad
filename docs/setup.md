@@ -59,8 +59,8 @@ Use the same directory on later launches. One running application owns each data
 
 ## Set up your locality
 
-1. Choose **Set up my neighbourhood**. Start near Rajhans Apartments, Ahinsa Khand-1, Indirapuram, or enter another area.
-2. Confirm the coordinates of a real **public walking start**. The suggested coordinates are approximate and do not identify a verified apartment gate. Do not check the confirmation box until you have checked the actual location.
+1. Choose **Set up my neighbourhood**. Enter a place, locality or street with its city, then select **Search**. For the initial locality, try **Ahinsa Khand 1, Indirapuram, Ghaziabad**. Search works from text; you do not need latitude or longitude.
+2. Choose the matching result by its full address. OpenStreetMap may not know an apartment's exact name; try the locality or a nearby landmark if there is no match. A search result may be a building or area centre, not a public entrance. Leave the public-start confirmation unchecked until you have checked an actual walking start.
 3. Use `Asia/Kolkata`, a 2,000 m radius and the default walking policy initially. The extract includes an additional 700 m routing buffer. Generation does not automatically expand the area.
 4. Select **Fetch my neighbourhood** while online; no uploaded file is required. The background task downloads relevant streets/places as OSM XML and saves an immutable graph, geometry, registry, acquisition time and graph fingerprint. It preserves the selected radius and 700 m routing buffer, and tries an independent Overpass instance if the primary fails.
 5. Inspect the map and entrances. Imported places are unverified. A polygon centre is for display, never an assumed entrance. A place without a credible mapped or supplied entrance stays out of routing.
@@ -69,9 +69,17 @@ Use the same directory on later launches. One running application owns each data
 
 Download errors identify the provider and response status or network failure, rather than claiming that every map service is down. Requests target the walking network, supported places and entrances instead of every unrelated building/node. Public providers can still time out or rate-limit; a saved area remains intact on failure.
 
-As an optional recovery path, open **Map options & local time** in Neighbourhood and choose a neighbourhood `.osm` or `.xml` extract. The action changes to **Import saved map**. It must contain walking ways and their referenced nodes, entrances and relevant place features; images, GeoJSON and road-only extracts are not substitutes. Uploads are limited to 32 MiB. The selected start must snap within 50 m of an eligible graph node. Missing coverage or sparse vertices require a better extract or an accurately chosen start, not an arbitrary confirmation.
+As an optional recovery path, open **Map options & local time** in Neighbourhood and choose a neighbourhood `.osm` or `.xml` extract. The action changes to **Import saved map**. It must contain walking ways and their referenced nodes, entrances and relevant place features; images, GeoJSON and road-only extracts are not substitutes. Uploads are limited to 32 MiB. An unconfirmed map centre may be saved without a nearby graph node, but planning remains blocked. A confirmed walking start must snap within 50 m of an eligible graph node. Missing coverage or sparse vertices require a better extract or an accurately chosen start, not an arbitrary confirmation.
 
 Refresh deliberately by submitting a new download/import. Each refresh creates a new baseline, keeps past snapshots/history and resnaps stored entrances. It does not verify that a place is open today.
+
+### Place-search service
+
+Fresh searches use the public OpenStreetMap Nominatim service, without an API key. Searches happen only after explicit submission, never as you type. Enter public places and localities, not flat numbers or personal details: the submitted text is sent to the search provider. Notes and interests are not sent. Matching addresses and points are cached locally for 30 days; no-match responses for 10 minutes. Repeating a cached search works offline, but a fresh search needs internet. The cache is included in local backups.
+
+The [Nominatim usage policy](https://operations.osmfoundation.org/policies/nominatim/) prohibits autocomplete and limits the public endpoint to one request per second for the entire application. Nukkad spaces request starts by 1.1 seconds in its single local server process, rejects overlapping uncached searches and pauses requests for a minute after provider rate limiting. Do not deploy multiple processes or a shared hosted service against this endpoint without an aggregate limiter and a suitable provider arrangement. Public service availability and coverage are not guaranteed.
+
+To use a self-hosted or compatible Nominatim search endpoint, set `NUKKAD_GEOCODING_URL` before starting Nukkad. It accepts HTTPS endpoints or HTTP on loopback only; use the full search endpoint without query parameters or embedded credentials. The cache is separated by provider URL. See the [Nominatim Search API](https://nominatim.org/release-docs/latest/api/Search/) for the expected JSONv2 response.
 
 ## Generate, review and go
 
