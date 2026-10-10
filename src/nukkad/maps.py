@@ -270,10 +270,20 @@ class Maps:
             from nukkad.planning import pedestrian_graph
 
             walking = pedestrian_graph(graph)
-            start_node = nearest_node(walking, area.start)
+            try:
+                start_node = nearest_node(walking, area.start)
+            except ValueError:
+                if area.public_start_confirmed:
+                    raise
+                # A geocoded building/locality centre is enough to download a map,
+                # but is never silently promoted to a confirmed walking entrance.
+                start_node = None
             connected = (
-                nx.descendants(walking, start_node) & nx.ancestors(walking, start_node)
-            ) | {start_node}
+                (nx.descendants(walking, start_node) & nx.ancestors(walking, start_node))
+                | {start_node}
+                if start_node is not None
+                else set()
+            )
             ox.save_graphml(graph, staging / "walking.graphml")
             fingerprint = hashlib.sha256((staging / "walking.graphml").read_bytes()).hexdigest()
             snapshot = {
