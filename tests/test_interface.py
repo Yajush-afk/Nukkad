@@ -65,6 +65,14 @@ def test_interface_serves_both_local_logos_and_script_targets(tmp_path):
         assert 'href="#main"' in response.text
         assert 'aria-label="Main navigation"' in response.text
         assert all(asset.startswith("/static/") for asset in page.assets)
+        for path in page.assets:
+            assert client.get(path).status_code == 200
+        decoration = client.get("/static/experience.js")
+        assert set(re.findall(r'getElementById\("([\w-]+)"\)', decoration.text)) <= set(page.ids)
+        assert 'href="https://x.com/Yajush_who"' in response.text
+        assert 'href="mailto:yajush24606@gmail.com"' in response.text
+        assert 'href="https://github.com/Yajush-afk/Nukkad"' in response.text
+        assert "Created by" in response.text and "Yajush Srivastava" in response.text
 
 
 def test_grouped_forms_keep_existing_api_fields():

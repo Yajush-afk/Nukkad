@@ -77,7 +77,26 @@ My walks presents one entry per quest with its outcome and note. Visits remain
 self-reported and added places remain counted separately. Reflections and
 inferred interests still require explicit review; source notes can be inspected.
 
-The two supplied PNG logos are bundled locally without image edits:
-`static/brand/nukkad-light.png` in the header and `static/brand/nukkad-dark.png`
-in the footer. The paper and ink colours match their backgrounds. No fonts,
-logos or other interface assets are fetched from third-party hosts at runtime.
+The home page centres an oversized NUKKAD wordmark over a pixel-cloud sky, followed
+by white information sections, local cartoon SVG illustrations and the saved map.
+A glass pill navigation bar uses a drawn wave for hover, keyboard focus and the
+active page. Other pages share a centred reading width, rounded forms and quiet
+glass surfaces. The footer displays a large faded NUKKAD wordmark and only the
+creator's name, X, email and project-repository links.
+
+`experience.js` owns decorative motion separately from the application workflow.
+The user-supplied cloud-shader inspiration is adapted to native WebGL with a low
+resolution framebuffer and a 24 fps cap. Without WebGL, CSS animates bundled pixel
+cloud SVGs; without JavaScript, a static bundled sky remains. Motion pauses outside
+the hero, in hidden tabs and on other panels. A pause control and reduced-motion
+preferences stop decorative motion. The typewriter runs once and exposes a single
+complete sentence to assistive technology; no per-character announcements occur.
+
+The two supplied PNG logos remain bundled without image edits:
+`static/brand/nukkad-light.png` in the desktop header and
+`static/brand/nukkad-dark.png` in the local-AI information section. No fonts, logos,
+illustrations or other interface assets are fetched from third-party hosts at
+runtime. [MDN WebGL](https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API),
+[backdrop-filter](https://developer.mozilla.org/en-US/docs/Web/CSS/backdrop-filter)
+and [reduced motion](https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-reduced-motion)
+document the browser primitives used here.
