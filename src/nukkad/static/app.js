@@ -79,6 +79,8 @@ async function api(path, options = {}) {
   return r.json();
 }
 function show(id) {
+  document.body.dataset.panel = id;
+  document.dispatchEvent(new Event("nukkad:panel"));
   document.querySelectorAll(".panel").forEach((e) => (e.hidden = e.id !== id));
   const active = ["quest-form-panel", "preview", "outcome"].includes(id)
     ? "home"
@@ -98,7 +100,7 @@ function show(id) {
   const heading = $(id).querySelector("h1");
   heading.tabIndex = -1;
   heading.focus({ preventScroll: true });
-  window.scrollTo(0, 0);
+  window.scrollTo({ top: 0, behavior: "instant" });
 }
 function report(error) {
   message(error.message || String(error), true);
