@@ -10,7 +10,9 @@ let area,
   sessionToken,
   questMap,
   questLayers,
-  selectedPointLayer;
+  selectedPointLayer,
+  hasSelectedLocation = false,
+  locationRevision = 0;
 const node = (tag, text, className) => {
   const e = document.createElement(tag);
   if (text !== undefined) e.textContent = text;
@@ -188,10 +190,18 @@ async function loadArea() {
       : "Confirm start";
   if (!saved) return;
   $("area-name").textContent = area.area.name;
-  $("progress").textContent =
-    `${area.progress.mapped_visited} of ${area.progress.mapped_total} mapped places visited · ${area.progress.custom_visited} added places visited`;
+  $("progress").textContent = area.area.public_start_confirmed
+    ? `${area.progress.mapped_visited} of ${area.progress.mapped_total} mapped places visited · ${area.progress.custom_visited} added places visited`
+    : "Choose a public walking start to connect nearby places.";
   $("snapshot-info").textContent =
     `Map saved ${dateFor(area.acquired_at, area.area.timezone)}. Area radius: ${area.area.radius_meters} metres. Visits are based on this saved map.`;
+  hasSelectedLocation = true;
+  $("selected-location").textContent =
+    area.area.name +
+    (area.area.public_start_confirmed
+      ? " — public walking start confirmed by you."
+      : " — saved map; choose and confirm a public walking start.");
+  $("location-query").value = area.area.name;
   $("start-help").textContent =
     "Choose the public gate or street where your walk will begin and end. Selecting a point does not confirm that it is accessible.";
   $("start-map-hint").textContent =
@@ -205,7 +215,11 @@ async function loadArea() {
     weight: 2,
   })
     .addTo(geometryLayer)
-    .bindTooltip("Your starting point — return here");
+    .bindTooltip(
+      area.area.public_start_confirmed
+        ? "Your starting point — return here"
+        : "Selected map centre — choose a public walking start",
+    );
   map.setView([area.area.start.lat, area.area.start.lon], 15);
   for (const place of area.places) {
     const marker = L.circleMarker([place.point.lat, place.point.lon], {
@@ -334,7 +348,7 @@ function selectMapPoint(point) {
     node("h2", "Use this point"),
     node(
       "p",
-      `${point.lat.toFixed(6)}, ${point.lng.toFixed(6)} · Check the actual public path before confirming.`,
+      "Check that this point is on the actual public path before confirming.",
       "hint",
     ),
   );
@@ -348,15 +362,25 @@ function selectMapPoint(point) {
       const form = $(formId);
       form.elements.lat.value = point.lat.toFixed(6);
       form.elements.lon.value = point.lng.toFixed(6);
-      if (formId === "area-form")
+      if (formId === "area-form") {
         form.elements.public_start_confirmed.checked = false;
-      else {
+        hasSelectedLocation = true;
+        locationRevision++;
+        $("location-query").value = area.area.name;
+        $("reuse-map").hidden = false;
+        $("location-results").hidden = true;
+        $("location-status").hidden = true;
+        $("selected-location").textContent =
+          "Point chosen on your saved map. Confirm that it is on a public walking path, then save this start.";
+      } else {
         form.elements.confirmed.checked = false;
         $("add-place-details").open = true;
       }
       show("setup");
       form.scrollIntoView({ block: "start" });
-      form.elements[formId === "area-form" ? "lat" : "name"].focus({
+      form.elements[
+        formId === "area-form" ? "public_start_confirmed" : "name"
+      ].focus({
         preventScroll: true,
       });
     };
@@ -620,8 +644,86 @@ for (const [id, confirmation] of [
 }
 $("cancel-job").onclick = () =>
   api("/jobs/" + activeJob + "/cancel", { method: "POST" }).catch(report);
+function clearLocationSelection() {
+  locationRevision++;
+  hasSelectedLocation = false;
+  $("area-form").elements.lat.value = "";
+  $("area-form").elements.lon.value = "";
+  $("area-form").elements.public_start_confirmed.checked = false;
+  $("selected-location").textContent =
+    "Search above and choose a matching location.";
+  $("location-results").replaceChildren();
+  $("location-results").hidden = true;
+  $("location-status").hidden = true;
+  $("reuse-map").hidden = true;
+}
+$("location-query").addEventListener("input", clearLocationSelection);
+$("location-form").onsubmit = async (event) => {
+  event.preventDefault();
+  clearLocationSelection();
+  const revision = locationRevision;
+  const query = $("location-query").value.trim();
+  $("search-location").disabled = true;
+  $("search-location").textContent = "Searching…";
+  $("location-status").hidden = false;
+  $("location-status").textContent = "Looking for matching places…";
+  message("");
+  try {
+    const result = await api("/locations/search", {
+      method: "POST",
+      body: { query },
+    });
+    if (revision !== locationRevision) return;
+    const target = $("location-results");
+    $("location-status").textContent = result.matches.length
+      ? "Choose the location you meant:"
+      : "No match found. Try the locality or a nearby landmark with the city, for example ‘Ahinsa Khand 1, Indirapuram, Ghaziabad’.";
+    for (const match of result.matches) {
+      const item = node("li");
+      const button = node("button", undefined, "location-result");
+      button.type = "button";
+      button.append(node("strong", match.name), node("span", match.label));
+      button.onclick = () => {
+        hasSelectedLocation = true;
+        const form = $("area-form");
+        form.elements.lat.value = match.point.lat;
+        form.elements.lon.value = match.point.lon;
+        form.elements.name.value = match.name.slice(0, 100);
+        form.elements.public_start_confirmed.checked = false;
+        $("selected-location").textContent = match.label;
+        target
+          .querySelectorAll("button")
+          .forEach((choice) =>
+            choice.setAttribute(
+              "aria-pressed",
+              choice === button ? "true" : "false",
+            ),
+          );
+        $("location-status").textContent =
+          "Location selected. Fetch your neighbourhood map below.";
+        $("acquire-area").focus({ preventScroll: true });
+      };
+      button.setAttribute("aria-pressed", "false");
+      item.append(button);
+      target.append(item);
+    }
+    target.hidden = !result.matches.length;
+  } catch (error) {
+    if (revision === locationRevision) {
+      $("location-status").textContent = error.message;
+      message(error.message, true);
+    }
+  } finally {
+    $("search-location").disabled = false;
+    $("search-location").textContent = "Search";
+  }
+};
 function areaInput() {
   const v = formValues("area-form");
+  if (!hasSelectedLocation || v.lat === "" || v.lon === "")
+    throw Error(
+      "Search for a location and choose a match before downloading your map.",
+    );
   return {
     name: v.name,
     timezone: v.timezone,

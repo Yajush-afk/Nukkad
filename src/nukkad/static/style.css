@@ -856,3 +856,59 @@ pre {
     box-shadow: none;
   }
 }
+
+#location-form {
+  margin-bottom: 28px;
+  gap: 12px;
+}
+.location-search-row {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+.location-search-row input {
+  flex: 1;
+  min-width: 0;
+}
+.location-results {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+.location-result {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  width: 100%;
+  text-align: left;
+}
+.location-result strong {
+  font-size: 14px;
+}
+.location-result span {
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.location-result[aria-pressed="true"] {
+  background: var(--green);
+  border-color: var(--forest);
+}
+#selected-location {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+  padding: 0 0 20px;
+  border-bottom: 1px solid var(--line);
+  margin: 0 0 22px;
+}
+#location-status {
+  font-size: 13px;
+}
+@media (max-width: 400px) {
+  .location-search-row {
+    flex-direction: column;
+  }
+}

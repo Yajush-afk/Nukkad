@@ -17,6 +17,7 @@ class Interface(HTMLParser):
         self.form = None
         self.fields = {}
         self.images = []
+        self.assets = []
 
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
@@ -29,6 +30,10 @@ class Interface(HTMLParser):
             self.fields[self.form].add(attrs["name"])
         if tag == "img":
             self.images.append(attrs)
+        if tag in {"script", "img"} and attrs.get("src"):
+            self.assets.append(attrs["src"])
+        if tag == "link" and attrs.get("rel") == "stylesheet":
+            self.assets.append(attrs["href"])
 
     def handle_endtag(self, tag):
         if tag == "form":
@@ -59,13 +64,14 @@ def test_interface_serves_both_local_logos_and_script_targets(tmp_path):
             assert asset.content.startswith(b"\x89PNG\r\n\x1a\n")
         assert 'href="#main"' in response.text
         assert 'aria-label="Main navigation"' in response.text
-        assert not re.search(r'(?:src|href)="https?://', response.text)
+        assert all(asset.startswith("/static/") for asset in page.assets)
 
 
 def test_grouped_forms_keep_existing_api_fields():
     page = Interface()
     static = Path(__file__).parents[1] / "src" / "nukkad" / "static"
     page.feed((static / "index.html").read_text())
+    assert page.fields["location-form"] == {"query"}
     assert page.fields["area-form"] == {
         "name",
         "lat",
