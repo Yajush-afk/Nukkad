@@ -429,6 +429,9 @@ button,
 .hero :focus-visible {
   outline-color: #fff;
 }
+h1[tabindex="-1"]:focus {
+  outline: none;
+}
 .home-story {
   padding: 100px 0 70px;
 }
