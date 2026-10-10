@@ -6,10 +6,12 @@
     <title>Nukkad — your neighbourhood, noticed</title>
     <link rel="stylesheet" href="/static/vendor/leaflet.css" />
     <link rel="stylesheet" href="/static/style.css" />
+    <link rel="stylesheet" href="/static/experience.css" />
     <script defer src="/static/vendor/leaflet.js"></script>
     <script defer src="/static/app.js"></script>
+    <script defer src="/static/experience.js"></script>
   </head>
-  <body>
+  <body data-panel="home">
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="site-header">
       <a href="#home" data-panel="home" class="brand" aria-label="Nukkad home">
@@ -20,8 +22,8 @@
           height="452"
         />
       </a>
-      <nav aria-label="Main navigation">
-        <button data-panel="home" aria-current="page">Explore</button>
+      <nav class="glass-nav" aria-label="Main navigation">
+        <button data-panel="home" aria-current="page">Home</button>
         <button data-panel="setup">Neighbourhood</button>
         <button data-panel="history">My walks</button>
         <button data-panel="settings">Settings</button>
@@ -30,48 +32,147 @@
     <main id="main">
       <div id="message" role="status" aria-live="polite" hidden></div>
       <section id="home" class="panel" aria-labelledby="home-title">
-        <div class="intro">
-          <p class="eyebrow">A LITTLE TIME OUTSIDE</p>
-          <h1 id="home-title">Find something<br />around the corner.</h1>
-          <p class="lede">
-            Turn 20–60 minutes into a short neighbourhood walk, with a few stops
-            and something to notice.
-          </p>
-          <div class="intro-actions">
-            <button class="primary" id="open-quest">
-              Set up my neighbourhood <span aria-hidden="true">↗</span>
-            </button>
-            <button data-panel="setup" class="textbutton" id="edit-area" hidden>
-              Change neighbourhood
+        <div class="hero" id="sky-hero">
+          <canvas id="pixel-sky" aria-hidden="true"></canvas>
+          <div class="sky-fallback" id="sky-fallback" aria-hidden="true" hidden>
+            <span></span><span></span><span></span><span></span>
+          </div>
+          <div class="hero-content">
+            <p class="hero-label">
+              <span aria-hidden="true">✳</span> YOUR NEXT DISCOVERY IS CLOSE TO
+              HOME
+            </p>
+            <h1 id="home-title">NUKKAD</h1>
+            <p class="hero-subline">
+              <span class="sr-only"
+                >Your neighbourhood is a map you haven't finished.</span
+              >
+              <span id="typewriter" aria-hidden="true"
+                >Your neighbourhood is a map you haven't finished.</span
+              ><span class="type-cursor" aria-hidden="true">|</span>
+            </p>
+            <p class="hero-description">
+              A little local AI. A short walk. Something you never noticed.
+            </p>
+            <div class="intro-actions">
+              <button class="primary" id="open-quest">
+                Set up my neighbourhood <span aria-hidden="true">↗</span>
+              </button>
+              <button
+                data-panel="setup"
+                class="textbutton"
+                id="edit-area"
+                hidden
+              >
+                Change neighbourhood
+              </button>
+            </div>
+            <p class="next-step" id="home-next">
+              Start by downloading your local map. No file upload needed.
+            </p>
+          </div>
+          <div class="hero-bottom">
+            <a href="#how-it-works"
+              >A SHORT WALK THROUGH NUKKAD <span aria-hidden="true">↓</span></a
+            >
+            <button id="sky-motion" type="button" aria-pressed="false">
+              Pause sky <span aria-hidden="true">Ⅱ</span>
             </button>
           </div>
-          <p class="next-step" id="home-next">
-            Start by downloading your local map. No file upload needed.
-          </p>
-          <ol class="how-it-works" aria-label="How Nukkad works">
+        </div>
+        <section
+          class="home-story"
+          id="how-it-works"
+          aria-labelledby="story-title"
+        >
+          <div class="section-heading">
+            <p class="eyebrow">LESS SCROLLING. MORE STROLLING.</p>
+            <h2 id="story-title">
+              Same streets.<br /><em>New little discoveries.</em>
+            </h2>
+            <p>
+              You don't need a faraway adventure. Start with the corner you
+              usually walk past.
+            </p>
+          </div>
+          <ol class="discovery-steps" aria-label="How Nukkad works">
             <li>
-              <span>01</span>
-              <div>
-                <strong>Plan a short walk</strong>
-                <p>Choose your time and interests.</p>
+              <div class="step-art mint">
+                <img
+                  src="/static/illustrations/neighbourhood.svg"
+                  alt=""
+                  width="360"
+                  height="220"
+                  loading="lazy"
+                />
+              </div>
+              <div class="step-copy">
+                <span class="step-index">01 / PICK YOUR PATCH</span>
+                <h3>Start where you are.</h3>
+                <p>
+                  Find your neighbourhood by name. Save its open map and choose
+                  a public walking start.
+                </p>
               </div>
             </li>
             <li>
-              <span>02</span>
-              <div>
-                <strong>Save it and head out</strong>
-                <p>Take a phone image or printed card.</p>
+              <div class="step-art peach">
+                <img
+                  src="/static/illustrations/walk.svg"
+                  alt=""
+                  width="360"
+                  height="220"
+                  loading="lazy"
+                />
+              </div>
+              <div class="step-copy">
+                <span class="step-index">02 / TAKE THE LONG WAY HOME</span>
+                <h3>Make 20 minutes count.</h3>
+                <p>
+                  Choose your time and interests. Review a short return walk,
+                  then take a phone image or printed card outside.
+                </p>
               </div>
             </li>
             <li>
-              <span>03</span>
-              <div>
-                <strong>Keep a little note</strong>
-                <p>Record what you noticed when you return.</p>
+              <div class="step-art lilac">
+                <img
+                  src="/static/illustrations/notebook.svg"
+                  alt=""
+                  width="360"
+                  height="220"
+                  loading="lazy"
+                />
+              </div>
+              <div class="step-copy">
+                <span class="step-index">03 / KEEP SOMETHING SMALL</span>
+                <h3>Bring back a story.</h3>
+                <p>
+                  A new sound, a shady corner, a conversation. Keep a note and
+                  build a notebook of your own neighbourhood.
+                </p>
               </div>
             </li>
           </ol>
-        </div>
+        </section>
+        <aside class="open-story" aria-labelledby="open-title">
+          <div>
+            <p class="eyebrow">OPEN BY DESIGN</p>
+            <h2 id="open-title">Your neighbourhood.<br />Your laptop.</h2>
+            <p>
+              Open-weight AI plans locally. Your notes stay on your laptop.
+              Download a map once, then explore its saved streets offline.
+            </p>
+          </div>
+          <div class="open-stamp">
+            <img
+              src="/static/brand/nukkad-dark.png"
+              alt="Nukkad"
+              width="819"
+              height="319"
+            /><span>LOCAL AI · OPEN MAPS</span>
+          </div>
+        </aside>
         <div class="map-section">
           <div class="map-heading">
             <div>
@@ -678,15 +779,26 @@
       <button id="cancel-job">Cancel</button>
     </aside>
     <footer class="site-footer">
-      <img
-        src="/static/brand/nukkad-dark.png"
-        alt="Nukkad"
-        width="819"
-        height="319"
-      />
-      <div>
-        <p>Made for the world outside.</p>
-        <span>Local AI · Open maps · Your own notebook</span>
+      <div class="footer-wordmark" aria-hidden="true">NUKKAD</div>
+      <div class="footer-meta">
+        <p>Created by <strong>Yajush Srivastava</strong></p>
+        <div class="footer-links" aria-label="Creator and project links">
+          <a
+            href="https://x.com/Yajush_who"
+            target="_blank"
+            rel="noopener noreferrer"
+            >X / @Yajush_who <span aria-hidden="true">↗</span></a
+          >
+          <a href="mailto:yajush24606@gmail.com"
+            >yajush24606@gmail.com <span aria-hidden="true">↗</span></a
+          >
+          <a
+            href="https://github.com/Yajush-afk/Nukkad"
+            target="_blank"
+            rel="noopener noreferrer"
+            >GitHub / Nukkad <span aria-hidden="true">↗</span></a
+          >
+        </div>
       </div>
     </footer>
   </body>
