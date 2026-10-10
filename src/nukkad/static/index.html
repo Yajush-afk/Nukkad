@@ -122,20 +122,54 @@
           <p class="eyebrow">YOUR NEIGHBOURHOOD</p>
           <h1 id="setup-title">Start close to home.</h1>
           <p class="lede">
-            Choose a public starting point, then download the surrounding map.
+            Enter a place or address, choose the match, and download the
+            surrounding map.
           </p>
         </div>
+        <form id="location-form" class="form-stack">
+          <label for="location-query">Where do you want to explore?</label>
+          <div class="location-search-row">
+            <input
+              id="location-query"
+              name="query"
+              type="search"
+              minlength="3"
+              maxlength="240"
+              placeholder="Ahinsa Khand 1, Indirapuram, Ghaziabad"
+              required
+              aria-describedby="location-help"
+              autocomplete="off"
+            />
+            <button id="search-location" class="primary">Search</button>
+          </div>
+          <p class="hint" id="location-help">
+            Enter a public place, locality or street and include the city.
+            Search sends this text to OpenStreetMap’s Nominatim service; don’t
+            include flat numbers or personal details.
+          </p>
+          <p id="location-status" role="status" aria-live="polite" hidden></p>
+          <ul
+            id="location-results"
+            class="location-results"
+            aria-label="Matching locations"
+            hidden
+          ></ul>
+          <p class="hint">
+            Location results ©
+            <a href="https://www.openstreetmap.org/copyright"
+              >OpenStreetMap contributors</a
+            >
+          </p>
+        </form>
         <form id="area-form" class="form-stack">
+          <input name="lat" type="hidden" />
+          <input name="lon" type="hidden" />
           <fieldset class="form-section">
-            <legend>Your area</legend>
+            <legend>Your selected location</legend>
+            <p id="selected-location">
+              Search above and choose a matching location.
+            </p>
             <div class="form-grid">
-              <label
-                >Neighbourhood name<input
-                  name="name"
-                  value="Rajhans neighbourhood"
-                  required
-                  maxlength="100"
-              /></label>
               <label
                 >Explore within (metres)<input
                   name="radius_meters"
@@ -144,53 +178,29 @@
                   max="3000"
                   value="2000"
                   required
-                /><small>2,000 metres = 2 km around your start.</small></label
+                /><small
+                  >2,000 metres = 2 km around your selected point.</small
+                ></label
               >
-            </div>
-          </fieldset>
-          <fieldset class="form-section">
-            <legend>Where will you start?</legend>
-            <p class="hint" id="start-help">
-              The suggested point is near Rajhans Apartments, Ahinsa Khand-1. It
-              is approximate: check the actual public gate or street before
-              confirming.
-            </p>
-            <div class="form-grid">
-              <label
-                >Latitude<input
-                  name="lat"
-                  type="number"
-                  min="-90"
-                  max="90"
-                  step="any"
-                  value="28.6394"
-                  required
-              /></label>
-              <label
-                >Longitude<input
-                  name="lon"
-                  type="number"
-                  min="-180"
-                  max="180"
-                  step="any"
-                  value="77.3606"
-                  required
-              /></label>
-              <div class="wide">
+              <div>
                 <button type="button" id="choose-start" hidden>
-                  Choose a point on my saved map
+                  Choose my walking start on the map
                 </button>
                 <p class="hint" id="start-map-hint">
-                  After the first download, you can choose your start directly
-                  on the map.
+                  Download the map first. Then select the public gate or street
+                  where your walk will begin.
                 </p>
               </div>
+              <p class="hint wide" id="start-help">
+                Search locates the place or area, which may be inside a
+                building. It does not confirm a public walking entrance.
+              </p>
               <label class="check wide"
                 ><input name="public_start_confirmed" type="checkbox" /><span
-                  >I’ve checked that this point is on a public walking
+                  >I’ve checked that the selected point is on a public walking
                   path.<small
-                    >You can download the map first and confirm your start
-                    later.</small
+                    >Leave this unchecked until you’ve checked the actual
+                    starting point.</small
                   ></span
                 ></label
               >
@@ -199,6 +209,14 @@
           <details class="disclosure">
             <summary>Map options &amp; local time</summary>
             <div class="disclosure-body">
+              <label
+                >Neighbourhood name<input
+                  name="name"
+                  value="My neighbourhood"
+                  required
+                  maxlength="100"
+                /><small>A label for your saved map.</small></label
+              >
               <label
                 >Timezone<input
                   name="timezone"

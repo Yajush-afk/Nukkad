@@ -59,7 +59,11 @@ checks must never be described as field trials.
 The main flow is set up a neighbourhood, plan a walk, review it, save a phone image
 or print a card, and record a note after returning. Buttons describe the action
 and the home action reflects whether a map and confirmed start exist. Selecting
-map coordinates is separate from confirming or saving public access.
+a point on the map is separate from confirming or saving public access. Initial
+setup starts with a text place/address search and a choice of matching addresses;
+coordinates are held internally. Search is explicitly submitted, with no
+autocomplete. Editing its text clears the old selection, and a geocoded building
+or locality centre is never automatically treated as a public walking entrance.
 
 Forms group related decisions and explain units beside the fields. Local model
 configuration, distance/time limits, air-quality settings, saved-map import,

@@ -66,3 +66,23 @@ def test_cancellation_prevents_late_publication(tmp_path):
     assert store.get("quest", "late") is None
     assert store.get("job", job["id"])["status"] == "cancelled"
     jobs.close()
+
+
+def test_unconfirmed_search_centre_can_save_map_without_inventing_entrance(registry):
+    from nukkad.planning import NoQuest, Planner, Settings
+
+    maps, store, _, area, source = registry
+    centre = area.model_copy(
+        update={
+            "start": area.start.model_copy(update={"lat": 28.641}),
+            "public_start_confirmed": False,
+        }
+    )
+    saved = maps.acquire(centre, source)
+    assert saved["start_node"] is None
+    assert saved["eligible_mapped_ids"] == []
+    with pytest.raises(NoQuest, match="confirm a public"):
+        Planner(maps, Settings())
+    with pytest.raises(ValueError, match="50 metres"):
+        maps.acquire(centre.model_copy(update={"public_start_confirmed": True}), source)
+    assert store.get("area", "active")["snapshot_id"] == saved["id"]
