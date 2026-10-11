@@ -5,6 +5,7 @@ from dataclasses import replace
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from nukkad.context import active_interests
 from nukkad.domain import Observations, Ranking, validate_ids
 from nukkad.ollama import ModelFailure, Ollama, bounded_schema, observation_prompt, ranking_prompt
 from nukkad.places import seek_features
@@ -114,14 +115,6 @@ def context(store, request: QuestInput, interests):
         "notes": notes,
         "reported_visits": [key for item in outcomes for key in item.get("reached_ids", [])],
     }
-
-
-def active_interests(store):
-    explicit = (store.get("profile", "active") or {}).get("interests", [])
-    accepted = [
-        item["theme"] for item in store.list("interest") if item.get("status") == "accepted"
-    ]
-    return list(dict.fromkeys([*explicit, *accepted]))[:20]
 
 
 def generate(
