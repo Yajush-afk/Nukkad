@@ -972,3 +972,9 @@ pre {
 .email-contact { position: relative; }
 #copy-email { border: 0; padding: 0; color: inherit; font: inherit; background: transparent; border-radius: 0; user-select: text; }
 #email-tooltip { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); white-space: nowrap; background: #244f39; color: white; font-size: .75rem; padding: 7px 11px; border-radius: 8px; }
+
+.location-results { list-style: none; padding: 0; max-height: 310px; overflow: auto; border-radius: 14px; border: 1px solid #ccd9cc; background: #fff; }
+.suggestion-group { padding: 8px 12px; font-size: .7rem; letter-spacing: .06em; color: #4d6856; background: #f3f7ef; }
+.suggestion-option { padding: 10px 14px; cursor: pointer; display: grid; gap: 3px; }
+.suggestion-option span { font-size: .8rem; color: #607465; }
+.suggestion-option[aria-selected="true"], .suggestion-option:hover { background: #e8f3e2; }

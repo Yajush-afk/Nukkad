@@ -20,6 +20,7 @@ from nukkad.quests_api import router as quests_router
 from nukkad.runtime_lock import RuntimeLock
 from nukkad.security import install_security
 from nukkad.storage import SourceChanged, Store
+from nukkad.suggestions import install as install_suggestions
 
 
 def create_app(config: Config | None = None) -> FastAPI:
@@ -43,6 +44,7 @@ def create_app(config: Config | None = None) -> FastAPI:
     app.state.store = store
     app.include_router(areas_router)
     app.include_router(geocoding_router)
+    install_suggestions(app)
     app.include_router(planning_router)
     app.include_router(quests_router)
     app.include_router(cards_router)

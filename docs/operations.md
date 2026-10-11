@@ -103,3 +103,11 @@ continue to revalidate routes. Restarting clears the cache without changing save
 A first map visit can still take longer than subsequent visits. Loading the map is no
 longer a prerequisite for Home, My walks or Settings. If a map request fails, reopen
 Neighbourhood to retry; if session startup fails, reload after checking the local server.
+
+### Location suggestions
+
+Typing three characters shows saved-map and cached-search matches first. Photon adds up to five English online matches after a 400 ms debounce. The local server spaces provider starts by one second, allows one request and one newest pending query, uses a five-second timeout, and cools down for 60 seconds after rate limiting. Failed requests are not retried automatically. `NUKKAD_PHOTON_URL` overrides the default HTTPS endpoint (loopback HTTP is also permitted).
+
+Autocomplete sends only the typed location and geographical context, never notes or photos. The dedicated hashed-key cache holds at most 256 queries: successful results last 24 hours and empty results ten minutes. Search metadata never loads the walking graph. Names/proximity do not merge places; known OSM aliases resolve to existing local identities. A result is a candidate, not evidence of a public entrance. Public Nominatim is used only by the deliberate Search action, never by typing. Photon failure leaves local suggestions and explicit search available.
+
+See [Photon documentation](https://github.com/komoot/photon) and [Nominatim policy](https://operations.osmfoundation.org/policies/nominatim/).

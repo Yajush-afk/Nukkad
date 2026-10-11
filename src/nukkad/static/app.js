@@ -693,10 +693,27 @@ function clearLocationSelection() {
   $("location-status").hidden = true;
   $("reuse-map").hidden = true;
 }
-$("location-query").addEventListener("input", clearLocationSelection);
+function selectLocation(match) {
+  hasSelectedLocation = true;
+  const form = $("area-form");
+  form.elements.lat.value = match.point.lat;
+  form.elements.lon.value = match.point.lon;
+  form.elements.name.value = match.name.slice(0,100);
+  form.elements.public_start_confirmed.checked = false;
+  $("selected-location").textContent = match.label;
+  $("location-status").textContent = "Location selected. Fetch your neighbourhood map below.";
+  $("location-status").hidden = false;
+}
+const neighbourhoodSuggestions = NukkadSuggestions.create({
+  input: $("location-query"), target: $("location-results"), status: $("location-status"),
+  scope: "neighbourhood", api, node, select: selectLocation, invalidate: clearLocationSelection,
+  current: () => document.body.dataset.panel === "setup",
+});
 $("location-form").onsubmit = async (event) => {
   event.preventDefault();
+  neighbourhoodSuggestions.cancel();
   clearLocationSelection();
+  const current = navigation.checkpoint();
   const revision = locationRevision;
   const query = $("location-query").value.trim();
   $("search-location").disabled = true;
@@ -709,7 +726,7 @@ $("location-form").onsubmit = async (event) => {
       method: "POST",
       body: { query },
     });
-    if (revision !== locationRevision) return;
+    if (revision !== locationRevision || !current()) return;
     const target = $("location-results");
     $("location-status").textContent = result.matches.length
       ? "Choose the location you meant:"
@@ -720,24 +737,7 @@ $("location-form").onsubmit = async (event) => {
       button.type = "button";
       button.append(node("strong", match.name), node("span", match.label));
       button.onclick = () => {
-        hasSelectedLocation = true;
-        const form = $("area-form");
-        form.elements.lat.value = match.point.lat;
-        form.elements.lon.value = match.point.lon;
-        form.elements.name.value = match.name.slice(0, 100);
-        form.elements.public_start_confirmed.checked = false;
-        $("selected-location").textContent = match.label;
-        target
-          .querySelectorAll("button")
-          .forEach((choice) =>
-            choice.setAttribute(
-              "aria-pressed",
-              choice === button ? "true" : "false",
-            ),
-          );
-        $("location-status").textContent =
-          "Location selected. Fetch your neighbourhood map below.";
-        $("acquire-area").focus({ preventScroll: true });
+        neighbourhoodSuggestions.choose(match);
       };
       button.setAttribute("aria-pressed", "false");
       item.append(button);
@@ -745,7 +745,7 @@ $("location-form").onsubmit = async (event) => {
     }
     target.hidden = !result.matches.length;
   } catch (error) {
-    if (revision === locationRevision) {
+    if (revision === locationRevision && current()) {
       $("location-status").textContent = error.message;
       message(error.message, true);
     }
