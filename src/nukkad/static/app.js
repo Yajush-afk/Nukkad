@@ -50,13 +50,11 @@ function disclosure(title, ...content) {
   return details;
 }
 function accessNote(place) {
-  if (!place.valid || place.access === "prohibited")
-    return "Currently excluded from walking suggestions.";
-  if (place.access === "confirmed")
-    return "You reported public access. Check that it is still open when you arrive.";
-  if (place.access === "mapped")
-    return "Entrance shown on the map; public access has not been personally confirmed.";
-  return "Public access is unknown. Check from a public path and skip if blocked.";
+  const reports={closed:"Reported closed",not_there:"Reported missing",not_accessible:"Reported inaccessible"};
+  if(!place.valid) return reports[place.last_report] || "Unavailable for walking suggestions";
+  if(place.access === "prohibited") return "Not open to public walking";
+  if(!place.entrance) return "Entrance not confirmed";
+  return place.access === "confirmed" ? "Public access checked — check again on arrival" : "Mapped entrance — check public access";
 }
 const notifications = NukkadNotifications.create({ target: $("notifications"), node });
 function message(text, error = false) {
@@ -272,85 +270,48 @@ function inspectPlace(place) {
   );
   if (place.descriptors.length)
     target.append(node("p", place.descriptors.join(" · "), "hint"));
-  const corrections = disclosure("Update this place");
-  const form = node("form", undefined, "form-grid");
-  const select = node("select");
-  for (const [value, label] of [
-    ["verify", "I checked public access"],
-    ["entrance", "Correct the entrance"],
-    ["not_there", "This place is not here"],
-    ["closed", "This place is closed"],
-    ["not_accessible", "I could not access it"],
-  ]) {
-    const option = node("option", label);
-    option.value = value;
-    select.append(option);
+  const corrections = disclosure("Report this place");
+  const form = node("form",undefined,"form-grid");
+  const select=node("select");
+  for(const [value,label] of [["verify","I checked public access"],["entrance","Correct the entrance"],["not_there","This place is not here"],["closed","This place is closed"],["not_accessible","I could not access it"]]){
+    const option=node("option",label);option.value=value;select.append(option);
   }
-  const actionLabel = node("label", "What changed?");
-  actionLabel.className = "wide";
-  actionLabel.append(select);
-  const detail = node("input");
-  detail.placeholder = "What did you check or observe?";
-  detail.maxLength = 500;
-  detail.minLength = 3;
-  detail.required = true;
-  const detailLabel = node("label", "Your observation");
-  detailLabel.className = "wide";
-  detailLabel.append(detail);
-  const latitude = node("input");
-  const longitude = node("input");
-  for (const [input, coordinate, min, max] of [
-    [latitude, "lat", -90, 90],
-    [longitude, "lon", -180, 180],
-  ]) {
-    input.type = "number";
-    input.step = "any";
-    input.min = min;
-    input.max = max;
-    input.value = place.entrance?.[coordinate] ?? "";
-  }
-  const entranceLat = node("label", "New entrance latitude");
-  entranceLat.append(latitude);
-  const entranceLon = node("label", "New entrance longitude");
-  entranceLon.append(longitude);
-  const toggleEntrance = () => {
-    entranceLat.hidden = entranceLon.hidden = select.value !== "entrance";
-    latitude.required = longitude.required = select.value === "entrance";
+  const actionLabel=node("label","What did you find?","wide");actionLabel.append(select);
+  const detail=node("input");detail.placeholder="What did you check or observe?";detail.maxLength=500;detail.minLength=3;detail.required=true;
+  const detailLabel=node("label","Your observation","wide");detailLabel.append(detail);
+  const entranceSummary=node("p","Choose the actual entrance on the map.","hint wide");
+  const publicCheck=node("input");publicCheck.type="checkbox";
+  const publicLabel=node("label",undefined,"check wide");publicLabel.append(publicCheck,node("span","I checked this entrance is on a public walking path."));
+  let selected=null;
+  const toggleEntrance=()=>{
+    placeEditorState.changed();
+    entranceSummary.hidden=publicLabel.hidden=select.value!=="entrance";
+    publicCheck.required=select.value==="entrance";
+    reportEntrance=select.value==="entrance"?{select(point){
+      placeEditorState.changed();selected={lat:point.lat,lon:point.lng};publicCheck.checked=false;
+      entranceSummary.textContent="New entrance chosen on your saved map. Confirm public access before saving.";pointMarker(point);
+    }}:null;
   };
-  select.onchange = toggleEntrance;
-  toggleEntrance();
-  const button = node("button", "Save update");
-  button.type = "submit";
-  form.append(actionLabel, detailLabel, entranceLat, entranceLon, button);
-  form.onsubmit = async (event) => {
-    event.preventDefault();
-    try {
-      const data = { action: select.value, detail: detail.value };
-      if (select.value === "entrance")
-        data.entrance = {
-          lat: Number(latitude.value),
-          lon: Number(longitude.value),
-        };
-      await api("/places/" + place.id, { method: "PATCH", body: data });
-      await loadArea();
-      target.replaceChildren();
-      message("Place update saved.");
-    } catch (e) {
-      report(e);
-    }
+  select.onchange=toggleEntrance;toggleEntrance();
+  corrections.ontoggle=()=>{if(corrections.open)toggleEntrance();else reportEntrance=null;};
+  const button=node("button","Save report");button.type="submit";
+  form.append(actionLabel,detailLabel,entranceSummary,publicLabel,button);
+  form.onsubmit=async event=>{
+    event.preventDefault();const current=placeEditorState.begin(navigation.checkpoint());if(!current)return;button.disabled=true;
+    try{
+      const data={action:select.value,detail:detail.value};
+      if(select.value==="entrance"){
+        if(!selected||!publicCheck.checked)throw Error("Choose an entrance on the map and confirm its public path.");
+        data.entrance=selected;
+      }
+      await api("/places/"+place.id,{method:"PATCH",body:data});areaNeedsRefresh=true;
+      if(!current())return;await loadArea(current);if(!current())return;
+      inspectPlace(area.places.find(item=>item.id===place.id));message("Place report saved.");
+    }catch(error){if(current())report(error);}
+    finally{placeEditorState.finish();button.disabled=false;}
   };
-  corrections.append(form);
-  target.append(
-    corrections,
-    disclosure(
-      "Map source & access details",
-      node(
-        "p",
-        `Source: ${place.source === "osm" ? "OpenStreetMap" : "Your added place"}. ${labelFor(place.verification)}. Access record: ${place.access}.`,
-        "hint",
-      ),
-    ),
-  );
+  corrections.append(form);target.append(corrections);
+
 }
 const placeEditorState = NukkadPlaceEditor.create();
 let placeEntranceReady = false, reportEntrance = null;
