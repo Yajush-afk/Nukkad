@@ -41,3 +41,13 @@ not disable the independently running Ollama daemon's network. This single
 compatibility check supports swapping the selected local model through the
 same adapter. It is not a blinded quality comparison, a complete field trial,
 or a like-for-like latency comparison with the ten-case E2B run.
+
+## Evidence-linked outing probe, 11 October 2026
+
+A synthetic eight-destination probe with Gemma 4 E2B and Ollama 0.34.0 produced
+validated ranking and observation wording in 7.26 seconds with warm weights,
+selecting two stops. Initial prompt drafts failed because evidence field names
+leaked into prose and prompts exceeded card limits. Explicit JSON examples,
+separate evidence arrays and schema length limits corrected that probe. This is
+one development check, not an improvement rating or a field outing. Expanded
+comparisons remain separately measured.

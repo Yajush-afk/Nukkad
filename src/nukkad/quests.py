@@ -1,18 +1,17 @@
 import json
-import re
 import time
 from dataclasses import replace
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from nukkad.context import active_interests
+from nukkad.context import active_interests, candidate_facts, evidence_catalog, outing_context
 from nukkad.domain import Observations, Ranking, validate_ids
+from nukkad.grounding import validate_evidence, validate_invitation, validate_rationale
 from nukkad.ollama import ModelFailure, Ollama, bounded_schema, observation_prompt, ranking_prompt
-from nukkad.places import seek_features
+from nukkad.places import Place, seek_features
 from nukkad.planning import Planner, QuestInput, Settings, baseline
 from nukkad.storage import identity, now
 from nukkad.tasks import run_task
-from nukkad.typography import wrap_text
 
 TEMPLATES = {
     "sound": "Pause and listen. What sounds stand out around you?",
@@ -22,37 +21,10 @@ TEMPLATES = {
     "detail": "Find a small visible detail you would usually overlook.",
     "compare": "If you have been here before, what seems different today?",
 }
-# Restrict prose to observation language. Facts are rendered separately from registry data.
-PROSE_WORDS = set(
-    "colour present space shades area surrounding differences features aspects elements momentarily textures listen observe pause and listen what sounds stand out around you notice the shapes visible from your public stopping point look which colours colors catch attention activity without photographing people find a small detail would usually overlook if have been here before seems different today take moment to compare surroundings textures patterns light shadow changes near at this stop explore observe how feel sound color shape rhythm contrast movement choose one describe it quietly focus on something new familiar with or that is in nearby scene environment spend time be curious about try spotting seeing hearing looking listening an interesting subtle gently simply for can do as then also there first together enjoy reflecting eyes close up distant soft loud repeating natural urban overall its between more less same usual now along a few surface lines use think of any details place perspective remember than last visit noticed earlier stay outside visible side do not enter restricted areas".split()
-)
 
 
-def validate_prose(text: str):
-    if len(wrap_text(text, 27)) > 2:
-        raise ValueError("Keep this observation to two readable lines on the phone card")
-    words = set(re.findall(r"[a-z]+", text.lower()))
-    if re.search(r"\d", text) or not words <= PROSE_WORDS:
-        raise ValueError("Use only general observation vocabulary; do not invent features or facts")
-    if not text.lower().startswith(
-        (
-            "notice",
-            "look",
-            "listen",
-            "pause",
-            "find",
-            "take",
-            "if",
-            "compare",
-            "observe",
-            "try",
-            "focus",
-            "choose",
-            "what",
-            "which",
-        )
-    ):
-        raise ValueError("Write an observation invitation")
+def validate_prose(text: str, evidence=""):
+    validate_invitation(text, evidence)
 
 
 def reason_options(candidates, interests):
@@ -76,11 +48,15 @@ def reason_options(candidates, interests):
     return options
 
 
-def validate_reasons(value: Ranking, candidates, interests=()):
+def validate_reasons(value: Ranking, candidates, interests=(), catalogue=None):
     options = reason_options(candidates, interests)
     for item in value.places:
-        if item.reason not in options[item.id]:
-            raise ValueError("Select an exact allowed reason for that place ID")
+        if not item.evidence_ids and item.reason in options[item.id]:
+            continue  # Previously supported controlled responses remain readable.
+        evidence = validate_evidence(item.evidence_ids, catalogue or {})
+        if any(key.startswith("place:") and key != f"place:{item.id}" for key in item.evidence_ids):
+            raise ValueError("Explain this candidate using its own place evidence")
+        validate_rationale(item.reason, evidence)
 
 
 def validated_task(model, response_type, collection, ids, prompt, deadline, validator, schema=None):
@@ -96,24 +72,12 @@ def validated_task(model, response_type, collection, ids, prompt, deadline, vali
         check,
         schema or bounded_schema(response_type, collection, ids),
         task=collection,
+        version=2,
     )
 
 
-def context(store, request: QuestInput, interests):
-    outcomes = store.list("outcome")[:4]
-    notes = [
-        {"id": item["id"], "text": item.get("note", "")[:600]}
-        for item in outcomes
-        if item.get("note")
-    ]
-    return {
-        "minutes": request.minutes,
-        "state": request.state,
-        "mode": request.mode,
-        "interests": interests,
-        "notes": notes,
-        "reported_visits": [key for item in outcomes for key in item.get("reached_ids", [])],
-    }
+def context(store, request: QuestInput, interests, candidates=()):
+    return outing_context(store, request, interests, candidates)
 
 
 def generate(
@@ -131,18 +95,22 @@ def generate(
         planner.build([], [], request)
     if model is None:
         model = Ollama(replace(config, model=settings.model))
-    data = context(store, request, interests)
+    data = context(store, request, interests, candidates)
+    catalogue = evidence_catalog(data, candidates)
+    data["evidence_catalog"] = catalogue
     data["tone"] = settings.tone
     ranked = baseline(candidates, interests)
     ranking_mode, prose_mode = "local AI", "local AI"
-    metrics, reasons = {}, {}
+    metrics, reasons, reasoning_evidence = {}, {}, {}
     stage("Ranking eligible places with local AI")
-    options = reason_options(candidates, interests)
     rank_schema = bounded_schema(Ranking, "places", [place.id for place in candidates])
-    rank_schema["$defs"]["RankedPlace"]["properties"]["reason"] = {
-        "type": "string",
-        "enum": sorted({reason for choices in options.values() for reason in choices}),
-    }
+    rank_schema["$defs"]["RankedPlace"]["properties"]["evidence_ids"].update(
+        minItems=1, items={"type": "string", "enum": list(catalogue)}
+    )
+    rank_schema["$defs"]["RankedPlace"]["required"].append("evidence_ids")
+    rank_schema["$defs"]["RankedPlace"]["properties"]["reason"].update(
+        maxLength=90, pattern="^(Suggestion:|Idea:) "
+    )
     try:
         value, metrics["ranking"] = validated_task(
             model,
@@ -150,17 +118,19 @@ def generate(
             "places",
             [place.id for place in candidates],
             ranking_prompt(
-                [place.model_dump() for place in sorted(candidates, key=lambda place: place.id)],
+                [
+                    candidate_facts(place)
+                    for place in sorted(candidates, key=lambda place: place.id)
+                ],
                 data,
-            )
-            + "\nSelect each reason EXACTLY from the allowed reasons for its ID: "
-            + json.dumps(options),
+            ),
             deadline,
-            lambda value: validate_reasons(value, candidates, interests),
+            lambda value: validate_reasons(value, candidates, interests, catalogue),
             schema=rank_schema,
         )
         ranked = [item.id for item in value.places]
         reasons = {item.id: item.reason for item in value.places}
+        reasoning_evidence = {item.id: item.evidence_ids for item in value.places}
     except ModelFailure as error:
         metrics["ranking"] = {**error.diagnostics, "mode": "deterministic fallback"}
         ranking_mode = "deterministic fallback"
@@ -177,12 +147,32 @@ def generate(
         "type": ["string", "null"],
         "enum": [None, *[key for options in features.values() for key in options]],
     }
+    prose_schema["$defs"]["Observation"]["properties"]["evidence_ids"].update(
+        minItems=1, items={"type": "string", "enum": list(catalogue)}
+    )
+    prose_schema["$defs"]["Observation"]["required"].append("evidence_ids")
+    prose_schema["$defs"]["Observation"]["properties"]["text"].update(maxLength=85)
     stage("Writing observation prompts for the fixed route")
     try:
 
         def validate(value):
             for item in value.stops:
-                validate_prose(item.text)
+                evidence = (
+                    validate_evidence(item.evidence_ids, catalogue) if item.evidence_ids else ""
+                )
+                if any(
+                    key.startswith("place:") and key != f"place:{item.id}"
+                    for key in item.evidence_ids
+                ):
+                    raise ValueError("Use this stop's own place evidence")
+                for key in item.evidence_ids:
+                    if key.startswith("note:"):
+                        note = next(note for note in data["notes"] if key == f"note:{note['id']}")
+                        if note["place_ids"] and item.id not in note["place_ids"]:
+                            raise ValueError(
+                                "Do not attach another place's reported experience to this stop"
+                            )
+                validate_prose(item.text, evidence)
                 if request.mode == "seek" and item.feature_id not in features[item.id]:
                     raise ValueError("Choose a recorded feature ID belonging to this stop")
                 if request.mode == "wander" and item.feature_id is not None:
@@ -200,8 +190,9 @@ def generate(
             Observations,
             "stops",
             ids,
-            observation_prompt(quest["stops"], data)
-            + "\nUse general observation words only, without named objects. Examples: Notice the sounds present in this space. Observe the shades of colour in this area."
+            observation_prompt(
+                [candidate_facts(Place.model_validate(place)) for place in quest["stops"]], data
+            )
             + (
                 "\nFor seek mode select one feature_id for each stop from these recorded options: "
                 + json.dumps(features)
@@ -233,6 +224,7 @@ def generate(
         "prose_mode": prose_mode,
         "prompts": prompts,
         "reasons": reasons,
+        "reasoning_evidence": reasoning_evidence,
         "model": settings.model,
         "metrics": metrics,
         "generation_seconds": round(time.monotonic() - began, 2),

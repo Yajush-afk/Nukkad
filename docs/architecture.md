@@ -42,7 +42,7 @@ The snapshot's eligible mapped-place denominator is frozen at acquisition and sh
 
 ## Generation and memory safeguards
 
-The model must return the candidate IDs exactly once and choose each reason from its grounded catalogue. Rankings are validated independently of JSON shape. Observation wording is bounded, filtered for unsupported claims and measured against card layout limits. Seek also requires a feature ID from that stop's mapped or personally supplied evidence. Uncertainty and provenance remain visible. These filters can reject reasonable phrasing and cannot prove every accepted phrase is useful.
+The model must return candidate IDs exactly once. Short subjective suggestions and observation activities cite supplied place, request, interest or note evidence. Context prioritises relevant reported place history before recent unrelated notes. Rankings are validated independently of JSON shape. Observation wording uses task-specific checks for membership, evidence, named features, unsupported claims and measured card layout limits. It no longer uses a fixed general English word list. Seek also requires a feature ID from that stop's mapped or personally supplied evidence. Uncertainty and provenance remain visible. These filters can reject reasonable phrasing and cannot prove every accepted phrase is useful.
 
 One corrective request is permitted per stage within a shared 120 s generation deadline. Ranking failure uses the deterministic interest baseline; wording failure uses templates. The interface and diagnostics label them separately, so a card can have AI ranking and template wording. Journal failure preserves the saved outcome and offers an exact extract with no inferred interests.
 
