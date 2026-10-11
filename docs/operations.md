@@ -79,3 +79,27 @@ After saving a reached stop and adding photos, open **My walks → its place fol
 Local interfaces: `GET /api/collection`, `GET /api/collection/{place}`, `POST /api/collection/{place}/generate` (returns a job), `PATCH /api/collection/{place}/card` (requires current `version_id`), `GET /api/location-cards/{version}` and its `/export.png`. Existing journal review/version interfaces also work with place-experience IDs. Mutation/session and busy-worker rules remain unchanged.
 
 A valid supplied photo ID proves ownership, not relevance. In the synthetic five-image trial the model picked a square scene for a note about circles. Inspect the cover and text, and change them if needed. Images never establish attendance, identity, location or public access.
+
+## Startup and neighbourhood loading
+
+Home and its navigation do not wait for map preparation or Ollama checks. The local
+session starts separately; writes wait for its token. Get started reads only saved
+area metadata, then opens the planner or Neighbourhood according to public-start
+confirmation. Metadata does not establish graph integrity or route feasibility.
+
+Neighbourhood loads its working map on demand. Its loading notice leaves the header
+available, so another page can be opened immediately. A response from an abandoned
+page cannot publish map content or move focus. Similar-place review runs after map
+rendering. Settings loads editable preferences first, then checks model/map readiness
+in the background. Unsaved fields remain in the open tab.
+
+Parsed graphs, full area responses and duplicate candidates use a bounded, per-server
+cache. Corrections, source aliases, snapshot/area changes and reached outcomes change
+its revision key; duplicate decisions also invalidate candidate results. Graph file
+changes invalidate response entries. Opening a graph still verifies its SHA-256,
+including cache hits, and routing receives an independent copy. Acceptance/export
+continue to revalidate routes. Restarting clears the cache without changing saved data.
+
+A first map visit can still take longer than subsequent visits. Loading the map is no
+longer a prerequisite for Home, My walks or Settings. If a map request fails, reopen
+Neighbourhood to retry; if session startup fails, reload after checking the local server.
