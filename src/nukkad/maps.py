@@ -10,7 +10,9 @@ from defusedxml import ElementTree
 
 from nukkad.config import Config
 from nukkad.domain import Point
+from nukkad.identities import canonical_id, identity_records
 from nukkad.places import AreaInput, Place, place_kind, prohibited
+from nukkad.polygons import multipolygons
 from nukkad.storage import Store, identity, now
 
 MAX_EXTRACT_BYTES = 32 * 1024 * 1024
@@ -40,7 +42,9 @@ def neighbourhood_query(area: AreaInput) -> str:
         '["shop"]["name"]',
     )
     selectors.extend(
-        f"{kind}{condition}({bbox});" for condition in filters for kind in ("node", "way")
+        f"{kind}{condition}({bbox});"
+        for condition in filters
+        for kind in ("node", "way", "relation")
     )
     # Recurse to keep referenced way vertices and their access/entrance tags.
     return "[out:xml][timeout:25];(" + "".join(selectors) + ");(._;>;);out meta;"
@@ -115,16 +119,39 @@ def parse_extract(path: Path, area: AreaInput) -> tuple[nx.MultiDiGraph, list[Pl
         key: Point(lat=float(element.attrib["lat"]), lon=float(element.attrib["lon"]))
         for key, element in nodes.items()
     }
+    relations, suppressed = multipolygons(root, points)
     places = []
     backgrounds = []
-    elements = list(root.findall("node")) + list(root.findall("way"))
+    elements = (
+        list(root.findall("node"))
+        + [way for way in root.findall("way") if way.attrib["id"] not in suppressed]
+        + list(root.findall("relation"))
+    )
     for element in elements:
         raw_tags = tags(element)
         kind = place_kind(raw_tags)
         node_ids = [int(ref.attrib["ref"]) for ref in element.findall("nd")]
         coordinates = [points[key] for key in node_ids if key in points]
         is_node = element.tag == "node"
-        if is_node:
+        relation = relations.get(element.attrib["id"]) if element.tag == "relation" else None
+        if element.tag == "relation" and relation is None:
+            continue
+        if relation:
+            node_ids = relation["nodes"]
+            coordinates = [points[key] for key in node_ids]
+            point = Point(lat=relation["point"].y, lon=relation["point"].x)
+            backgrounds.append(
+                {
+                    "type": "Feature",
+                    "properties": {
+                        "kind": kind,
+                        "name": raw_tags.get("name", ""),
+                        "source_id": f"osm-relation-{element.attrib['id']}",
+                    },
+                    "geometry": relation["geometry"],
+                }
+            )
+        elif is_node:
             point = points[int(element.attrib["id"])]
         elif coordinates:
             point = Point(
@@ -133,8 +160,10 @@ def parse_extract(path: Path, area: AreaInput) -> tuple[nx.MultiDiGraph, list[Pl
             )
         else:
             continue
-        if coordinates and (
-            raw_tags.get("building") or raw_tags.get("leisure") in {"park", "garden"}
+        if (
+            not relation
+            and coordinates
+            and (raw_tags.get("building") or raw_tags.get("leisure") in {"park", "garden"})
         ):
             if coordinates[0] == coordinates[-1] and len(coordinates) >= 4:
                 backgrounds.append(
@@ -191,6 +220,12 @@ def parse_extract(path: Path, area: AreaInput) -> tuple[nx.MultiDiGraph, list[Pl
         places.append(
             Place(
                 id=f"osm-{element.tag}-{element.attrib['id']}",
+                source_ids=[
+                    f"osm-{element.tag}-{element.attrib['id']}",
+                    *(relation["aliases"] if relation else []),
+                ],
+                member_ids=relation["members"] if relation else [],
+                geometry=relation["geometry"] if relation else None,
                 name=raw_tags.get("name", f"Unnamed {kind}"),
                 kind=kind,
                 point=point,
@@ -300,6 +335,7 @@ class Maps:
                     [
                         ("snapshot", snapshot_id, snapshot),
                         ("area", "active", {**area.model_dump(), "snapshot_id": snapshot_id}),
+                        *identity_records(self.store, places),
                     ]
                 )
             return snapshot
@@ -426,6 +462,33 @@ class Maps:
                     update={"entrance_node": node, "entrance": entrance, "snap": snap}
                 )
         visited = {
-            key for outcome in self.store.list("outcome") for key in outcome.get("reached_ids", [])
+            canonical_id(self.store, key)
+            for outcome in self.store.list("outcome")
+            for key in outcome.get("reached_ids", [])
         }
-        return [place.model_copy(update={"visited": place.id in visited}) for place in result]
+        grouped = {}
+        for place in result:
+            root = canonical_id(self.store, place.id)
+            correction = corrections.get(root)
+            if correction and root != place.id:
+                place = place.model_copy(
+                    update={
+                        key: correction[key]
+                        for key in ("verification", "valid", "access", "correction")
+                        if key in correction
+                    }
+                )
+            old = grouped.get(root)
+            sources = sorted(
+                set([*(old.source_ids if old else []), *(place.source_ids or [place.id])])
+            )
+            grouped[root] = place.model_copy(
+                update={
+                    "id": root,
+                    "canonical_id": root,
+                    "source_ids": sources,
+                    "visited": root in visited,
+                    "valid": place.valid and (old.valid if old else True),
+                }
+            )
+        return list(grouped.values())
