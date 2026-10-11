@@ -1,5 +1,6 @@
 /* Nukkad's pixel sky and quiet, centred workspace. All assets are local. */
 :root {
+  --header-height: 88px;
   --paper: #ffffff;
   --surface: #fbfcfa;
   --ink: #182b25;
@@ -33,26 +34,76 @@ body {
   z-index: 1100;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  max-width: 1328px;
-  padding: 10px 32px;
+  max-width: 1088px;
+  padding: 10px 24px;
   margin: 0 auto;
   gap: 18px;
   border: 0;
-  height: 88px;
+  height: var(--header-height);
   pointer-events: none;
 }
 .site-header > * {
   pointer-events: auto;
 }
 .brand {
+  display: inline-flex;
+  align-items: center;
   justify-self: start;
-  padding: 5px 9px;
+  gap: 9px;
+  padding: 5px 14px 5px 8px;
   background: #f5f1e7;
-  border-radius: 12px;
+  border-radius: 14px;
+  text-decoration: none;
   box-shadow: 0 3px 20px #15352d0a;
 }
-.brand img {
-  width: 132px;
+.brand-symbol {
+  position: relative;
+  display: block;
+  width: 36px;
+  height: 42px;
+  overflow: hidden;
+  flex: none;
+}
+.brand-symbol img {
+  position: absolute;
+  width: 252px;
+  max-width: none;
+  height: auto;
+  left: -8px;
+  top: -10px;
+}
+.brand-text {
+  font:
+    700 27px/1 Georgia,
+    serif;
+  color: #201d19;
+}
+.github-star {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-self: end;
+  padding: 12px 14px;
+  border-radius: 999px;
+  background: #fffdf1eb;
+  border: 1px solid #ffffff70;
+  color: #284738;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 5px 20px #15352d0a;
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+.github-star svg {
+  fill: #e5bd68;
+  stroke: #7d631e;
+  stroke-width: 1.5;
+}
+.github-star:hover {
+  background: #fff;
 }
 .glass-nav {
   flex-wrap: nowrap;
@@ -105,11 +156,11 @@ body {
   opacity: 1;
 }
 main {
-  max-width: 1328px;
-  padding: 0 32px;
+  max-width: 848px;
+  padding: 0 24px;
 }
 .panel {
-  max-width: 900px;
+  max-width: 800px;
   margin: 0 auto;
   padding: 65px 0 90px;
 }
@@ -131,7 +182,7 @@ main {
 #history-list,
 .walk-summary {
   width: 100%;
-  max-width: 900px;
+  max-width: 800px;
   margin-left: auto;
   margin-right: auto;
 }
@@ -211,7 +262,7 @@ button,
   backdrop-filter: blur(12px);
 }
 #message {
-  max-width: 900px;
+  max-width: 800px;
   margin: 20px auto;
   border-radius: 12px;
 }
@@ -224,10 +275,11 @@ button,
 .hero {
   position: relative;
   isolation: isolate;
-  min-height: 700px;
-  height: min(820px, 95svh);
-  margin-top: -88px;
-  border-radius: 0 0 32px 32px;
+  min-height: 100vh;
+  min-height: 100svh;
+  height: auto;
+  margin-top: calc(-1 * var(--header-height));
+  border-radius: 0;
   overflow: clip;
   background: #3978b7 url("/static/illustrations/pixel-sky.svg") center / cover;
   color: #fffdf3;
@@ -415,19 +467,6 @@ button,
   margin-left: 8px;
   font-size: 18px;
 }
-.hero-bottom button {
-  color: #fff;
-  font-size: 10px;
-  padding: 10px 15px;
-  min-height: 40px;
-  background: #173d6252;
-  border: 1px solid #ffffff54;
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-}
-.hero-bottom button:hover {
-  background: #173d6299;
-}
 .hero :focus-visible {
   outline-color: #fff;
 }
@@ -598,7 +637,7 @@ h1[tabindex="-1"]:focus {
   user-select: none;
 }
 .footer-meta {
-  max-width: 1180px;
+  max-width: 1040px;
   margin: 18px auto 0;
   display: flex;
   justify-content: space-between;
@@ -642,13 +681,6 @@ h1[tabindex="-1"]:focus {
   }
 }
 @media (max-width: 1000px) {
-  .site-header {
-    grid-template-columns: minmax(0, 1fr);
-    justify-items: center;
-  }
-  .brand {
-    display: none;
-  }
   .discovery-steps {
     gap: 18px;
   }
@@ -666,12 +698,6 @@ h1[tabindex="-1"]:focus {
   main {
     padding: 0 16px;
   }
-  .site-header {
-    height: 82px;
-    padding: 10px 16px;
-    top: 8px;
-    gap: 0;
-  }
   .glass-nav {
     width: auto;
     max-width: 100%;
@@ -685,11 +711,7 @@ h1[tabindex="-1"]:focus {
     letter-spacing: 0.35px;
   }
   .hero {
-    min-height: 640px;
-    height: 88svh;
-    margin-top: -82px;
-    padding: 125px 19px 105px;
-    border-radius: 0 0 25px 25px;
+    padding: 165px 19px 90px;
   }
   .hero-label {
     font-size: 8px;
@@ -726,10 +748,6 @@ h1[tabindex="-1"]:focus {
   .hero-bottom a {
     font-size: 7px;
     letter-spacing: 0.7px;
-  }
-  .hero-bottom button {
-    font-size: 9px;
-    padding: 9px 11px;
   }
   .home-story {
     padding: 65px 6px 30px;
@@ -874,4 +892,68 @@ h1[tabindex="-1"]:focus {
 .neighbourhood-next {
   justify-content: center;
   margin: 24px auto 40px;
+}
+
+/* Let the sky occupy the viewport independently of the centred workspace. */
+body[data-panel="home"] main {
+  max-width: none;
+  padding: 0;
+}
+#home > :is(.home-story, .open-story, .imagined-map) {
+  width: calc(100% - 48px);
+  max-width: 1040px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.hero-content {
+  max-width: 1040px;
+}
+@media (max-width: 760px) {
+  #home > :is(.home-story, .open-story, .imagined-map) {
+    width: calc(100% - 32px);
+  }
+}
+
+@media (max-width: 900px) {
+  :root {
+    --header-height: 132px;
+  }
+  .site-header {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 52px 50px;
+    align-content: start;
+    align-items: center;
+    gap: 7px 12px;
+    top: 8px;
+    padding: 8px 16px;
+  }
+  .brand {
+    display: inline-flex;
+  }
+  .github-star {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .glass-nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: center;
+  }
+  .hero {
+    padding-top: 170px;
+  }
+}
+@media (max-width: 360px) {
+  .brand {
+    gap: 6px;
+    padding-right: 10px;
+  }
+  .brand-text {
+    font-size: 23px;
+  }
+  .github-star {
+    font-size: 10px;
+    padding: 12px 10px;
+    gap: 5px;
+  }
 }

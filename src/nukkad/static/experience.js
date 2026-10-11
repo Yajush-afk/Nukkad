@@ -4,12 +4,10 @@
 (() => {
   const hero = document.getElementById("sky-hero");
   const canvas = document.getElementById("pixel-sky");
-  const control = document.getElementById("sky-motion");
   const fallback = document.getElementById("sky-fallback");
   const text = document.getElementById("typewriter");
   const reduced = matchMedia("(prefers-reduced-motion: reduce)");
   const phrase = text.textContent;
-  let paused = false;
   let visible = false;
   let frame = 0;
   let lastFrame = 0;
@@ -27,7 +25,7 @@
     hero.classList.remove("typing");
   }
   function typeNext() {
-    if (paused || reduced.matches) return finishTyping();
+    if (reduced.matches) return finishTyping();
     text.textContent = phrase.slice(0, ++index);
     if (index < phrase.length) typeTimer = setTimeout(typeNext, 48);
     else hero.classList.remove("typing");
@@ -141,12 +139,7 @@
     cancelAnimationFrame(frame);
     frame = 0;
     lastFrame = 0;
-    const stopped = paused || reduced.matches;
-    control.setAttribute("aria-pressed", String(stopped));
-    control.textContent = stopped ? "Resume sky ▷" : "Pause sky Ⅱ";
-    // Respect an OS motion preference even if the user clicks Resume.
-    control.disabled = reduced.matches;
-    if (reduced.matches) control.textContent = "Still sky";
+    const stopped = reduced.matches;
     if (stopped) finishTyping();
     const moving =
       visible &&
@@ -215,14 +208,10 @@
     updateMotion();
   });
   canvas.addEventListener("webglcontextrestored", setupSky);
-  control.addEventListener("click", () => {
-    paused = !paused;
-    updateMotion();
-  });
   reduced.addEventListener("change", updateMotion);
   document.addEventListener("visibilitychange", updateMotion);
   document.addEventListener("nukkad:panel", () => {
-    finishTyping();
+    if (document.body.dataset.panel !== "home") finishTyping();
     updateMotion();
   });
   new ResizeObserver(resize).observe(hero);

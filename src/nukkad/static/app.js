@@ -1,6 +1,7 @@
 "use strict";
 const $ = (id) => document.getElementById(id);
 let navigation,
+  areaNeedsRefresh = false,
   area,
   quest,
   activeJob,
@@ -121,7 +122,7 @@ function jobText(text) {
   };
   return stages[text] || text;
 }
-async function runJob(value, finished) {
+async function runJob(value, finished, current = navigation.checkpoint()) {
   activeJob = value.id;
   $("job").hidden = false;
   const buttons = [
@@ -142,7 +143,16 @@ async function runJob(value, finished) {
         ["complete", "failed", "cancelled", "interrupted"].includes(job.status)
       ) {
         activeJob = null;
-        if (job.status === "complete") return await finished(job.result);
+        if (job.status === "complete") {
+          if (current()) return await finished(job.result, current);
+          if (value.title === "Neighbourhood setup") areaNeedsRefresh = true;
+          message(
+            value.title === "Neighbourhood setup"
+              ? "Your saved map is ready in Neighbourhood."
+              : "Your local task finished. Open My walks to review it.",
+          );
+          return;
+        }
         throw Error(job.message);
       }
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -158,6 +168,7 @@ async function runJob(value, finished) {
 }
 async function loadArea() {
   area = await api("/area");
+  areaNeedsRefresh = false;
   geometryLayer.clearLayers();
   placesLayer.clearLayers();
   routeLayer.clearLayers();
@@ -593,7 +604,9 @@ document
   .forEach((button) => {
     button.onclick = (event) => {
       event.preventDefault();
-      show(button.dataset.panel);
+      if (document.body.dataset.panel === button.dataset.panel)
+        window.scrollTo({ top: 0, behavior: "instant" });
+      else show(button.dataset.panel);
     };
   });
 $("open-quest").onclick = () =>
@@ -725,6 +738,7 @@ function areaInput() {
 }
 $("area-form").onsubmit = async (event) => {
   event.preventDefault();
+  const current = navigation.checkpoint();
   try {
     const file = $("area-form").elements.extract.files[0];
     let job;
@@ -734,10 +748,14 @@ $("area-form").onsubmit = async (event) => {
       data.append("extract", file);
       job = await api("/areas/import", { method: "POST", body: data });
     } else job = await api("/areas", { method: "POST", body: areaInput() });
-    await runJob(job, async () => {
-      await loadArea();
-      show("setup");
-    });
+    await runJob(
+      job,
+      async (_, stillHere) => {
+        await loadArea();
+        if (stillHere()) show("setup");
+      },
+      current,
+    );
   } catch (e) {
     report(e);
   }
@@ -748,13 +766,15 @@ $("area-form").elements.extract.onchange = (event) => {
     : "Fetch my neighbourhood";
 };
 $("reuse-map").onclick = async () => {
+  const current = navigation.checkpoint();
   try {
     await runJob(
       await api("/areas/reuse", { method: "POST", body: areaInput() }),
-      async () => {
+      async (_, stillHere) => {
         await loadArea();
-        show("setup");
+        if (stillHere()) show("setup");
       },
+      current,
     );
   } catch (e) {
     report(e);
@@ -782,6 +802,7 @@ $("pin-form").onsubmit = async (event) => {
 };
 $("quest-form").onsubmit = async (event) => {
   event.preventDefault();
+  const current = navigation.checkpoint();
   try {
     await api("/profile", {
       method: "PUT",
@@ -793,17 +814,23 @@ $("quest-form").onsubmit = async (event) => {
         method: "POST",
         body: { minutes: Number(v.minutes), mode: v.mode, state: v.state },
       }),
-      async (result) => renderQuest(await api("/quests/" + result.quest_id)),
+      async (result, stillHere) => {
+        const value = await api("/quests/" + result.quest_id);
+        if (stillHere()) return renderQuest(value);
+      },
+      current,
     );
   } catch (e) {
     report(e);
   }
 };
 $("accept").onclick = async () => {
+  const current = navigation.checkpoint();
   try {
-    renderQuest(
-      await api("/quests/" + quest.id + "/accept", { method: "POST" }),
-    );
+    const value = await api("/quests/" + quest.id + "/accept", {
+      method: "POST",
+    });
+    if (current()) renderQuest(value);
   } catch (e) {
     report(e);
   }
@@ -1009,14 +1036,15 @@ window.showJournal = async (outcome, current = () => true) => {
   );
   const generate = node("button", "Create a reflection draft");
   generate.onclick = async () => {
+    const current = navigation.checkpoint();
     try {
       await runJob(
         await api("/outcomes/" + outcome.id + "/reflect", { method: "POST" }),
         async () => {
-          await window.showJournal(
-            await api("/quests/" + outcome.id + "/outcome"),
-          );
+          const saved = await api("/quests/" + outcome.id + "/outcome");
+          if (current()) await window.showJournal(saved, current);
         },
+        current,
       );
     } catch (e) {
       report(e);
@@ -1234,6 +1262,11 @@ navigation = NukkadNavigation.createNavigation({
   async resolve(route, current, supplied) {
     await initialized;
     if (!current()) return route;
+    if (areaNeedsRefresh) {
+      await loadArea();
+      areaNeedsRefresh = false;
+      if (!current()) return route;
+    }
     if (route.view === "plan" && !area?.area?.public_start_confirmed)
       return { view: "neighbourhood", walk: null };
     if (["preview", "note"].includes(route.view)) {

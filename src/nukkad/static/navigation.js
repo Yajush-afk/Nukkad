@@ -42,7 +42,7 @@
         browser.location.href,
       );
     };
-    async function apply(route, scrollY, supplied) {
+    async function apply(route, scrollY, supplied, anchor) {
       const token = ++revision;
       const current = () => token === revision;
       loading = true;
@@ -65,7 +65,10 @@
         }
         await render(resolved, current);
         if (!current()) return;
-        browser.scrollTo({ top: scrollY, behavior: "instant" });
+        const target = anchor && browser.document?.getElementById(anchor);
+        if (target && !scrollY)
+          target.scrollIntoView({ block: "start", behavior: "instant" });
+        else browser.scrollTo({ top: scrollY, behavior: "instant" });
       } catch (error) {
         if (current()) onError(error);
       } finally {
@@ -94,7 +97,7 @@
           "",
           browser.location.href,
         );
-        return apply(route, y);
+        return apply(route, y, undefined, browser.location.hash?.slice(1));
       },
       go(panel, walk = null, supplied) {
         const view = Object.keys(panels).find((name) => panels[name] === panel);
@@ -113,6 +116,10 @@
           address(route),
         );
         return apply(route, 0, supplied);
+      },
+      checkpoint() {
+        const token = revision;
+        return () => token === revision;
       },
       isCurrent(view, walk = null) {
         const route = read();

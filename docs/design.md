@@ -88,12 +88,11 @@ creator's name, X, email and project-repository links.
 The user-supplied cloud-shader inspiration is adapted to native WebGL with a low
 resolution framebuffer and a 24 fps cap. Without WebGL, CSS animates bundled pixel
 cloud SVGs; without JavaScript, a static bundled sky remains. Motion pauses outside
-the hero, in hidden tabs and on other panels. A pause control and reduced-motion
-preferences stop decorative motion. The typewriter runs once and exposes a single
+the hero, in hidden tabs and on other panels. Reduced-motion preferences stop decorative motion; the hero has no pause button. The typewriter runs once and exposes a single
 complete sentence to assistive technology; no per-character announcements occur.
 
 The two supplied PNG logos remain bundled without image edits:
-`static/brand/nukkad-light.png` in the desktop header and
+`static/brand/nukkad-light.png` clipped to its N symbol beside text in the responsive header and
 `static/brand/nukkad-dark.png` in the local-AI information section. No fonts, logos,
 illustrations or other interface assets are fetched from third-party hosts at
 runtime. [MDN WebGL](https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API),
@@ -110,3 +109,9 @@ Back/Forward restore existing records without submitting forms. Pending route
 responses are ignored after newer navigation. Form drafts remain in memory in
 the open tab and are not placed in URLs or history. Refresh restores saved walks,
 not unsaved form edits.
+
+The hero fills the screen edge to edge; white homepage sections have a 1040 px
+maximum width and working panels an 800 px maximum. Desktop side padding is 24 px,
+shrinking to 16 px on small screens. The mobile header places the brand and
+GitHub star link above the navigation. No framework or remotely hosted asset is
+needed for this layout.
