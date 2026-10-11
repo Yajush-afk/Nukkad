@@ -24,7 +24,7 @@ def start_acquisition(request: Request, area: AreaInput, source: Path | None = N
     def action(stage):
         try:
             stage("Downloading and processing neighbourhood map")
-            snapshot = maps(request).acquire(area, source, activate=False)
+            snapshot = maps(request).acquire(area, source, activate=False, progress=stage)
             stage("Saving immutable snapshot")
             records = [
                 ("snapshot", snapshot["id"], snapshot),
