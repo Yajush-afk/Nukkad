@@ -92,7 +92,7 @@ function renderPanel(id) {
     else button.removeAttribute("aria-current");
   });
   message("");
-  if (id === "home") setTimeout(() => map?.invalidateSize(), 30);
+  if (id === "setup") setTimeout(() => map?.invalidateSize(), 30);
   if (id === "quest-form-panel")
     $("walk-context").textContent =
       `${area.area.name} · ${area.area.timezone} · returning to your start`;
@@ -165,24 +165,9 @@ async function loadArea() {
   $("place-detail").replaceChildren();
   const saved = !!area.area;
   for (const id of ["map-empty"]) $(id).hidden = saved;
-  for (const id of [
-    "edit-area",
-    "map-help",
-    "map-details",
-    "choose-start",
-    "reuse-map",
-  ])
+  for (const id of ["map-help", "map-details", "choose-start", "reuse-map"])
     $(id).hidden = !saved;
-  $("open-quest").textContent = !saved
-    ? "Set up my neighbourhood ↗"
-    : area.area.public_start_confirmed
-      ? "Plan a walk ↗"
-      : "Confirm my starting point ↗";
-  $("home-next").textContent = !saved
-    ? "Start by downloading your local map. No file upload needed."
-    : area.area.public_start_confirmed
-      ? "Choose your time, review the route, then take it outside."
-      : "Your map is saved. Confirm a public starting point before planning a walk.";
+  $("plan-walk").hidden = !area.area?.public_start_confirmed;
   $("area-status").textContent = !saved
     ? "Not set up"
     : area.area.public_start_confirmed
@@ -224,6 +209,7 @@ async function loadArea() {
   for (const place of area.places) {
     const marker = L.circleMarker([place.point.lat, place.point.lon], {
       radius: place.visited ? 7 : 5,
+      bubblingMouseEvents: false,
       color: place.valid ? "#243a31" : "#979c92",
       fillColor: place.visited ? "#b36c12" : "#f5f1e7",
       fillOpacity: 1,
@@ -612,8 +598,9 @@ document
   });
 $("open-quest").onclick = () =>
   show(area?.area?.public_start_confirmed ? "quest-form-panel" : "setup");
+$("plan-walk").onclick = () => show("quest-form-panel");
 $("choose-start").onclick = async () => {
-  await show("home");
+  await show("setup");
   message(
     "Select your public starting point on the map, then choose ‘Use as my start’. Save it in Neighbourhood.",
   );
@@ -749,7 +736,7 @@ $("area-form").onsubmit = async (event) => {
     } else job = await api("/areas", { method: "POST", body: areaInput() });
     await runJob(job, async () => {
       await loadArea();
-      show("home");
+      show("setup");
     });
   } catch (e) {
     report(e);
@@ -766,7 +753,7 @@ $("reuse-map").onclick = async () => {
       await api("/areas/reuse", { method: "POST", body: areaInput() }),
       async () => {
         await loadArea();
-        show("home");
+        show("setup");
       },
     );
   } catch (e) {

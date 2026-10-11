@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="620" viewBox="0 0 1000 620">
+  <title>An imagined neighbourhood</title>
+  <desc>Fictional streets, buildings, parks and a circular sample walk. No real locations are represented.</desc>
+  <defs>
+    <pattern id="buildings" width="95" height="72" patternUnits="userSpaceOnUse" patternTransform="rotate(-8)">
+      <rect x="9" y="8" width="29" height="23" rx="2" fill="#e1ded4" stroke="#d3d1c8"/>
+      <rect x="49" y="7" width="34" height="24" rx="2" fill="#e7e3da" stroke="#d3d1c8"/>
+      <rect x="12" y="43" width="22" height="20" rx="2" fill="#e7e3da" stroke="#d3d1c8"/>
+      <rect x="48" y="42" width="28" height="20" rx="2" fill="#e1ded4" stroke="#d3d1c8"/>
+    </pattern>
+    <g id="roads" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M-20 199C160 231 285 151 475 202S796 264 1020 198M322-20C351 104 333 207 380 314S426 512 394 640M-20 470C180 455 263 386 430 425S772 501 1020 421"/>
+      <path d="M55 12L115 193L92 336L118 455L134 620M175-20L212 181L239 322L221 423L229 630M490-20L491 207L528 410L510 640M626-20L624 238L657 461L639 640M854-20L853 231L829 321L871 454L869 630M999 87L843 102L624 91L484 110L341 94L78 109L-20 97M-20 331L232 318L378 329L513 303M704 331L1009 313M-20 563L232 540L418 541L653 561L1009 551M729-20L742 252M745 447L740 639"/>
+    </g>
+    <g id="trees"><circle r="8" fill="#adc39c"/><circle cx="-2" cy="-2" r="5" fill="#bed0af"/></g>
+  </defs>
+  <rect width="1000" height="620" fill="#f2f0e7"/>
+  <rect width="1000" height="620" fill="url(#buildings)"/>
+  <path d="M535 272Q602 263 680 286L694 419L570 396Z" fill="#d0dfbd" stroke="#b8ccab"/>
+  <path d="M544 308Q599 350 673 326M606 286L617 400" fill="none" stroke="#eeeede" stroke-width="5" stroke-dasharray="5 6"/>
+  <path d="M762 10L819 7L820 72L763 82ZM46 361L83 357L96 424L57 434ZM674 505L722 508L717 537L671 533Z" fill="#cfdfbd"/>
+  <path d="M929-20C911 114 966 186 940 287S918 474 975 640" fill="none" stroke="#c3dade" stroke-width="27"/>
+  <use href="#roads" stroke="#dadbd0" stroke-width="20"/>
+  <use href="#roads" stroke="#fffef9" stroke-width="15"/>
+  <path d="M-20 199C160 231 285 151 475 202S796 264 1020 198" fill="none" stroke="#eddaa3" stroke-width="8"/>
+  <path d="M292 345H329V378H292ZM448 340H484V373H448ZM708 361H752V400H708ZM550 129H599V164H550Z" fill="#dccbb2" stroke="#cbbb9e"/>
+  <g fill="#73816e" font-family="sans-serif" font-size="12" text-anchor="middle">
+    <text x="167" y="205" transform="rotate(-8 167 205)">Lantern Avenue</text>
+    <text x="716" y="256" transform="rotate(3 716 256)">Lantern Avenue</text>
+    <text x="352" y="161" transform="rotate(78 352 161)">Aster Street</text>
+    <text x="520" y="354" transform="rotate(79 520 354)">Fern Lane</text>
+    <text x="717" y="482">Willow Bend</text>
+    <text x="187" y="552" transform="rotate(-6 187 552)">Acorn Row</text>
+    <text x="715" y="97">Juniper Road</text>
+    <text x="820" y="333">Pebble Lane</text>
+    <text x="966" y="364" transform="rotate(82 966 364)" fill="#75949c">Silver Brook</text>
+  </g>
+  <g>
+    <use href="#trees" x="558" y="287"/><use href="#trees" x="674" y="299"/><use href="#trees" x="663" y="399"/><use href="#trees" x="577" y="376"/>
+    <use href="#trees" x="778" y="30"/><use href="#trees" x="802" y="54"/><use href="#trees" x="68" y="385"/><use href="#trees" x="69" y="411"/>
+    <use href="#trees" x="413" y="83"/><use href="#trees" x="278" y="251"/><use href="#trees" x="673" y="525"/>
+  </g>
+  <path d="M378 328L398 416Q450 430 526 443L512 303L490 208Q418 187 349 183Q350 261 378 328Z" fill="none" stroke="#fff" stroke-width="8" stroke-linejoin="round"/>
+  <path d="M378 328L398 416Q450 430 526 443L512 303L490 208Q418 187 349 183Q350 261 378 328Z" fill="none" stroke="#b58133" stroke-width="4" stroke-dasharray="8 6" stroke-linejoin="round"/>
+  <g fill="#344c3d" font-family="sans-serif" text-anchor="middle">
+    <text x="603" y="353" font-size="14" font-weight="600">Pocket Grove</text>
+    <text x="307" y="399" font-size="12">Little Market</text>
+    <text x="577" y="184" font-size="12">Corner Library</text>
+    <text x="719" y="421" font-size="12">Sunlit Court</text>
+    <text x="184" y="280" font-size="17" letter-spacing="2" fill="#9aa392">FERNFOLD</text>
+    <text x="730" y="162" font-size="17" letter-spacing="2" fill="#9aa392">LANTERN QUARTER</text>
+  </g>
+  <g stroke="#fffef9" stroke-width="3" fill="#b58133"><circle cx="398" cy="416" r="10"/><circle cx="512" cy="303" r="10"/><circle cx="490" cy="208" r="10"/></g>
+  <circle cx="378" cy="328" r="10" fill="#344c3d" stroke="#fffef9" stroke-width="3"/>
+  <g font-family="sans-serif" font-size="11" fill="#fff" text-anchor="middle"><text x="398" y="420">1</text><text x="512" y="307">2</text><text x="490" y="212">3</text></g>
+  <g transform="translate(28 578)"><rect x="-9" y="-20" width="249" height="38" rx="8" fill="#fffef9" opacity=".95"/><circle r="5" fill="#344c3d"/><text x="13" y="4" font-family="sans-serif" font-size="12" fill="#526654">Start + return</text><path d="M120 0H146" stroke="#b58133" stroke-width="3" stroke-dasharray="5 4"/><text x="154" y="4" font-family="sans-serif" font-size="12" fill="#526654">Sample walk</text></g>
+</svg>

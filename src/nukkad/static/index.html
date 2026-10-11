@@ -57,19 +57,11 @@
             </p>
             <div class="intro-actions">
               <button class="primary" id="open-quest">
-                Set up my neighbourhood <span aria-hidden="true">↗</span>
-              </button>
-              <button
-                data-panel="setup"
-                class="textbutton"
-                id="edit-area"
-                hidden
-              >
-                Change neighbourhood
+                Get started <span aria-hidden="true">↗</span>
               </button>
             </div>
             <p class="next-step" id="home-next">
-              Start by downloading your local map. No file upload needed.
+              Choose your patch. Find a short walk. Head outside.
             </p>
           </div>
           <div class="hero-bottom">
@@ -174,50 +166,28 @@
             /><span>LOCAL AI · OPEN MAPS</span>
           </div>
         </aside>
-        <div class="map-section">
-          <div class="map-heading">
-            <div>
-              <p class="eyebrow">YOUR LOCAL MAP</p>
-              <h2 id="area-name">Your neighbourhood</h2>
-            </div>
-            <span class="status-pill" id="area-status">Not set up</span>
-          </div>
-          <div class="map-wrap">
-            <div id="map" aria-label="Saved neighbourhood map"></div>
-            <div id="map-empty" class="map-empty">
-              <span class="map-empty-mark" aria-hidden="true">↗</span>
-              <h3>A place to begin.</h3>
-              <p>
-                Download your neighbourhood to see streets and nearby places
-                here.
-              </p>
-              <button data-panel="setup">Set up my map</button>
-            </div>
-          </div>
-          <div class="map-footer">
-            <span id="progress"
-              >Your visits will appear here after your first walk.</span
-            >
-            <div class="map-legend" aria-label="Map legend">
-              <span><i class="legend-dot visited"></i>Visited</span
-              ><span><i class="legend-dot"></i>Mapped place</span>
-            </div>
-          </div>
-          <p class="hint" id="map-help" hidden>
-            Select a place to see its details. Select a point on the map to
-            choose a start or add a place.
-          </p>
-          <div id="place-detail" aria-live="polite"></div>
-          <details class="quiet-details" id="map-details" hidden>
-            <summary>About this map</summary>
-            <p id="snapshot-info" class="hint"></p>
-            <p class="hint">
-              Visits come from your reports, not GPS tracking. A mapped place
-              may be closed or inaccessible. Streets show saved map data, not
-              the paths you have walked.
+        <figure class="imagined-map" aria-labelledby="imagined-map-title">
+          <div class="section-heading">
+            <p class="eyebrow">A LITTLE LOOK AT WHAT’S POSSIBLE</p>
+            <h2 id="imagined-map-title">
+              A familiar corner.<br /><em>A different way around.</em>
+            </h2>
+            <p>
+              A few nearby stops, something to notice, and a path back to where
+              you began.
             </p>
-          </details>
-        </div>
+          </div>
+          <img
+            src="/static/illustrations/imagined-neighbourhood.svg"
+            width="1000"
+            height="620"
+            alt="Fictional neighbourhood with streets, parks, buildings and a sample walk returning to its start."
+            loading="lazy"
+          />
+          <figcaption>
+            An imagined neighbourhood — illustration only.
+          </figcaption>
+        </figure>
       </section>
       <section id="setup" class="panel" hidden aria-labelledby="setup-title">
         <div class="panel-heading">
@@ -352,6 +322,53 @@
             offline. A new download keeps your previous maps and walks.
           </p>
         </form>
+        <div class="map-section">
+          <div class="map-heading">
+            <div>
+              <p class="eyebrow">YOUR LOCAL MAP</p>
+              <h2 id="area-name">Your neighbourhood</h2>
+            </div>
+            <span class="status-pill" id="area-status">Not set up</span>
+          </div>
+          <div class="map-wrap">
+            <div id="map" aria-label="Saved neighbourhood map"></div>
+            <div id="map-empty" class="map-empty">
+              <span class="map-empty-mark" aria-hidden="true">↗</span>
+              <h3>A place to begin.</h3>
+              <p>
+                Download your neighbourhood to see streets and nearby places
+                here.
+              </p>
+              <a href="#location-query">Search for your neighbourhood above</a>
+            </div>
+          </div>
+          <div class="map-footer">
+            <span id="progress"
+              >Your visits will appear here after your first walk.</span
+            >
+            <div class="map-legend" aria-label="Map legend">
+              <span><i class="legend-dot visited"></i>Visited</span
+              ><span><i class="legend-dot"></i>Mapped place</span>
+            </div>
+          </div>
+          <p class="hint" id="map-help" hidden>
+            Select a place to see its details. Select a point on the map to
+            choose a start or add a place.
+          </p>
+          <div id="place-detail" aria-live="polite"></div>
+          <details class="quiet-details" id="map-details" hidden>
+            <summary>About this map</summary>
+            <p id="snapshot-info" class="hint"></p>
+            <p class="hint">
+              Visits come from your reports, not GPS tracking. A mapped place
+              may be closed or inaccessible. Streets show saved map data, not
+              the paths you have walked.
+            </p>
+          </details>
+        </div>
+        <div class="form-actions neighbourhood-next">
+          <button class="primary" id="plan-walk" hidden>Plan a walk</button>
+        </div>
         <details class="disclosure form-stack" id="add-place-details">
           <summary>Add a place I know</summary>
           <div class="disclosure-body">

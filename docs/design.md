@@ -58,7 +58,7 @@ checks must never be described as field trials.
 
 The main flow is set up a neighbourhood, plan a walk, review it, save a phone image
 or print a card, and record a note after returning. Buttons describe the action
-and the home action reflects whether a map and confirmed start exist. Selecting
+and the single Get started home action opens setup or planning based on whether a public start is confirmed. Selecting
 a point on the map is separate from confirming or saving public access. Initial
 setup starts with a text place/address search and a choice of matching addresses;
 coordinates are held internally. Search is explicitly submitted, with no
@@ -78,7 +78,7 @@ self-reported and added places remain counted separately. Reflections and
 inferred interests still require explicit review; source notes can be inspected.
 
 The home page centres an oversized NUKKAD wordmark over a pixel-cloud sky, followed
-by white information sections, local cartoon SVG illustrations and the saved map.
+by white information sections, local cartoon SVG illustrations and a static fictional map preview. The operational saved map and its tools live in Neighbourhood.
 A glass pill navigation bar uses a drawn wave for hover, keyboard focus and the
 active page. Other pages share a centred reading width, rounded forms and quiet
 glass surfaces. The footer displays a large faded NUKKAD wordmark and only the
