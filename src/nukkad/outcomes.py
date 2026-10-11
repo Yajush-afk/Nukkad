@@ -73,6 +73,9 @@ def save_outcome(store, quest, value: Outcome):
         for item in store.list("interest"):
             if item.get("source_note_id") == result["id"]:
                 records.append(("interest", item["id"], {**item, "status": "invalidated"}))
+    if previous and any(
+        previous.get(key) != result.get(key) for key in ("note", "status", "stops")
+    ):
         journal = store.get("journal", result["id"])
         if journal:
             records.append(("journal", result["id"], {**journal, "status": "invalidated"}))

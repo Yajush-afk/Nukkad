@@ -158,6 +158,11 @@ def media_recovery(config, store):
         for path in (config.data_dir / "media").glob("*/*")
         if path.relative_to(config.data_dir).as_posix() not in live
     ]
+    orphans += [
+        path.relative_to(config.data_dir).as_posix()
+        for path in (config.data_dir / "cards").glob("location-*.png")
+        if path.relative_to(config.data_dir).as_posix() not in live
+    ]
     return {
         "missing_files": missing,
         "staged_entries": staged,

@@ -39,7 +39,7 @@ def validate_reflection(value: Reflection, note: str):
 @router.post("/outcomes/{key}/reflect")
 def reflect(key: str, request: Request):
     store = request.app.state.store
-    outcome = store.get("outcome", key)
+    outcome = store.get("outcome", key) or store.get("experience", key)
     if not outcome:
         raise HTTPException(404, "Unknown outcome")
     if not outcome["note"].strip():
@@ -59,7 +59,7 @@ def reflect(key: str, request: Request):
             "passages": generated["passages"],
             "record_version": 2,
             "version_id": identity(),
-            "source_revision": outcome.get("updated_at"),
+            "source_revision": outcome.get("revision") or outcome.get("updated_at"),
             "status": "pending",
             "mode": generated["mode"],
             "metrics": generated["metrics"],
@@ -94,7 +94,12 @@ def reflect(key: str, request: Request):
             records.append(("interest", item["id"], item))
         stage("Saving reviewable drafts")
         return Result(
-            {"outcome_id": key}, records, [("outcome", key, outcome), ("journal", key, previous)]
+            {"outcome_id": key},
+            records,
+            [
+                ("outcome" if store.get("outcome", key) else "experience", key, outcome),
+                ("journal", key, previous),
+            ],
         )
 
     return request.app.state.jobs.submit("Reflect on return note", action)
@@ -111,7 +116,9 @@ def review_interest(key: str, value: Review, request: Request):
     item = store.get("interest", key)
     if not item:
         raise HTTPException(404, "Unknown interest")
-    outcome = store.get("outcome", item["source_note_id"])
+    outcome = store.get("outcome", item["source_note_id"]) or store.get(
+        "experience", item["source_note_id"]
+    )
     if value.status == "accepted" and (
         not outcome
         or outcome["note"] != item["source_note"]
@@ -129,7 +136,11 @@ def review_interest(key: str, value: Review, request: Request):
             "theme": value.text.strip() if value.text is not None else item["theme"],
             "reviewed_at": now(),
         },
-        source=("outcome", item["source_note_id"], outcome),
+        source=(
+            "outcome" if store.get("outcome", item["source_note_id"]) else "experience",
+            item["source_note_id"],
+            outcome,
+        ),
         previous=item,
     )
     return updated
@@ -146,7 +157,7 @@ def review_journal(key: str, value: Review, request: Request):
     item = store.get("journal", key)
     if not item:
         raise HTTPException(404, "Unknown draft")
-    outcome = store.get("outcome", key)
+    outcome = store.get("outcome", key) or store.get("experience", key)
     if value.status == "accepted" and (not outcome or outcome["note"] != item["source_note"]):
         raise ValueError("Source note changed; regenerate this draft")
     updated = {
@@ -163,7 +174,10 @@ def review_journal(key: str, value: Review, request: Request):
             ("journal_version", previous_id, {**item, "version_id": previous_id}),
             ("journal_version", updated["version_id"], updated),
         ],
-        [("outcome", key, outcome), ("journal", key, item)],
+        [
+            ("outcome" if store.get("outcome", key) else "experience", key, outcome),
+            ("journal", key, item),
+        ],
     )
     return updated
 

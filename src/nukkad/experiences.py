@@ -65,6 +65,12 @@ def experience_records(store, quest, outcome, inputs, existing_items=None):
             else [],
         }
         records.append(("experience", key, item))
+        records.extend(
+            ("interest", item["id"], {**item, "status": "invalidated"})
+            for item in store.list("interest")
+            if item.get("source_note_id") == key
+            and item.get("status") not in {"removed", "rejected"}
+        )
         journal = store.get("journal", key)
         if journal:
             records.append(("journal", key, {**journal, "status": "invalidated"}))

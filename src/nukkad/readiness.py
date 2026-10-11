@@ -5,6 +5,7 @@ import time
 from dataclasses import replace
 
 import cairosvg
+from PIL import ImageFont
 
 from nukkad.context import active_interests
 from nukkad.maps import Maps
@@ -119,6 +120,8 @@ def _check_readiness(app):
             put("start", "unavailable", "Repair the saved map or choose a connected start")
             put("destinations", "unavailable", "Walking connections could not be checked")
     try:
+        ImageFont.truetype("DejaVuSans.ttf", 23)
+        ImageFont.truetype("DejaVuSans-Bold.ttf", 42)
         cairosvg.svg2png(
             bytestring=b'<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><text y="7" font-family="DejaVu Sans">N</text></svg>'
         )
