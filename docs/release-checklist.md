@@ -36,3 +36,7 @@ Use [field-notebook.md](field-notebook.md). These require observations from the 
 The [official challenge](https://dev.to/challenges/hacktoberfest-week1-2026-10-05) and [contest rules](https://dev.to/page/hacktoberfest-week1-2026-10-05-contest-rules) were rechecked on **9 October 2026**. The cutoff is **12 October 2026, 06:59 UTC / 12:29 PM IST**. A video is an accepted demo format; an agent-session link is optional. Open pieces must materially power the build. Best Use of Gemma is relevant to the actual local Gemma use; other partner categories must reflect tools actually used.
 
 Engineering completion, field evidence and a published contest submission are separate states. The local draft is intentionally unpublished. Repository PR merges do not submit an entry to DEV.
+
+## Backend and gallery software update, 12 October 2026
+
+The nine backend/gallery changes were delivered as focused PRs with regression coverage. The software suite exercises routing, relation imports, reviewed interests, journal revisions, photo constraints, media restore and Location Card publication. Local vision and isolated browser evidence are recorded in [evaluation.md](evaluation.md); the short-card renderer was visually inspected. The failed semantic cover choice remains documented. Human field and publication checkboxes above remain unchanged.

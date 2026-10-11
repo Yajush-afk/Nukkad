@@ -30,3 +30,11 @@ Model timing includes measured loading when reported in Ollama metadata. Warm ti
 History, notes and deterministic operation remain accessible without the chosen model. Readiness checks distinguish saved-map integrity, start, destinations, renderer and model. Current daylight and optional cached AQI are checked when generating/accepting/exporting, not promised by a readiness flag. Only the local Ollama endpoint is permitted. A cloud-tag selection produces a labelled fallback and cannot send source data remotely.
 
 Detailed evaluations contain source notes and generated text; keep them private. Ordinary attempt metrics contain task/version, model/runtime metadata, timings, counts and failure categories, without raw prompts, notes or images.
+
+## Place-memory completion
+
+Photo inputs enforce five active files per reached experience, decoded format, 20 MiB and 40-megapixel limits. Originals remain private; derived files and exported cards omit EXIF/GPS metadata. Hash checks reject damaged saved media before serving or inference. Versioned manifests include media and cards, enforce configurable archive limits and validate relationships before restoring into a new directory.
+
+Location Card jobs use verified local vision, supplied photo IDs and one visit's current note. The fixed renderer owns layout, names and dates. User edits, accepted journals and older cards survive regeneration. Optimistic checks reject stale revisions and changes to place identity. Direct folder routes, Back/Forward and tab-local unsaved edits are supported. Automated coverage includes unknown cover IDs, unsupported models, failed/stale/cancelled jobs, alias grouping, deleted covers, repeated visits, timezone rendering and version-aware journal reviews.
+
+Model outputs remain reviewable suggestions. A five-image synthetic cover choice was semantically poor despite valid ownership. This limitation is recorded rather than hidden behind validation rates. Physical outings, phone checks, machine disconnection and blinded ratings remain user-owned pending work.
