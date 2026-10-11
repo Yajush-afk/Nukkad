@@ -566,7 +566,7 @@ h1[tabindex="-1"]:focus {
   font-size: 38px;
   letter-spacing: -1px;
 }
-.open-story p:last-child {
+.open-story p {
   font-size: 13px;
   color: var(--muted);
   max-width: 490px;

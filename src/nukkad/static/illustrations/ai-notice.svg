@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="220" viewBox="0 0 360 220">
+  <g stroke="#284738" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M41 177H307" fill="none"/>
+    <path d="M119 177V114M119 145L98 130" fill="none"/>
+    <path d="M121 48C99 35 78 57 79 76C55 98 78 133 102 126C126 145 162 122 151 98C174 76 150 43 121 48Z" fill="#bfd2b6"/>
+    <path d="M115 110L126 89M104 87L115 100M98 63L109 70" fill="none" stroke="#79946c"/>
+    <path d="M39 159H75V176H39M43 160V147H70V160" fill="#faf8ed"/>
+    <path d="M207 40H313Q324 40 324 53V104Q324 117 311 117H254L233 135V117H207Q194 117 194 105V53Q194 40 207 40Z" fill="#faf8ed"/>
+    <path d="M211 61H298M211 77H285M211 93H265" stroke="#81917b" stroke-width="2"/>
+    <circle cx="190" cy="132" r="35" fill="#a6c7cf" fill-opacity=".4"/>
+    <circle cx="190" cy="132" r="28" fill="none"/>
+    <path d="M213 158L239 185Q245 191 250 185Q254 181 250 176L222 151" fill="#eaa66a"/>
+    <path d="M176 139Q178 115 205 120Q204 143 176 139ZM176 139L197 126" fill="#bfd2b6"/>
+    <path d="M275 151Q289 161 275 171M289 142Q314 161 289 180M51 52L58 45M47 43L56 40" fill="none"/>
+  </g>
+</svg>
