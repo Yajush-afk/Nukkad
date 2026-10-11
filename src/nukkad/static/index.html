@@ -337,8 +337,7 @@
               </div>
               <p class="hint" id="location-help">
                 Enter a public place, locality or street and include the city.
-                Search sends this text to OpenStreetMap’s Nominatim service;
-                don’t include flat numbers or personal details.
+                Avoid flat numbers or personal details.
               </p>
               <p
                 id="location-status"
@@ -352,14 +351,17 @@
                 aria-label="Matching locations"
                 hidden
               ></ul>
-              <p class="hint">
-                Online suggestions send your typed location and neighbourhood
-                context to Photon. Notes and photos are never included. Location
-                results ©
-                <a href="https://www.openstreetmap.org/copyright"
-                  >OpenStreetMap contributors</a
-                >
-              </p>
+              <details class="quiet-details search-privacy">
+                <summary>About online search</summary>
+                <p class="hint">
+                  Suggestions send your location query and neighbourhood context
+                  to Photon. Search sends your query to Nominatim. Notes and
+                  photos are never included. Location results ©
+                  <a href="https://www.openstreetmap.org/copyright"
+                    >OpenStreetMap contributors</a
+                  >.
+                </p>
+              </details>
             </form>
             <form id="area-form" class="form-stack">
               <input name="lat" type="hidden" />
@@ -452,6 +454,10 @@
                 Downloading needs internet. Once saved, your map is available
                 offline. A new download keeps your previous maps and walks.
               </p>
+              <details id="map-download-error" class="quiet-details" hidden>
+                <summary>Download details</summary>
+                <p id="map-download-error-detail" class="hint"></p>
+              </details>
             </form>
           </div>
         </details>

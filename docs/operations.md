@@ -133,3 +133,20 @@ saved note and preceding photos remain; retry resumes with the remaining files.
 A request identity prevents duplicate visits from repeated submissions. Add another
 visit deliberately starts a new record. Direct visits and their media are included
 in backups; existing walk-linked experiences keep their original representation.
+
+### Busy map providers
+
+Map acquisition requests streets, entrances and supported destinations with their
+nodes/tags, without unused edit metadata. It first tries the two existing Overpass
+providers. A timeout or server error permits one sequential attempt covering four
+smaller sections of the same original bounds. Rate-limited providers are not
+retried. Requests have bounded connection/read timeouts and a shared 180-second
+download budget; no automatic polling or repeated background download is added.
+
+All sections must finish. Matching source entities are deduplicated; conflicting
+entities or missing member/way references reject the combined map. Candidate files
+are staged and published atomically. Cancellation is checked between requests and
+before parsing/publication. Existing active snapshots remain intact on failure.
+A public provider can still be unavailable: retry later or use the existing extract
+import. The notification gives a short explanation; Download details preserves
+provider statuses without showing them by default.

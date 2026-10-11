@@ -112,7 +112,14 @@ function show(id) {
   return navigation.go(id, quest?.id);
 }
 function report(error) {
-  message(error.message || String(error), true);
+  const text=error.message||String(error);
+  if(text.startsWith("Could not download this neighbourhood.")){
+    $("map-download-error").hidden=false;
+    $("map-download-error-detail").textContent=text;
+    message("Map providers are busy or unavailable. Try again later; your saved map is unchanged.",true);
+    return;
+  }
+  message(text, true);
 }
 function formValues(id) {
   return Object.fromEntries(new FormData($(id)));
@@ -786,6 +793,7 @@ function areaInput() {
 $("area-form").onsubmit = async (event) => {
   event.preventDefault();
   const current = navigation.checkpoint();
+  $("map-download-error").hidden=true;
   try {
     const file = $("area-form").elements.extract.files[0];
     let job;
@@ -798,13 +806,13 @@ $("area-form").onsubmit = async (event) => {
     await runJob(
       job,
       async (_, stillHere) => {
-        await loadArea();
+        await loadArea(stillHere);
         if (stillHere()) show("setup");
       },
       current,
     );
   } catch (e) {
-    report(e);
+    if(current()) report(e);
   }
 };
 $("area-form").elements.extract.onchange = (event) => {

@@ -73,10 +73,11 @@
         folder,
         another,
       );
-      const controls = [note, day, photos];
+      const controls = [note, day];
       const update = () => {
         for (const control of controls)
           control.disabled = draft.busy || draft.saved;
+        photos.disabled = draft.busy || draft.complete;
         save.disabled = draft.busy;
         save.hidden = draft.complete;
         save.textContent = draft.busy
@@ -96,7 +97,8 @@
         draft.day = day.value;
       };
       photos.onchange = () => {
-        draft.files = Array.from(photos.files);
+        draft.files = [...draft.files.slice(0, draft.uploaded), ...photos.files];
+        error.hidden = true;
         update();
       };
       form.onsubmit = async (event) => {

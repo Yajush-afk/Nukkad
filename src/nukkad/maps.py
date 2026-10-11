@@ -1,7 +1,10 @@
 import hashlib
 import math
 import shutil
+import tempfile
+import time
 from pathlib import Path
+from xml.etree import ElementTree as XML
 
 import httpx
 import networkx as nx
@@ -22,14 +25,20 @@ OVERPASS_PROVIDERS = (
 )
 
 
-def neighbourhood_query(area: AreaInput) -> str:
+def neighbourhood_bounds(area: AreaInput) -> tuple[float, float, float, float]:
     radius = area.radius_meters + 700
     delta_lat = radius / 111320
     delta_lon = radius / (111320 * max(0.2, math.cos(math.radians(area.start.lat))))
-    bbox = (
-        f"{area.start.lat - delta_lat},{area.start.lon - delta_lon},"
-        f"{area.start.lat + delta_lat},{area.start.lon + delta_lon}"
+    return (
+        area.start.lat - delta_lat,
+        area.start.lon - delta_lon,
+        area.start.lat + delta_lat,
+        area.start.lon + delta_lon,
     )
+
+
+def neighbourhood_query(area: AreaInput, bounds=None) -> str:
+    bbox = ",".join(str(value) for value in (bounds or neighbourhood_bounds(area)))
     # Download the routing network and supported destinations, not every
     # building and unrelated node. Access filtering still happens in code.
     selectors = [f'way["highway"]({bbox});', f'node["entrance"]({bbox});']
@@ -47,7 +56,41 @@ def neighbourhood_query(area: AreaInput) -> str:
         for kind in ("node", "way", "relation")
     )
     # Recurse to keep referenced way vertices and their access/entrance tags.
-    return "[out:xml][timeout:25];(" + "".join(selectors) + ");(._;>;);out meta;"
+    return "[out:xml][timeout:25];(" + "".join(selectors) + ");(._;>;);out body;"
+
+
+def merge_sections(paths, destination):
+    """Retain complete source entities, reject inconsistent edits between sections."""
+    entities = {}
+    signatures = {}
+    root = XML.Element("osm", {"version": "0.6", "generator": "Nukkad map sections"})
+    for path in paths:
+        for element in ElementTree.parse(path).getroot():
+            if element.tag not in {"node", "way", "relation"}:
+                continue
+            key = (element.tag, element.attrib["id"])
+            signature = (
+                tuple(sorted(element.attrib.items())),
+                tuple(
+                    tuple(sorted(child.attrib.items())) for child in element if child.tag != "tag"
+                ),
+                tuple(
+                    sorted(tuple(sorted(child.attrib.items())) for child in element.findall("tag"))
+                ),
+            )
+            if key in signatures and signatures[key] != signature:
+                raise ValueError("Map changed between sections; retry to get a consistent map")
+            entities[key], signatures[key] = element, signature
+    for element in entities.values():
+        references = [("node", ref.attrib["ref"]) for ref in element.findall("nd")]
+        references += [(ref.attrib["type"], ref.attrib["ref"]) for ref in element.findall("member")]
+        if any(key not in entities for key in references):
+            raise ValueError("Map section is missing referenced geometry")
+    for key in sorted(entities):
+        root.append(entities[key])
+    XML.ElementTree(root).write(destination, encoding="utf-8", xml_declaration=True)
+    if destination.stat().st_size > MAX_EXTRACT_BYTES:
+        raise ValueError("Map extract exceeds the neighbourhood size limit")
 
 
 def distance(a: Point, b: Point) -> float:
@@ -276,6 +319,7 @@ class Maps:
         imported: Path | None = None,
         activate: bool = True,
         synthetic: bool = False,
+        progress=None,
     ) -> dict:
         snapshot_id = identity()
         staging = self.config.data_dir / "snapshots" / f".{snapshot_id}"
@@ -288,7 +332,9 @@ class Maps:
                 shutil.copyfile(imported, raw_path)
                 source = "user-imported OpenStreetMap XML"
             else:
-                source = self.download(area, raw_path)
+                source = self.download(area, raw_path, progress)
+            if progress:
+                progress("Processing saved streets and places")
             graph, places, geometry = parse_extract(raw_path, area)
             synthetic = synthetic or graph.graph.get("nukkad_synthetic", False)
             if synthetic:
@@ -343,56 +389,112 @@ class Maps:
             shutil.rmtree(staging, ignore_errors=True)
             raise
 
-    def download(self, area: AreaInput, destination: Path) -> str:
-        query = neighbourhood_query(area)
-        failures = []
+    def download(self, area: AreaInput, destination: Path, progress=None) -> str:
+        failures, recoverable = [], []
+        deadline = time.monotonic() + 180
         last_error = None
-        for provider, url in OVERPASS_PROVIDERS:
-            try:
-                with httpx.Client(
-                    timeout=90,
-                    headers={"User-Agent": "Nukkad/0.1 (https://github.com/Yajush-afk/Nukkad)"},
-                    follow_redirects=True,
-                    trust_env=False,
-                ) as client:
-                    with client.stream("POST", url, data={"data": query}) as response:
-                        response.raise_for_status()
-                        size = 0
-                        with destination.open("wb") as output:
-                            for chunk in response.iter_bytes():
-                                size += len(chunk)
-                                if size > MAX_EXTRACT_BYTES:
-                                    raise ValueError(
-                                        "Map extract exceeds the neighbourhood size limit"
-                                    )
-                                output.write(chunk)
-                root = ElementTree.parse(destination).getroot()
-                if root.tag != "osm":
-                    raise ValueError("provider did not return map XML")
-                if root.find("remark") is not None:
-                    raise ValueError("provider returned an incomplete query result")
-                return f"OpenStreetMap via {provider}"
-            except (httpx.HTTPError, ElementTree.ParseError, ValueError) as error:
-                last_error = error
-                if isinstance(error, httpx.HTTPStatusError):
-                    status = error.response.status_code
-                    reasons = {429: "rate limit; retry later", 504: "provider query timed out"}
-                    reason = f"HTTP {status}" + (
-                        f" ({reasons[status]})" if status in reasons else ""
-                    )
-                elif isinstance(error, httpx.TimeoutException):
-                    reason = "connection or response timed out"
-                elif isinstance(error, httpx.HTTPError):
-                    reason = "network connection failed"
-                elif isinstance(error, ElementTree.ParseError):
-                    reason = "invalid map XML"
-                else:
-                    reason = str(error)
-                failures.append(f"{provider}: {reason}")
+
+        def fetch(url, query, path):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise ValueError("Map download time limit reached")
+            with httpx.Client(
+                timeout=httpx.Timeout(min(35, remaining), connect=min(5, remaining)),
+                headers={"User-Agent": "Nukkad/0.1 (https://github.com/Yajush-afk/Nukkad)"},
+                follow_redirects=True,
+                trust_env=False,
+            ) as client:
+                with client.stream("POST", url, data={"data": query}) as response:
+                    response.raise_for_status()
+                    size = 0
+                    with path.open("wb") as output:
+                        for chunk in response.iter_bytes():
+                            size += len(chunk)
+                            if size > MAX_EXTRACT_BYTES:
+                                raise ValueError("Map extract exceeds the neighbourhood size limit")
+                            if time.monotonic() > deadline:
+                                raise ValueError("Map download time limit reached")
+                            output.write(chunk)
+            root = ElementTree.parse(path).getroot()
+            if root.tag != "osm":
+                raise ValueError("provider did not return map XML")
+            if root.find("remark") is not None:
+                raise ValueError("provider returned an incomplete query result")
+
+        def failed(provider, error):
+            if isinstance(error, httpx.HTTPStatusError):
+                status = error.response.status_code
+                reason = f"HTTP {status}"
+                reason += {
+                    429: " (rate limit; retry later)",
+                    504: " (provider query timed out)",
+                }.get(status, "")
+            elif isinstance(error, httpx.TimeoutException):
+                reason = "connection or response timed out"
+            elif isinstance(error, httpx.HTTPError):
+                reason = "network connection failed"
+            elif isinstance(error, ElementTree.ParseError):
+                reason = "invalid map XML"
+            else:
+                reason = str(error)
+            failures.append(f"{provider}: {reason}")
+
+        errors = (httpx.HTTPError, ElementTree.ParseError, ValueError)
+        with tempfile.TemporaryDirectory(prefix=".download-", dir=destination.parent) as folder:
+            candidate = Path(folder) / "complete.osm"
+            for provider, url in OVERPASS_PROVIDERS:
+                try:
+                    if progress:
+                        progress("Downloading neighbourhood map")
+                    fetch(url, neighbourhood_query(area), candidate)
+                    if progress:
+                        progress("Processing saved streets and places")
+                    candidate.replace(destination)
+                    return f"OpenStreetMap via {provider}"
+                except errors as error:
+                    last_error = error
+                    failed(provider, error)
+                    if isinstance(error, httpx.TimeoutException) or (
+                        isinstance(error, httpx.HTTPStatusError)
+                        and error.response.status_code in {500, 502, 503, 504}
+                    ):
+                        recoverable.append((provider, url))
+            # One sequential, all-or-nothing sectional attempt. Never retry a
+            # rate-limited provider or shrink the user's requested neighbourhood.
+            if recoverable and time.monotonic() < deadline:
+                provider, url = recoverable[0]
+                south, west, north, east = neighbourhood_bounds(area)
+                mid_lat, mid_lon = (south + north) / 2, (west + east) / 2
+                bounds = [
+                    (s, w, n, e)
+                    for s, n in ((south, mid_lat), (mid_lat, north))
+                    for w, e in ((west, mid_lon), (mid_lon, east))
+                ]
+                try:
+                    sections, total = [], 0
+                    for index, box in enumerate(bounds):
+                        if progress:
+                            progress(
+                                f"Map services are busy. Downloading smaller section {index + 1} of 4"
+                            )
+                        section = Path(folder) / f"section-{index}.osm"
+                        fetch(url, neighbourhood_query(area, box), section)
+                        total += section.stat().st_size
+                        if total > MAX_EXTRACT_BYTES:
+                            raise ValueError("Map sections exceed the neighbourhood size limit")
+                        sections.append(section)
+                    merge_sections(sections, candidate)
+                    if progress:
+                        progress("Processing saved streets and places")
+                    candidate.replace(destination)
+                    return f"OpenStreetMap via {provider}, four smaller sections"
+                except errors as error:
+                    last_error = error
+                    failed(f"{provider} smaller sections", error)
         raise ValueError(
             "Could not download this neighbourhood. "
             + "; ".join(failures)
-            + ". Check your connection or retry later; your saved neighbourhood is unchanged."
+            + ". Map services may be busy or unreachable; retry later. Your saved neighbourhood is unchanged."
         ) from last_error
 
     def snapshot(self) -> dict:

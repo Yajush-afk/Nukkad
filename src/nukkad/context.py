@@ -30,7 +30,18 @@ def outing_context(store, request, interests, candidates=()):
             (relevant if candidate_ids.intersection(reached) else recent).append(note)
     notes = (relevant[:3] + recent[:4])[:4]
     visited = sorted(
-        {canonical_id(store, key) for outcome in outcomes for key in outcome.get("reached_ids", [])}
+        (
+            {
+                canonical_id(store, key)
+                for outcome in outcomes
+                for key in outcome.get("reached_ids", [])
+            }
+            | {
+                canonical_id(store, item["place_id"])
+                for item in store.list("experience")
+                if item.get("active")
+            }
+        )
         & candidate_ids
     )
     return {
