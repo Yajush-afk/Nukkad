@@ -947,7 +947,10 @@ function retainOutcomeDraft() {
 }
 async function renderOutcome(value, existing, current) {
   if (!current()) return;
-  if (outcomeQuest === value.id) return;
+  if (outcomeQuest === value.id) {
+    if (existing) await window.showJournal(existing, current);
+    return;
+  }
   retainOutcomeDraft();
   outcomeQuest = value.id;
   quest = value;
@@ -1000,9 +1003,11 @@ function updateOutcomeReason() {
 $("outcome-form").elements.status.onchange = updateOutcomeReason;
 $("outcome-form").onsubmit = async (event) => {
   event.preventDefault();
+  const current = navigation.checkpoint();
+  const savingQuest = quest;
   try {
     const v = formValues("outcome-form");
-    const outcome = await api("/quests/" + quest.id + "/outcome", {
+    const outcome = await api("/quests/" + savingQuest.id + "/outcome", {
       method: "PUT",
       body: {
         status: v.status,
@@ -1012,22 +1017,26 @@ $("outcome-form").onsubmit = async (event) => {
           v.actual_minutes === "" ? null : Number(v.actual_minutes),
         screen_minutes:
           v.screen_minutes === "" ? null : Number(v.screen_minutes),
-        stops: quest.stops.map((place) => ({
+        stops: savingQuest.stops.map((place) => ({
           id: place.id,
           status: v["stop-" + place.id],
         })),
       },
     });
+    areaNeedsRefresh = true;
+    if (!current()) return;
     await loadArea();
+    if (!current()) return;
+    areaNeedsRefresh = false;
     message(
       "Note and visits saved. Only the stops you marked as reached count as visited.",
     );
-    if (window.showJournal) await window.showJournal(outcome);
+    if (window.showJournal) await window.showJournal(outcome, current);
   } catch (e) {
-    report(e);
+    if (current()) report(e);
   }
 };
-window.showJournal = async (outcome, current = () => true) => {
+window.showJournal = async (outcome, current = navigation.checkpoint()) => {
   if (!current()) return;
   const target = $("journal-review");
   target.replaceChildren(node("h2", "Your original note"));
@@ -1054,7 +1063,7 @@ window.showJournal = async (outcome, current = () => true) => {
         current,
       );
     } catch (e) {
-      report(e);
+      if (current()) report(e);
     }
   };
   target.append(generate);
@@ -1086,9 +1095,9 @@ window.showJournal = async (outcome, current = () => true) => {
             method: "PATCH",
             body: { status, text: draft.value },
           });
-          await window.showJournal(outcome);
+          if (current()) await window.showJournal(outcome, current);
         } catch (e) {
-          report(e);
+          if (current()) report(e);
         }
       };
       actions.append(button);
@@ -1099,7 +1108,7 @@ window.showJournal = async (outcome, current = () => true) => {
   target.append(holder);
   await interestControls(holder, outcome.id, current);
 };
-async function interestControls(target, source, current = () => true) {
+async function interestControls(target, source, current = navigation.checkpoint()) {
   const items = await api("/interests");
   if (!current()) return;
   target.replaceChildren();
@@ -1136,7 +1145,7 @@ async function interestControls(target, source, current = () => true) {
             method: "PATCH",
             body: { status, text: input.value },
           });
-          await interestControls(target, source);
+          if (current()) await interestControls(target, source, current);
         } catch (e) {
           report(e);
         }
