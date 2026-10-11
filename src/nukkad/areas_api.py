@@ -158,10 +158,16 @@ def add_place(value: CustomPlace, request: Request):
         raise ValueError("Confirm that the destination has a public entrance")
     registry = maps(request)
     from nukkad.planning import pedestrian_graph
+    from nukkad.suggestions import within_area
 
+    active = request.app.state.store.get("area", "active")
+    if not within_area(value.entrance.model_dump(), active):
+        raise ValueError("Choose an entrance inside your saved neighbourhood")
     graph = pedestrian_graph(registry.graph())
     node, snap = snap_point(graph, value.entrance)
     point = {"lat": graph.nodes[node]["y"], "lon": graph.nodes[node]["x"]}
+    if not within_area(point, active):
+        raise ValueError("The eligible walking entrance is outside your saved neighbourhood")
     place = Place(
         id=f"user-{identity()}",
         name=value.name,
@@ -184,8 +190,9 @@ def correct_place(key: str, value: Correction, request: Request):
     if place is None:
         raise HTTPException(404, "Unknown place")
     if value.action == "entrance" and value.entrance is None:
-        raise ValueError("An entrance correction requires entrance coordinates")
+        raise ValueError("Choose a corrected entrance on the map")
     data = place.model_dump()
+    data["last_report"] = value.action
     if value.action in {"not_there", "closed", "not_accessible"}:
         data["valid"] = False
     else:

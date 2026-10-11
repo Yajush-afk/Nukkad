@@ -12,6 +12,7 @@
     <script defer src="/static/collection.js"></script>
     <script defer src="/static/notifications.js"></script>
     <script defer src="/static/suggestions.js"></script>
+    <script defer src="/static/place-editor.js"></script>
     <script defer src="/static/app.js"></script>
     <script defer src="/static/experience.js"></script>
   </head>
@@ -468,6 +469,23 @@
             choose a start or add a place.
           </p>
           <div id="place-detail" aria-live="polite"></div>
+
+          <div class="buttonrow"><button type="button" id="add-place">Add a place</button></div>
+          <section id="add-place-details" class="context-editor" aria-labelledby="add-place-title" hidden>
+            <h3 id="add-place-title">Add a place</h3>
+            <form id="pin-form" class="form-grid">
+              <input name="lat" type="hidden" /><input name="lon" type="hidden" />
+              <label class="wide">Place name<input id="place-query" name="name" required maxlength="200" autocomplete="off" /></label>
+              <ul id="place-suggestions" class="location-results wide" aria-label="Matching places" hidden></ul>
+              <p id="place-search-status" class="hint wide" role="status" hidden></p>
+              <label>Type of place<select name="kind"><option value="landmark">Landmark</option><option value="park">Park</option><option value="garden">Garden</option><option value="market">Market</option><option value="artwork">Artwork</option><option value="tree">Tree</option><option value="court">Sports court</option></select></label>
+              <label class="wide">Something you’ve seen here (optional)<input name="descriptor" maxlength="120" placeholder="A detail visible from a public path" /></label>
+              <p id="place-entrance" class="hint wide">Choose an entrance on the map or search for a place.</p>
+              <button type="button" id="check-place-entrance" hidden>Use this map point as the entrance</button>
+              <label class="check wide"><input type="checkbox" name="confirmed" required />I’ve checked that this entrance is on a public walking path.</label>
+              <div class="buttonrow wide"><button class="primary" id="save-place">Save place</button><button type="button" id="cancel-place">Cancel</button></div>
+            </form>
+          </section>
           <div id="duplicate-review" aria-live="polite"></div>
           <details class="quiet-details" id="map-details" hidden>
             <summary>About this map</summary>
@@ -482,64 +500,6 @@
         <div class="form-actions neighbourhood-next">
           <button class="primary" id="plan-walk" hidden>Plan a walk</button>
         </div>
-        <details class="disclosure form-stack" id="add-place-details">
-          <summary>Add a place I know</summary>
-          <div class="disclosure-body">
-            <p class="hint">
-              Missing a local spot? Add its public entrance. It will be counted
-              separately from places on the map.
-            </p>
-            <form id="pin-form" class="form-grid">
-              <label
-                >Place name<input name="name" required maxlength="200"
-              /></label>
-              <label
-                >Type of place<select name="kind">
-                  <option value="landmark">Landmark</option>
-                  <option value="park">Park</option>
-                  <option value="garden">Garden</option>
-                  <option value="market">Market</option>
-                  <option value="artwork">Artwork</option>
-                  <option value="tree">Tree</option>
-                  <option value="court">Sports court</option>
-                </select></label
-              >
-              <label
-                >Entrance latitude<input
-                  name="lat"
-                  type="number"
-                  min="-90"
-                  max="90"
-                  step="any"
-                  required
-              /></label>
-              <label
-                >Entrance longitude<input
-                  name="lon"
-                  type="number"
-                  min="-180"
-                  max="180"
-                  step="any"
-                  required
-              /></label>
-              <label class="wide"
-                >Something you’ve seen here (optional)<input
-                  name="descriptor"
-                  maxlength="120"
-                  placeholder="For example, a mural visible from the street"
-                /><small
-                  >Use your own observation. Nukkad can suggest looking for it
-                  on a walk.</small
-                ></label
-              >
-              <label class="check wide"
-                ><input type="checkbox" name="confirmed" required />I’ve checked
-                that this entrance is publicly accessible.</label
-              >
-              <button class="primary">Add this place</button>
-            </form>
-          </div>
-        </details>
       </section>
       <section
         id="quest-form-panel"
