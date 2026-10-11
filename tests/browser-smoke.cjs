@@ -214,6 +214,38 @@ const { chromium } = require("playwright");
     "settings",
   );
   await page.unroute("**/api/jobs/browser-smoke");
+  let mapRelease, mapSeen;
+  const mapObserved = new Promise((resolve) => {
+    mapSeen = resolve;
+  });
+  const mapHeld = new Promise((resolve) => {
+    mapRelease = resolve;
+  });
+  await page.route("**/api/jobs/browser-smoke-map", async (route) => {
+    mapSeen();
+    await mapHeld;
+    await route.fulfill({
+      json: {
+        status: "complete",
+        result: { snapshot_id: "example" },
+        message: "Ready",
+      },
+    });
+  });
+  await page.evaluate(() => {
+    window.smokeMapJob = runJob(
+      { id: "browser-smoke-map", title: "Update public starting point" },
+      () => {},
+    );
+  });
+  await mapObserved;
+  await page.evaluate(() => show("home"));
+  mapRelease();
+  await page.evaluate(() => window.smokeMapJob);
+  assert.equal(await page.evaluate(() => areaNeedsRefresh), true);
+  await page.evaluate(() => show("setup"));
+  assert.equal(await page.evaluate(() => areaNeedsRefresh), false);
+  await page.unroute("**/api/jobs/browser-smoke-map");
   assert.deepEqual(errors, []);
   await browser.close();
   console.log(

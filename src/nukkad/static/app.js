@@ -84,9 +84,12 @@ function renderPanel(id) {
   document.body.dataset.panel = id;
   document.dispatchEvent(new Event("nukkad:panel"));
   document.querySelectorAll(".panel").forEach((e) => (e.hidden = e.id !== id));
-  const active = ["quest-form-panel", "preview", "outcome"].includes(id)
-    ? "home"
-    : id;
+  const active =
+    id === "quest-form-panel"
+      ? "setup"
+      : ["preview", "outcome"].includes(id)
+        ? "history"
+        : id;
   document.querySelectorAll("nav [data-panel]").forEach((button) => {
     if (button.dataset.panel === active)
       button.setAttribute("aria-current", "page");
@@ -145,9 +148,10 @@ async function runJob(value, finished, current = navigation.checkpoint()) {
         activeJob = null;
         if (job.status === "complete") {
           if (current()) return await finished(job.result, current);
-          if (value.title === "Neighbourhood setup") areaNeedsRefresh = true;
+          const mapChanged = !!job.result?.snapshot_id;
+          if (mapChanged) areaNeedsRefresh = true;
           message(
-            value.title === "Neighbourhood setup"
+            mapChanged
               ? "Your saved map is ready in Neighbourhood."
               : "Your local task finished. Open My walks to review it.",
           );
@@ -157,6 +161,9 @@ async function runJob(value, finished, current = navigation.checkpoint()) {
       }
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
+  } catch (error) {
+    if (current()) throw error;
+    message(error.message || String(error), true);
   } finally {
     activeJob = null;
     $("job").hidden = true;

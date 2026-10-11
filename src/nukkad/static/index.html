@@ -160,24 +160,121 @@
             </li>
           </ol>
         </section>
-        <aside class="open-story" aria-labelledby="open-title">
-          <div>
-            <p class="eyebrow">OPEN BY DESIGN</p>
-            <h2 id="open-title">Your neighbourhood.<br />Your laptop.</h2>
+        <section class="ai-story" id="local-ai" aria-labelledby="ai-title">
+          <div class="section-heading">
+            <p class="eyebrow">OPEN WEIGHTS. EVERYDAY DISCOVERIES.</p>
+            <h2 id="ai-title">
+              What the local AI<br /><em>actually does.</em>
+            </h2>
             <p>
-              Open-weight AI plans locally. Your notes stay on your laptop.
-              Download a map once, then explore its saved streets offline.
+              Your interests help shape the walk. An open-weight model runs
+              through Ollama on your laptop to help with these three things.
             </p>
           </div>
-          <div class="open-stamp">
-            <img
-              src="/static/brand/nukkad-dark.png"
-              alt="Nukkad"
-              width="819"
-              height="319"
-            /><span>LOCAL AI · OPEN MAPS</span>
-          </div>
-        </aside>
+          <ol class="discovery-steps ai-steps" aria-label="How local AI helps">
+            <li>
+              <div class="step-art mint">
+                <img
+                  src="/static/illustrations/ai-stops.svg"
+                  alt=""
+                  width="360"
+                  height="220"
+                  loading="lazy"
+                />
+              </div>
+              <div class="step-copy">
+                <span class="step-index">CHOOSE SOMETHING NEARBY</span>
+                <h3>Helps choose stops.</h3>
+                <p>
+                  The model ranks eligible places from your saved map and the
+                  places you add, using your interests to help choose where to
+                  stop.
+                </p>
+              </div>
+            </li>
+            <li>
+              <div class="step-art peach">
+                <img
+                  src="/static/illustrations/ai-notice.svg"
+                  alt=""
+                  width="360"
+                  height="220"
+                  loading="lazy"
+                />
+              </div>
+              <div class="step-copy">
+                <span class="step-index">GIVE THE WALK A LITTLE PURPOSE</span>
+                <h3>Adds things to notice.</h3>
+                <p>
+                  It writes small observation prompts using a stop’s recorded
+                  information or your place notes. Wander invites you to notice;
+                  Seek looks for a recorded detail.
+                </p>
+              </div>
+            </li>
+            <li>
+              <div class="step-art lilac">
+                <img
+                  src="/static/illustrations/ai-reflect.svg"
+                  alt=""
+                  width="360"
+                  height="220"
+                  loading="lazy"
+                />
+              </div>
+              <div class="step-copy">
+                <span class="step-index">KEEP YOUR OWN WORDS</span>
+                <h3>Helps reflect afterward.</h3>
+                <p>
+                  It can select a passage from your note and suggest possible
+                  interests. You review each proposal before saving a reflection
+                  or adding an interest.
+                </p>
+              </div>
+            </li>
+          </ol>
+          <aside class="planner-note" aria-labelledby="planner-title">
+            <h3 id="planner-title">A route home, checked before you go.</h3>
+            <p>
+              Nukkad’s route planner calculates walking paths, the return
+              journey, time, distance and daylight constraints. You review the
+              route and confirm your public start; access shown on a saved map
+              can still be uncertain.
+            </p>
+          </aside>
+          <aside class="open-story" aria-labelledby="open-title">
+            <div>
+              <p class="eyebrow">OPEN BY DESIGN</p>
+              <h2 id="open-title">Your neighbourhood.<br />Your laptop.</h2>
+              <p>
+                The open-weight model runs locally through Ollama. You can
+                switch the installed model in Settings. Your notes and model
+                inference stay on your laptop, with no paid inference API
+                required.
+              </p>
+              <p>
+                Initial location searches and map downloads need internet and
+                contact map providers. Once your map and local model weights are
+                prepared, you can use them offline. Optional air-quality
+                refreshes still need a connection.
+              </p>
+              <p class="fallback-note">
+                If local AI is unavailable or its suggestions fail validation,
+                Nukkad uses basic stop suggestions and standard prompts. The
+                walk preview labels each fallback clearly.
+              </p>
+            </div>
+            <div class="open-stamp">
+              <img
+                src="/static/brand/nukkad-dark.png"
+                alt="Nukkad"
+                width="819"
+                height="319"
+              />
+              <span>LOCAL AI · OPEN MAPS</span>
+            </div>
+          </aside>
+        </section>
         <figure class="imagined-map" aria-labelledby="imagined-map-title">
           <div class="section-heading">
             <p class="eyebrow">A LITTLE LOOK AT WHAT’S POSSIBLE</p>
@@ -503,7 +600,9 @@
           <div class="form-actions">
             <button class="primary">
               Plan my walk <span aria-hidden="true">↗</span></button
-            ><button type="button" data-panel="home">Back to map</button>
+            ><button type="button" data-panel="setup">
+              Back to neighbourhood
+            </button>
           </div>
         </form>
         <p class="hint">

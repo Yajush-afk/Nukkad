@@ -115,3 +115,10 @@ maximum width and working panels an 800 px maximum. Desktop side padding is 24 p
 shrinking to 16 px on small screens. The mobile header places the brand and
 GitHub star link above the navigation. No framework or remotely hosted asset is
 needed for this layout.
+
+The homepage explains three model responsibilities: ranking eligible known places,
+writing observation prompts, and proposing reviewed reflections/interests. A
+separate note explains deterministic route checks and uncertain public access.
+The open-operation section distinguishes local notes/inference from online map
+search/downloads and explains prepared offline use and labelled fallbacks. The
+illustrations are original bundled SVGs, with adjacent text carrying their meaning.
