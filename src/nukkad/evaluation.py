@@ -2,6 +2,7 @@ import json
 import math
 import random
 import socket
+import time
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
@@ -9,9 +10,8 @@ from pathlib import Path
 from nukkad.cards import svg_card
 from nukkad.config import Config
 from nukkad.journals import generate_journal
-from nukkad.ollama import Ollama
 from nukkad.maps import Maps
-import time
+from nukkad.ollama import Ollama
 from nukkad.places import AreaInput
 from nukkad.planning import INTEREST_KINDS, NoQuest, Planner, QuestInput, Settings, baseline
 from nukkad.quests import TEMPLATES, active_interests, generate

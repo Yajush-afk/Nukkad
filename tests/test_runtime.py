@@ -33,8 +33,9 @@ def test_readiness_handles_unavailable_model(tmp_path, monkeypatch):
 
 def test_expired_generation_never_contacts_runtime(monkeypatch):
     import time
-    from nukkad.ollama import ModelFailure, Ollama
+
     from nukkad.domain import Ranking
+    from nukkad.ollama import ModelFailure, Ollama
 
     model = Ollama(Config())
     monkeypatch.setattr(
@@ -46,6 +47,7 @@ def test_expired_generation_never_contacts_runtime(monkeypatch):
 
 def test_cloud_selection_retains_truthful_journal_fallback():
     import time
+
     from nukkad.journals import generate_journal
     from nukkad.ollama import Ollama
 

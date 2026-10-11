@@ -12,7 +12,7 @@ from nukkad.ollama import ModelFailure, Ollama
 from nukkad.planning import Planner, QuestInput, Settings
 
 
-def check_readiness(app):
+def _check_readiness(app):
     store, config = app.state.store, app.state.config
     selected = Settings.model_validate(store.get("settings", "active") or {"model": config.model})
     area = store.get("area", "active")
@@ -134,3 +134,32 @@ def check_readiness(app):
     }
     app.state.readiness_cache = (key, time.monotonic(), result)
     return result
+
+
+def check_readiness(app):
+    try:
+        return _check_readiness(app)
+    except (sqlite3.Error, ValueError, KeyError, TypeError):
+        checks = {
+            name: {
+                "status": "unavailable",
+                "reason": "Repair saved data or restore a backup before checking this component",
+            }
+            for name in ("map", "start", "destinations", "renderer", "model")
+        }
+        checks["database"] = {
+            "status": "damaged",
+            "reason": "Saved records or database could not be read; restore a backup",
+        }
+        return {
+            "application": "saved_data_damaged",
+            "database": "damaged",
+            "area_ready": False,
+            "model_status": "unavailable",
+            "models": [],
+            "selected_model": app.state.config.model,
+            "model_capabilities": [],
+            "deterministic_ready": False,
+            "local_ai_ready": False,
+            "checks": checks,
+        }
