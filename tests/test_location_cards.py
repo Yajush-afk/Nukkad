@@ -365,3 +365,11 @@ def test_card_visit_date_uses_reported_timezone(registry, monkeypatch):
         photo,
     )
     assert "REPORTED VISIT / 12 Oct 2026" in drawn
+
+
+def test_positive_discovery_does_not_negate_card_enjoyment():
+    validate_summary(
+        "They loved this previously unknown nearby place.",
+        "Loved the place. I never knew I had a place like that nearby.",
+        generated=True,
+    )

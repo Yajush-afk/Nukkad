@@ -49,6 +49,7 @@ def run_task(model, response_type, prompt, deadline, validator, schema=None, *, 
                     "status": "rejected",
                     "category": category,
                     "validation_rule": rule,
+                    "validation_message": str(error),
                     "metrics": error.diagnostics if isinstance(error, ModelFailure) else metrics,
                 }
             )

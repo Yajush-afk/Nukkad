@@ -163,3 +163,44 @@ def test_journal_review_rejects_client_edit_for_an_earlier_version(registry):
         )
         assert result.status_code == 409
         assert store.get("journal", "visit") == journal
+
+
+def test_positive_discovery_can_be_written_without_becoming_negative():
+    note = "Loved the place. I never knew I had a place like that nearby."
+    source = {"note": note, "status": "completed"}
+    validate_written(draft("They loved this previously unknown nearby place.", note), source)
+
+
+def test_evidence_allows_grounded_paraphrase_and_sentence_initial_pronouns():
+    source = {
+        "note": "I found some guys working out. Some ladies were doing yoga.",
+        "status": "completed",
+    }
+    validate_written(
+        draft("They discovered people working out. They saw ladies doing yoga.", source["note"]),
+        source,
+    )
+
+
+def test_invalid_interest_does_not_discard_a_valid_written_journal():
+    class Response:
+        def generate(self, *args):
+            return WrittenJournal(
+                passages=[
+                    {
+                        "text": "They noticed people working out.",
+                        "quote": "I saw people working out.",
+                    }
+                ],
+                interests=[{"theme": "workouts", "quote": "I saw people working out."}],
+            ), {}
+
+    result = generate_journal(
+        {"note": "I saw people working out.", "status": "completed"},
+        Response(),
+        time.monotonic() + 1,
+    )
+    assert result["mode"] == "local AI journal"
+    assert result["text"] == "They noticed people working out."
+    assert result["interests"] == []
+    assert result["metrics"]["interest_validation"]["rejected"] == 1
