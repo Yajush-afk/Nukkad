@@ -91,3 +91,22 @@ An isolated Gemma 4 E2B run on the supplied visit text reproduced a two-attempt 
 fallback in 10.22 seconds, including cold model loading. Controlled regressions cover
 positive discovery, supported paraphrases, independent interest validation, and editorial
 placeholders. These are software checks; outdoor and phone trials remain pending.
+
+### Automatic place memories
+
+An isolated browser save of a synthetic place, the supplied note and a generated
+circle image saved the note/photo before starting a preparation job. The first
+model attempt produced a valid card but an extractive journal fallback; the UI
+reported that distinction and retained its retry action. After the corrected
+journal contract, a browser retry produced both a local-AI journal and a card
+without changing the experience ID or uploading its photo again. The one-photo
+case makes no cover-selection inference call.
+
+The final writing prompt was also checked directly against installed Gemma 4 E2B
+with the supplied text: it produced validated third-person prose in 1.41 seconds
+warm, including one corrective retry. The draft remains brief and factual; passing
+validation does not establish literary quality, which remains subject to user
+review. Tests cover pending retry coalescing, outdated revisions, failed vision
+preserving a useful journal, unchanged-source fallback protection, historical-map
+editing, and delayed feedback. Mobile folder/experience checks at 390 × 844 had no
+horizontal overflow. All writes used isolated data; physical trials remain pending.

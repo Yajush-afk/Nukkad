@@ -266,3 +266,38 @@ def test_saved_direct_visit_remains_editable_when_the_current_map_changes(regist
         assert changed.status_code == 200, changed.text
         assert changed.json()["original_note"] == visit["note"]
         assert changed.json()["snapshot_id"] == visit["snapshot_id"]
+
+
+def test_pending_preparation_requests_share_one_local_job(registry, monkeypatch):
+    import threading
+
+    from nukkad.journals import JournalNarrative
+
+    entered, release = threading.Event(), threading.Event()
+    source = registry[2]["places"][0]["id"]
+    key = "7" * 32
+
+    def response(*args, **kwargs):
+        entered.set()
+        assert release.wait(3)
+        return JournalNarrative(text="They enjoyed tree shapes."), {}
+
+    monkeypatch.setattr("nukkad.ollama.Ollama.generate", response)
+    with TestClient(create_app(registry[0].config), base_url="http://127.0.0.1") as client:
+        client.headers["X-Nukkad-Token"] = client.get("/api/session").json()["token"]
+        visit = client.put(
+            f"/api/places/{source}/experiences/{key}", json={"note": "I enjoyed tree shapes."}
+        ).json()
+        payload = {"source_revision": visit["revision"]}
+        first = client.post(f"/api/experiences/{key}/prepare", json=payload).json()
+        assert entered.wait(2)
+        try:
+            for retry in (False, True):
+                second = client.post(
+                    f"/api/experiences/{key}/prepare", json={**payload, "retry": retry}
+                )
+                assert second.status_code == 202 and second.json()["id"] == first["id"]
+        finally:
+            release.set()
+        assert wait(client, first)["status"] == "complete"
+        assert len(registry[1].list("job")) == 1
