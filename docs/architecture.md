@@ -151,3 +151,14 @@ ordinary logs. Automatic preparation writes the journal before vision processing
 a card-stage failure may publish a valid journal while retaining the prior card.
 Fallbacks preserve an earlier useful journal when its original source is unchanged.
 Source, journal, alias and card-pointer guards still reject stale publication.
+
+### Dashboard activity
+
+`GET /api/activity` assembles planned walks and active direct place visits from a
+single local SQLite read. It resolves source aliases and counts active photos,
+without opening graphs, running inference or creating records. Walk-linked place
+experiences remain inside their walk entry rather than appearing twice. Stable
+visit IDs preserve one entry across edits; recorded visit dates determine ordering.
+Direct visits link to their canonical place folder and never acquire fabricated
+route geometry, walking time or distance. `/api/quests` and existing bookmarks keep
+their original meaning.

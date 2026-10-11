@@ -167,3 +167,12 @@ same unchanged note. Earlier card and journal versions remain available.
 
 After restarting the server, reload an open tab before mutations: the local session
 token changes per process. Notes and photos remain saved if generation fails.
+
+### Place visits and planned walks
+
+Dashboard's **Your activity** includes both reported place visits and planned walks.
+Saving an experience from a map selection is a place visit, even when no route was
+planned. Its entry opens the same place memory as its collection folder. Planned
+walk entries retain route review and outcome editing. Place counts, card counts,
+visit counts and planned-walk counts describe different things; repeat visits or
+card regeneration do not inflate the distinct-place/card counts.
