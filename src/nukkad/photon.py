@@ -168,10 +168,16 @@ class Photon:
             raise ValueError("Malformed Photon response")
         matches = []
         for feature in data["features"][:5]:
-            if not isinstance(feature, dict) or feature.get("geometry", {}).get("type") != "Point":
+            if (
+                not isinstance(feature, dict)
+                or not isinstance(feature.get("geometry"), dict)
+                or feature["geometry"].get("type") != "Point"
+            ):
                 raise ValueError("Malformed Photon feature")
             lon, lat = feature["geometry"]["coordinates"]
             properties = feature["properties"]
+            if not isinstance(properties, dict):
+                raise ValueError("Malformed Photon properties")
             name = properties.get("name") or properties.get("street") or properties.get("city")
             if not isinstance(name, str) or not name.strip():
                 raise ValueError("Photon result has no readable name")

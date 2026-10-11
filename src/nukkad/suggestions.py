@@ -130,7 +130,7 @@ def local_matches(store, cache, value):
     revision = store.revision_key(
         ("area", "snapshot", "place", "place_alias", "location_search", "location_suggestion")
     )
-    items = cache.get("suggestions", revision, lambda: build_index(store))
+    items = cache.get("suggestions", (revision, int(time.time() // 60)), lambda: build_index(store))
     words = value.query.casefold().split()
     active = store.get("area", "active")
     result, seen = [], set()

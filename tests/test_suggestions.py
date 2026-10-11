@@ -1,6 +1,7 @@
 import time
 
 from fastapi.testclient import TestClient
+from httpx import Client as RealClient
 
 from nukkad.app import create_app
 from nukkad.cache import RevisionCache
@@ -77,7 +78,7 @@ def photon_fixture(store, monkeypatch, payload=None, status=200):
 
     from nukkad.photon import Photon
 
-    real = httpx.Client
+    real = RealClient
     calls = []
 
     def respond(request):
@@ -149,3 +150,48 @@ def test_photon_starts_are_spaced_without_nominatim(registry, monkeypatch):
     service.search(store, SuggestInput(query="Second"))
     assert clock[0] >= 11 and len(calls) == 2
     assert all("photon" in str(call.url) for call in calls)
+
+
+def test_photon_keeps_only_newest_pending_query(registry, monkeypatch):
+    import threading
+
+    import httpx
+
+    from nukkad.photon import Photon
+
+    _, store, _, _, _ = registry
+    entered, release = threading.Event(), threading.Event()
+    calls = []
+
+    def handler(request):
+        calls.append(request.url.params["q"])
+        if len(calls) == 1:
+            entered.set()
+            assert release.wait(3)
+        return httpx.Response(200, json={"features": []})
+
+    monkeypatch.setattr(
+        httpx, "Client", lambda **kw: RealClient(transport=httpx.MockTransport(handler), **kw)
+    )
+    service = Photon()
+    results = {}
+
+    def work(query):
+        results[query] = service.search(store, SuggestInput(query=query))[1]["status"]
+
+    first = threading.Thread(target=work, args=("First",))
+    first.start()
+    assert entered.wait(2)
+    second = threading.Thread(target=work, args=("Second",))
+    second.start()
+    deadline = time.monotonic() + 2
+    while service.pending is None and time.monotonic() < deadline:
+        time.sleep(0.01)
+    third = threading.Thread(target=work, args=("Third",))
+    third.start()
+    second.join(2)
+    release.set()
+    first.join(2)
+    third.join(3)
+    assert results["Second"] == "superseded"
+    assert calls == ["First", "Third"]
