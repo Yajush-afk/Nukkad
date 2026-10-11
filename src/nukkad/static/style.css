@@ -940,9 +940,26 @@ pre {
 @media (max-width:600px) { .folder-grid { grid-template-columns:minmax(0,330px); } }
 @media (prefers-reduced-motion:reduce) { .place-folder-tile:is(:hover,:focus-visible) { transform:none; transition:none; } }
 .walk-history-heading { margin-top: 48px; padding-top: 32px; border-top: 1px solid #dce4d7; }
-.location-card-area { border-bottom: 1px solid #dce4d7; padding-bottom: 32px; }
+.location-card-area {
+  width: min(100%, 440px);
+  margin: 0 auto;
+  border-bottom: 1px solid #dce4d7;
+  padding-bottom: 24px;
+}
+.location-card-area > .eyebrow {
+  font-family: inherit;
+  font-size: .75rem;
+  line-height: 1.5;
+  letter-spacing: .12em;
+  margin: 0 0 16px;
+}
 .location-card-preview { display: block; width: min(100%, 440px); margin: 24px auto; border-radius: 18px; box-shadow: 0 16px 38px #243a311a; }
-.card-generation { margin: 32px 0 48px; }
+.location-card-area .location-card-preview {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 5;
+  margin: 0 0 20px;
+}
 .card-generation label { max-width: 480px; }
 .card-editor { display: grid; gap: 20px; }
 .card-editor input[type="range"] { padding: 0; min-height: 36px; accent-color: #537560; }
@@ -1023,7 +1040,7 @@ pre {
 }
 .panel-heading.folder-heading .eyebrow { margin: 0; }
 .folder-heading .lede { font-size: .85rem; margin: 0 auto; }
-.card-generation { margin:20px 0 28px; padding:16px 20px; border:1px solid #dce5da; border-radius:16px; background:#f8faf5; }
+.card-generation { width:min(100%,440px); margin:20px auto 28px; padding:16px 20px; border:1px solid #dce5da; border-radius:16px; background:#f8faf5; }
 .card-generation > summary { font-weight:600; }
 @media (max-width: 600px) {
   .panel-heading.folder-heading { padding: 16px 18px 20px; }
