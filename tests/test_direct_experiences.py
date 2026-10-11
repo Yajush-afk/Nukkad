@@ -2,6 +2,7 @@ import io
 
 from fastapi.testclient import TestClient
 from PIL import Image
+from test_location_cards import wait
 
 from nukkad.app import create_app
 from nukkad.backups import backup, restore
@@ -24,6 +25,15 @@ def test_map_visit_is_idempotent_personal_memory_without_a_quest(registry, tmp_p
         assert client.put(endpoint, json=value).json()["revision"] == experience["revision"]
         assert not store.list("quest") and not store.list("outcome")
         assert len(store.list("experience")) == 1
+        from nukkad.context import outing_context
+        from nukkad.planning import QuestInput
+        from nukkad.places import Place
+
+        context = outing_context(
+            store, QuestInput(minutes=30), [], [Place.model_validate(snapshot["places"][0])]
+        )
+        assert context["reported_visits"] == [source]
+        assert context["notes"][0]["text"] == value["note"]
         assert client.get("/api/collection").json()["folders"][0]["visits"] == 1
         assert next(p for p in client.get("/api/area").json()["places"] if p["id"] == source)[
             "visited"
@@ -44,6 +54,13 @@ def test_map_visit_is_idempotent_personal_memory_without_a_quest(registry, tmp_p
             ).status_code
             == 201
         )
+        generated = client.post(
+            f"/api/collection/{source}/generate", json={"experience_id": key, "mode": "manual"}
+        )
+        assert wait(client, generated.json())["status"] == "complete"
+        card = client.get(f"/api/collection/{source}").json()["current_card"]
+        assert client.get(f"/api/location-cards/{card['id']}/export.png").status_code == 200
+        assert client.get("/api/collection").json()["card_count"] == 1
         assert (
             client.put("/api/places/missing/experiences/" + "b" * 32, json=value).status_code == 404
         )
@@ -59,6 +76,7 @@ def test_map_visit_is_idempotent_personal_memory_without_a_quest(registry, tmp_p
     restore(archive, restored)
     assert Store(restored).get("experience", key)["note"] == "A changed note"
     assert len(Store(restored).list("photo")) == 1
+    assert len(Store(restored).list("location_card_version")) == 1
     assert Store(restored).get("snapshot", snapshot["id"]) == snapshot
 
 
