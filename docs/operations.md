@@ -8,7 +8,7 @@ From the same environment and data directory used by the server:
 uv run nukkad backup
 ```
 
-For a custom directory, prefix the command with `NUKKAD_DATA_DIR=./user-data`. The command prints the ZIP path under the data directory's `backups` folder. It uses SQLite's consistent backup API and includes the referenced raw extracts and walking graphs. Notes, outcomes, preferences, corrections and snapshot geometry live in the database. PNG exports can be regenerated; model weights, fonts and Python dependencies are not included.
+For a custom directory, prefix the command with `NUKKAD_DATA_DIR=./user-data`. The command prints the ZIP path under the data directory's `backups` folder. It uses SQLite's consistent backup API and includes the referenced raw extracts and walking graphs. Notes, outcomes, preferences, corrections and snapshot geometry live in the database. Backups include private photo originals, necessary derived variants and all stored Location Card versions with a versioned hash manifest. Outdoor quest PNG exports can be regenerated; model weights, fonts and Python dependencies are not included.
 
 The archive contains personal notes and coordinates and is **not encrypted**. Keep it private; never attach it to an issue or commit it. Unix data directories are created with mode 700 and database/backup files with mode 600. This does not protect against another process running as your OS user, privileged software or physical disk access.
 
@@ -21,7 +21,7 @@ uv run nukkad restore --archive /path/to/nukkad-backup.zip --destination ./resto
 NUKKAD_DATA_DIR=./restored-data uv run nukkad serve
 ```
 
-Restore rejects an existing destination, unexpected ZIP members, path traversal, unsupported database versions and missing/damaged graph fingerprints. The uncompressed archive limit is 256 MiB; larger histories need an explicit future migration/export strategy. Restore validates the saved database and graph, not the current real-world access or freshness of a forecast. Downloaded Ollama weights remain a separate setup requirement. Confirm history/settings and generate a current quest before adopting the restored directory.
+Restore rejects an existing destination, unexpected ZIP members, path traversal, unsupported database versions and missing/damaged graph fingerprints. The default uncompressed archive limit is 4 GiB. Preflight checks run before backup creation. Use the same explicit `--max-archive-mib` increase on backup and restore for larger collections. Restore validates the saved database and graph, not the current real-world access or freshness of a forecast. Downloaded Ollama weights remain a separate setup requirement. Confirm history/settings and generate a current quest before adopting the restored directory.
 
 ## Update
 
@@ -63,3 +63,9 @@ Readiness never downloads maps or runs inference. Failed AI stages record their
 attempt count, timing, category and fallback, without copying prompts or source notes
 into ordinary metrics. Successful attempts also record the model digest, Ollama version
 and generation options. Detailed comparison artifacts remain private local files.
+
+## Place photos and recovery
+
+Report a reached stop and save its optional experience note before uploading photos. Each visit accepts five active JPEG/PNG/WebP images, at most 20 MiB and 40 megapixels each. Decoding decides format; filenames and MIME labels are not trusted. Animated images are rejected. Originals stay private under generated file IDs; display/thumbnail/inference JPEGs have orientation applied and no EXIF/GPS metadata. The browser serves derived images only. Removing an image hides it from active collections while retaining private originals for revision history and backups.
+
+`GET /api/media/recovery` lists missing live files, interrupted staged entries and unreferenced files. Nothing is deleted automatically. Uploads stage variants before atomic record publication; a source conflict removes only that new upload. Partial multi-file uploads retain successful images and previously saved notes. Old backups without a media manifest remain restorable. New media backups reject missing or damaged files, unsafe members, hash mismatches and inconsistent source references before publishing a restored directory.

@@ -90,3 +90,9 @@ points are never inferred entrances. Structurally identical relation/member dest
 share aliases; nearby matching names require an explicit merge or keep-separate review.
 Canonical identities resolve reported visits across refreshes while historical source IDs,
 corrections and frozen denominators remain stored unchanged.
+
+## Place experiences and private media
+
+Additive `experience` records anchor one accepted-quest stop to persistent place identity, retain note/status revisions and report dates, and avoid duplicate visits on repeated saves. Collection grouping resolves reviewed aliases dynamically across snapshots. `photo` documents store generated IDs, original/derived file fingerprints and active membership outside SQLite. A photo update changes the experience revision and stales dependent cards; note changes also invalidate its journal. The local mutation token and same-origin boundary cover uploads/removal.
+
+Version-2 backup manifests enumerate the frozen database, immutable map snapshots and every referenced media file. Restore validates manifest, files, database integrity and relationships before renaming a new staging directory. Existing schema-1 document kinds remain additive; no database rebuild or destructive migration is needed.
