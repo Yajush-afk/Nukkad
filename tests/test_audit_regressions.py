@@ -10,6 +10,28 @@ from nukkad.planning import Planner, QuestInput, Settings
 from nukkad.quests import accept
 
 
+def test_route_preview_uses_only_explicit_and_accepted_interests(registry, monkeypatch):
+    import nukkad.planning_api as api
+
+    maps, store = registry[:2]
+    store.put("profile", "active", {"interests": ["nature"]})
+    for status in ("accepted", "pending", "rejected", "removed", "invalidated"):
+        store.put("interest", status, {"theme": status, "status": status})
+    captured = []
+    monkeypatch.setattr(
+        Planner, "candidates", lambda self, request, interests: captured.extend(interests) or []
+    )
+    monkeypatch.setattr(Planner, "build", lambda *args: {})
+    monkeypatch.setattr(api, "baseline", lambda candidates, interests: [])
+    before = store.list("quest")
+    with TestClient(create_app(maps.config), base_url="http://127.0.0.1") as client:
+        client.headers["X-Nukkad-Token"] = client.get("/api/session").json()["token"]
+        response = client.post("/api/quests/route-preview", json={"minutes": 30})
+        assert response.status_code == 200, response.text
+    assert captured == ["nature", "accepted"]
+    assert store.list("quest") == before
+
+
 def test_browser_multipart_contract_imports_a_saved_extract(registry):
     maps, _, _, area, source = registry
     with TestClient(create_app(maps.config), base_url="http://127.0.0.1") as client:

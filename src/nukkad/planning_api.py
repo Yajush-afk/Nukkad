@@ -2,6 +2,7 @@ from fastapi import APIRouter, Request
 from pydantic import Field
 
 from nukkad.areas_api import maps
+from nukkad.context import active_interests
 from nukkad.domain import Record
 from nukkad.planning import Planner, QuestInput, Settings, baseline
 
@@ -50,7 +51,7 @@ def route_preview(value: QuestInput, request: Request):
 
     enforce(request.app.state.store, maps(request).snapshot(), settings(request))
     planner = Planner(maps(request), settings(request))
-    interests = get_profile(request)["interests"]
+    interests = active_interests(request.app.state.store)
     candidates = planner.candidates(value, interests)
     quest = planner.build(candidates, baseline(candidates, interests), value)
     return {**quest, "ranking_mode": "deterministic", "prose_mode": "none"}
