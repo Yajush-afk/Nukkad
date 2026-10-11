@@ -221,3 +221,15 @@ def test_dashboard_naming_preserves_bookmarked_history_and_folder_routes():
     assert '<button data-panel="history">Dashboard</button>' in html
     navigation = (static / "navigation.js").read_text()
     assert 'history: "history"' in navigation and 'folder: "place-folder"' in navigation
+
+
+def test_progress_box_uses_the_viewport_notification_rail():
+    static = Path(__file__).parents[1] / "src" / "nukkad" / "static"
+    theme = (static / "experience.css").read_text()
+    job = re.search(r"#job\s*\{([^}]+)\}", theme).group(1)
+    assert "transform:" not in job
+    assert "left:" not in job
+    rule = re.search(
+        r"\.notification-rail #job\s*\{([^}]+)\}", (static / "style.css").read_text()
+    ).group(1)
+    assert "transform: none" in rule and "position: static" in rule
