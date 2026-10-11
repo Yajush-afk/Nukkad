@@ -110,19 +110,19 @@ body {
   gap: 14px;
   padding: 7px 23px;
   border-radius: 999px;
-  background: #202522ed;
-  color: #fff;
-  border: 1px solid #ffffff38;
+  background: linear-gradient(110deg, #dcebf4f5, #edf3e6f5 48%, #f7ebd3f5);
+  color: var(--ink);
+  border: 1px solid #ffffffb3;
   box-shadow:
-    0 12px 36px #13292324,
-    inset 0 1px 0 #ffffff14;
+    0 12px 36px #284b6224,
+    inset 0 1px 0 #ffffffb3;
   -webkit-backdrop-filter: blur(14px) saturate(145%);
   backdrop-filter: blur(14px) saturate(145%);
 }
 .glass-nav button {
   position: relative;
   padding: 9px 6px 12px;
-  color: #bcc7c1;
+  color: #425b57;
   background: transparent;
   border-radius: 0;
   font-size: 11px;
@@ -132,9 +132,10 @@ body {
   white-space: nowrap;
 }
 .glass-nav button:hover,
+.glass-nav button:focus-visible,
 .glass-nav button[aria-current="page"] {
   background: transparent;
-  color: white;
+  color: #183f33;
 }
 .glass-nav button::after {
   content: "";
@@ -143,7 +144,7 @@ body {
   left: 5px;
   right: 5px;
   height: 7px;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 10' preserveAspectRatio='none'%3E%3Cpath d='M2 5 Q25 0 50 5 T98 5' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E")
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 10' preserveAspectRatio='none'%3E%3Cpath d='M2 5 Q25 0 50 5 T98 5' fill='none' stroke='%23264b3b' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E")
     center / 100% 100% no-repeat;
   clip-path: inset(0 100% 0 0);
   opacity: 0;
