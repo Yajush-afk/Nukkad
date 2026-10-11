@@ -13,6 +13,9 @@ let navigation,
   sessionToken,
   questMap,
   questLayers,
+  routeZoomControls,
+  routeFit = null,
+  routeFitId = null,
   selectedPointLayer,
   hasSelectedLocation = false,
   locationRevision = 0;
@@ -186,10 +189,18 @@ async function loadArea(current = () => true) {
   selectedPointLayer.clearLayers();
   $("place-detail").replaceChildren();
   const saved = !!area.area;
+  const controls = $("change-neighbourhood"), mapSection = document.querySelector("#setup .map-section");
+  if(saved) mapSection.after($("neighbourhood-next"),controls);
+  else controls.after(mapSection);
+  controls.open = !saved || !area.area.public_start_confirmed;
+  controls.querySelector("summary").textContent = saved ? "Change neighbourhood or start" : "Choose your neighbourhood";
+  setTimeout(()=>{if(current())map.invalidateSize();},30);
   for (const id of ["map-empty"]) $(id).hidden = saved;
-  for (const id of ["map-help", "map-details", "choose-start", "reuse-map"])
+  for (const id of ["map-help", "choose-start", "reuse-map"])
     $(id).hidden = !saved;
   $("plan-walk").hidden = !area.area?.public_start_confirmed;
+  $("my-start").disabled = !saved;
+  $("add-place").disabled = !saved;
   $("area-status").textContent = !saved
     ? "Not set up"
     : area.area.public_start_confirmed
@@ -386,6 +397,7 @@ function selectMapPoint(point) {
     $("location-query").value=area.area.name;$("reuse-map").hidden=false;
     $("location-results").hidden=true;$("location-status").hidden=true;
     $("selected-location").textContent="Point chosen on your saved map. Confirm public access, then save this start.";
+    $("change-neighbourhood").open=true;
     form.scrollIntoView({block:"nearest"});form.elements.public_start_confirmed.focus({preventScroll:true});
   };
   const add=node("button","Add a place here");add.type="button";add.onclick=()=>beginPlaceEditor(point);
@@ -395,7 +407,8 @@ function renderQuest(value, navigate = true) {
   if (navigate && !navigation.isCurrent("preview", value.id))
     return navigation.go("preview", value.id, { quest: value });
   quest = value;
-  renderRouteMap(value).catch(report);
+  const mapCurrent = navigation.checkpoint();
+  renderRouteMap(value, mapCurrent).catch(error=>{if(mapCurrent())report(error);});
   const accepted = value.status === "accepted";
   $("preview-stage").textContent = accepted
     ? "03 / SAVE IT & HEAD OUT"
@@ -717,18 +730,7 @@ $("location-form").onsubmit = async (event) => {
     $("location-status").textContent = result.matches.length
       ? "Choose the location you meant:"
       : "No match found. Try the locality or a nearby landmark with the city, for example ‘Ahinsa Khand 1, Indirapuram, Ghaziabad’.";
-    for (const match of result.matches) {
-      const item = node("li");
-      const button = node("button", undefined, "location-result");
-      button.type = "button";
-      button.append(node("strong", match.name), node("span", match.label));
-      button.onclick = () => {
-        neighbourhoodSuggestions.choose(match);
-      };
-      button.setAttribute("aria-pressed", "false");
-      item.append(button);
-      target.append(item);
-    }
+    neighbourhoodSuggestions.show(result.matches.map((match,index)=>({...match,id:`explicit-${index}`,group:"Search results"})));
     target.hidden = !result.matches.length;
   } catch (error) {
     if (revision === locationRevision && current()) {
@@ -901,10 +903,11 @@ async function init() {
 }
 function createMap() {
   if (map) return;
-  map = L.map("map", { attributionControl: false }).setView(
+  map = L.map("map", { attributionControl: false, zoomControl: false, scrollWheelZoom: false, touchZoom: true, minZoom:12, maxZoom:19 }).setView(
     [28.6394, 77.3606],
     15,
   );
+  NukkadMapControls.create({map,target:$("map-zoom"),node,baseline:15});
   geometryLayer = L.geoJSON(null, {
     style: (feature) => ({
       color: "#c3cdbd",
@@ -1359,18 +1362,22 @@ function renderAir(value) {
   );
 }
 
-async function renderRouteMap(value) {
+$("my-start").onclick = () => {
+  if(area?.area) map.setView([area.area.start.lat,area.area.start.lon],15,{animate:false});
+};
+async function renderRouteMap(value, current = navigation.checkpoint()) {
   const saved = await api(`/snapshots/${value.snapshot_id}/map`);
-  if (quest?.id !== value.id) return;
+  if (!current() || quest?.id !== value.id) return;
   if (!questMap) {
-    questMap = L.map("quest-map", { attributionControl: false }).setView(
+    questMap = L.map("quest-map", { attributionControl: false, zoomControl: false, scrollWheelZoom: false, touchZoom:true, minZoom:10, maxZoom:19 }).setView(
       [value.start.lat, value.start.lon],
       16,
     );
+    routeZoomControls = NukkadMapControls.create({map:questMap,target:$("route-zoom"),node,reset:()=>routeFit?.()});
     questLayers = L.featureGroup().addTo(questMap);
     L.control
       .attribution({ prefix: false })
-      .addAttribution("Map data © OpenStreetMap contributors")
+      .addAttribution('Map data © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>')
       .addTo(questMap);
   }
   questLayers.clearLayers();
@@ -1415,12 +1422,16 @@ async function renderRouteMap(value) {
   })
     .addTo(questLayers)
     .bindTooltip("Start + return");
-  setTimeout(() => {
+  routeFitId=value.id;
+  routeFit=()=>{
+    if(!current()||quest?.id!==value.id||routeFitId!==value.id)return;
     questMap.invalidateSize();
-    questMap.fitBounds(L.featureGroup(routes).getBounds(), {
-      padding: [35, 35],
-    });
-  }, 40);
+    const bounds=L.featureGroup(routes).getBounds();
+    if(bounds.isValid())questMap.fitBounds(bounds,{padding:[35,35],animate:false});
+    else questMap.setView([value.start.lat,value.start.lon],15);
+    routeZoomControls.setBaseline(questMap.getZoom());
+  };
+  setTimeout(()=>{if(current()&&quest?.id===value.id)routeFit();},40);
 }
 
 // Resolve routes from persistent records; navigation itself never performs writes.
@@ -1522,6 +1533,7 @@ navigation = NukkadNavigation.createNavigation({
     if (route.view === "folder")
       await collectionUI.renderFolder(route.folder, current);
     if (route.view === "settings") {
+      void loadMapInformation(current);
       $("readiness").textContent = "Checking local components…";
       void refreshReadiness(current).catch((error) => {
         if (current()) $("readiness").textContent = error.message;
@@ -1634,3 +1646,16 @@ $("copy-email").onclick = async () => {
   await NukkadNotifications.copyEmail({ clipboard: navigator.clipboard, tooltip: $("email-tooltip"), notify: message });
   $("copy-email").disabled = false;
 };
+
+$("change-neighbourhood").addEventListener("toggle",()=>map?.invalidateSize());
+
+async function loadMapInformation(current) {
+  try {
+    const [summary,snapshots]=await Promise.all([api("/area/status"),api("/snapshots")]);
+    if(!current())return;
+    const saved=snapshots.find(item=>item.id===summary.snapshot_id);
+    $("snapshot-info").textContent=saved
+      ? `${saved.area.name} · saved ${new Date(saved.acquired_at).toLocaleDateString()} · ${saved.source} · ${saved.mapped_total} eligible mapped places when saved. Earlier snapshot counts stay unchanged.`
+      : "No neighbourhood map saved yet.";
+  } catch(error){if(current())$("snapshot-info").textContent=`Map information unavailable: ${error.message}`;}
+}

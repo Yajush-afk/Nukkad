@@ -982,3 +982,15 @@ pre {
 .context-editor { margin-top: 16px; padding: 20px; border: 1px solid #d4dfce; background: #f8faf5; border-radius: 20px; }
 .context-editor h3 { margin: 0 0 14px; }
 .context-editor .location-results { margin: 0; }
+
+.map-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-top: 12px; }
+.map-zoom { display: inline-flex; gap: 0; border: 1px solid #cddccd; border-radius: 12px; overflow: hidden; background: #f8faf5; }
+.map-zoom button { min-width: 44px; min-height: 44px; border: 0; border-radius: 0; background: transparent; margin: 0; }
+.map-zoom button:nth-child(2) { min-width: 76px; border-inline: 1px solid #dce5d7; font-variant-numeric: tabular-nums; font-size: .85rem; }
+.map-zoom button:focus-visible { outline-offset: -4px; }
+
+.map-credits { color: #607465; font-size: .78rem; text-align: center; margin-top: 24px; }
+.map-credits a { color: inherit; text-underline-offset: 3px; }
+#change-neighbourhood { margin: 22px 0; }
+#setup-controls { padding: 18px 0 4px; }
+.leaflet-control-attribution { font-size: 10px !important; background: #fffdf0e6 !important; max-width: 100%; }

@@ -13,6 +13,7 @@
     <script defer src="/static/notifications.js"></script>
     <script defer src="/static/suggestions.js"></script>
     <script defer src="/static/place-editor.js"></script>
+    <script defer src="/static/map-controls.js"></script>
     <script defer src="/static/app.js"></script>
     <script defer src="/static/experience.js"></script>
   </head>
@@ -311,6 +312,9 @@
             surrounding map.
           </p>
         </div>
+        <details id="change-neighbourhood" class="disclosure" open>
+          <summary>Change neighbourhood or start</summary>
+          <div id="setup-controls">
         <form id="location-form" class="form-stack">
           <label for="location-query">Where do you want to explore?</label>
           <div class="location-search-row">
@@ -435,6 +439,8 @@
             offline. A new download keeps your previous maps and walks.
           </p>
         </form>
+          </div>
+        </details>
         <div class="map-section">
           <div class="map-heading">
             <div>
@@ -455,6 +461,7 @@
               <a href="#location-query">Search for your neighbourhood above</a>
             </div>
           </div>
+          <div class="map-controls"><div id="map-zoom"></div><button type="button" id="my-start" disabled>My start</button></div>
           <div class="map-footer">
             <span id="progress"
               >Your visits will appear here after your first walk.</span
@@ -485,20 +492,12 @@
               <label class="check wide"><input type="checkbox" name="confirmed" required />I’ve checked that this entrance is on a public walking path.</label>
               <div class="buttonrow wide"><button class="primary" id="save-place">Save place</button><button type="button" id="cancel-place">Cancel</button></div>
             </form>
-          </section>
-          <div id="duplicate-review" aria-live="polite"></div>
-          <details class="quiet-details" id="map-details" hidden>
-            <summary>About this map</summary>
-            <p id="snapshot-info" class="hint"></p>
-            <p class="hint">
-              Visits come from your reports, not GPS tracking. A mapped place
-              may be closed or inaccessible. Streets show saved map data, not
-              the paths you have walked.
-            </p>
-          </details>
-        </div>
-        <div class="form-actions neighbourhood-next">
+            <div class="form-actions neighbourhood-next" id="neighbourhood-next">
           <button class="primary" id="plan-walk" hidden>Plan a walk</button>
+        </div>
+      </section>
+          <div id="duplicate-review" aria-live="polite"></div>
+
         </div>
       </section>
       <section
@@ -593,6 +592,7 @@
           id="quest-map"
           aria-label="Numbered walking route on its saved map"
         ></div>
+        <div class="map-controls"><div id="route-zoom"></div></div>
         <div id="quest-content"></div>
         <div class="form-actions">
           <button class="primary" id="accept">Use this walk</button
@@ -804,6 +804,15 @@
             <button class="primary">Save settings</button>
           </div>
         </form>
+          <details class="quiet-details" id="map-details">
+            <summary>Map information</summary>
+            <p id="snapshot-info" class="hint"></p>
+            <p class="hint">
+              Visits come from your reports, not GPS tracking. A mapped place
+              may be closed or inaccessible. Streets show saved map data, not
+              the paths you have walked.
+            </p>
+          </details>
       </section>
       <section
         id="outcome"
@@ -909,6 +918,7 @@
           >
         </div>
       </div>
+      <p class="map-credits">Special thanks: <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · <a href="https://github.com/openstreetmap" target="_blank" rel="noopener noreferrer">GitHub</a></p>
     </footer>
   </body>
 </html>

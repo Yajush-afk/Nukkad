@@ -126,11 +126,11 @@ def test_home_uses_a_static_fictional_map_and_one_entry_button():
     static = Path(__file__).parents[1] / "src" / "nukkad" / "static"
     html = (static / "index.html").read_text()
     home = html.split('<section id="home"', 1)[1].split('<section id="setup"', 1)[0]
-    setup = html.split('<section id="setup"', 1)[1].split('<section id="quest-form-panel"', 1)[0]
+    setup = html.split('<section id="setup"', 1)[1].split('id="quest-form-panel"', 1)[0]
     assert "imagined-neighbourhood.svg" in home
     assert "An imagined neighbourhood — illustration only." in home
     assert 'id="map"' not in home
-    assert 'id="map"' in setup and 'id="map-details"' in setup
+    assert 'id="map"' in setup and 'id="map-details"' not in setup
     assert "Get started" in home and 'id="edit-area"' not in html
     assert 'id="plan-walk"' in setup
     svg = (static / "illustrations" / "imagined-neighbourhood.svg").read_text()
@@ -189,7 +189,7 @@ def test_home_explains_actual_local_model_responsibilities():
 def test_places_are_edited_beside_map_without_coordinate_controls():
     static = Path(__file__).parents[1] / "src" / "nukkad" / "static"
     html = (static / "index.html").read_text()
-    setup = html.split('<section id="setup"', 1)[1].split('<section id="quest-form-panel"', 1)[0]
+    setup = html.split('<section id="setup"', 1)[1].split('id="quest-form-panel"', 1)[0]
     assert (
         setup.index('id="place-detail"')
         < setup.index('id="pin-form"')
@@ -200,3 +200,14 @@ def test_places_are_edited_beside_map_without_coordinate_controls():
     assert "New entrance latitude" not in script and "New entrance longitude" not in script
     assert "Map source & access details" not in script
     assert "Report this place" in script
+
+
+def test_map_controls_setup_disclosure_and_credits():
+    static = Path(__file__).parents[1] / "src" / "nukkad" / "static"
+    html = (static / "index.html").read_text()
+    assert 'id="my-start"' in html and 'id="map-zoom"' in html and 'id="route-zoom"' in html
+    assert "About this map" not in html
+    settings = html.split('id="settings"', 1)[1].split('id="outcome"', 1)[0]
+    assert "Map information" in settings and 'id="snapshot-info"' in settings
+    assert 'href="https://github.com/openstreetmap"' in html
+    assert "Special thanks:" in html

@@ -179,7 +179,16 @@
     input.addEventListener("blur", () => {
       setTimer(close, 150);
     });
-    return { cancel, changed, choose };
+    return {
+      cancel,
+      changed,
+      choose,
+      show(items) {
+        cancel();
+        local = [];
+        paint(items);
+      },
+    };
   }
   root.NukkadSuggestions = { create };
   if (typeof module !== "undefined") module.exports = root.NukkadSuggestions;

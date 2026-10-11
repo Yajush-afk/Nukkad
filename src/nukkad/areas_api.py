@@ -146,6 +146,7 @@ def snapshots(request: Request):
             "id": value["id"],
             "area": value["area"],
             "acquired_at": value["acquired_at"],
+            "source": value.get("source", "Saved OpenStreetMap extract"),
             "mapped_total": len(value["eligible_mapped_ids"]),
         }
         for value in request.app.state.store.list("snapshot")
