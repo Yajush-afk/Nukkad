@@ -145,6 +145,7 @@
         const checkpointCurrent = checkpoint();
         try {
           await generate(() => current() && checkpointCurrent(), true);
+          if (current() && checkpointCurrent()) await onComplete();
         } finally {
           draft.busy = false;
           update();
