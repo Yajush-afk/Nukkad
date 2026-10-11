@@ -72,7 +72,7 @@ def test_core_api_loop_from_fresh_app_under_egress_denial(registry, monkeypatch)
 
     import nukkad.quests as quests
     from nukkad.domain import Observations, Ranking
-    from nukkad.memory import Reflection
+    from nukkad.journals import WrittenJournal
     from nukkad.quests import TEMPLATES
 
     original = Planner
@@ -97,8 +97,8 @@ def test_core_api_loop_from_fresh_app_under_egress_denial(registry, monkeypatch)
                     {"id": key, "activity": "detail", "text": TEMPLATES["detail"]} for key in ids
                 ]
             ), {}
-        return Reflection(
-            excerpt="I enjoyed tree shapes.",
+        return WrittenJournal(
+            passages=[{"text": "They enjoyed tree shapes.", "quote": "I enjoyed tree shapes."}],
             interests=[{"theme": "trees", "quote": "I enjoyed tree shapes."}],
         ), {}
 
