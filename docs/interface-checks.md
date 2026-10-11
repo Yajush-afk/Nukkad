@@ -110,3 +110,15 @@ review. Tests cover pending retry coalescing, outdated revisions, failed vision
 preserving a useful journal, unchanged-source fallback protection, historical-map
 editing, and delayed feedback. Mobile folder/experience checks at 390 × 844 had no
 horizontal overflow. All writes used isolated data; physical trials remain pending.
+
+### Dashboard activity
+
+Read-only endpoint tests cover direct-only activity, mixed walks/visits, active
+photo counts, alias resolution, repeated reads, editing without duplicate entries,
+empty setup and no inference/graph requests. UI regressions retain existing walk
+actions, semantic folder links and obsolete-response guards.
+
+An isolated browser rendered two direct visits and one planned walk with the right
+labels and counts. Keyboard Enter opened a visit's folder; Back restored Dashboard
+and Forward reopened the folder. Desktop (1366 × 768) and mobile (390 × 844) had no
+horizontal overflow. Reading/navigation left the six existing jobs unchanged.

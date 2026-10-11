@@ -1531,9 +1531,17 @@ const collectionUI = NukkadCollection.create({
   message,
 });
 const activityUI = NukkadActivity.create({
-  api, node, target: () => $("history-list"), dateFor, labelFor, navigation,
+  api,
+  node,
+  target: () => $("history-list"),
+  dateFor,
+  labelFor,
+  navigation,
   openWalk: (value) => renderQuest(value),
-  editWalk: (value) => { quest = value; $("return").click(); },
+  editWalk: (value) => {
+    quest = value;
+    $("return").click();
+  },
   planWalk: () => $("open-quest").click(),
 });
 void navigation.start();
