@@ -156,3 +156,30 @@ def test_hero_branding_and_layout_contracts():
     assert "max-width: 1040px" in css and "max-width: 800px" in css
     assert 'body[data-panel="home"] main' in css
     assert "prefers-reduced-motion" in motion and "visibilitychange" in motion
+
+
+def test_home_explains_actual_local_model_responsibilities():
+    static = Path(__file__).parents[1] / "src" / "nukkad" / "static"
+    html = (static / "index.html").read_text()
+    ai = html.split('id="local-ai"', 1)[1].split('<figure class="imagined-map"', 1)[0]
+    for phrase in [
+        "What the local AI",
+        "actually does.",
+        "Helps choose stops.",
+        "Adds things to notice.",
+        "Helps reflect afterward.",
+        "route planner",
+        "Ollama",
+        "switch the installed model",
+        "stay on your laptop",
+        "map downloads need internet",
+        "use them offline",
+        "fallback clearly",
+    ]:
+        assert phrase in ai
+    assert "<button" not in ai
+    for asset in ["ai-stops.svg", "ai-notice.svg", "ai-reflect.svg"]:
+        assert asset in ai
+        svg = (static / "illustrations" / asset).read_text()
+        assert "<svg" in svg and "<script" not in svg and "<image" not in svg
+    assert re.search(r'<button[^>]*data-panel="setup"[^>]*>\s*Back to neighbourhood', html)

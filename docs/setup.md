@@ -59,11 +59,11 @@ Use the same directory on later launches. One running application owns each data
 
 ## Set up your locality
 
-1. Choose **Set up my neighbourhood**. Enter a place, locality or street with its city, then select **Search**. For the initial locality, try **Ahinsa Khand 1, Indirapuram, Ghaziabad**. Search works from text; you do not need latitude or longitude.
+1. Choose **Get started** on Home or open **Neighbourhood**. Enter a place, locality or street with its city, then select **Search**. For the initial locality, try **Ahinsa Khand 1, Indirapuram, Ghaziabad**. Search works from text; you do not need latitude or longitude.
 2. Choose the matching result by its full address. OpenStreetMap may not know an apartment's exact name; try the locality or a nearby landmark if there is no match. A search result may be a building or area centre, not a public entrance. Leave the public-start confirmation unchecked until you have checked an actual walking start.
 3. Use `Asia/Kolkata`, a 2,000 m radius and the default walking policy initially. The extract includes an additional 700 m routing buffer. Generation does not automatically expand the area.
 4. Select **Fetch my neighbourhood** while online; no uploaded file is required. The background task downloads relevant streets/places as OSM XML and saves an immutable graph, geometry, registry, acquisition time and graph fingerprint. It preserves the selected radius and 700 m routing buffer, and tries an independent Overpass instance if the primary fails.
-5. Inspect the map and entrances. Imported places are unverified. A polygon centre is for display, never an assumed entrance. A place without a credible mapped or supplied entrance stays out of routing.
+5. Inspect the working map and entrances in **Neighbourhood**. Home shows a fictional illustration. Imported places are unverified. A polygon centre is for display, never an assumed entrance. A place without a credible mapped or supplied entrance stays out of routing.
 6. If the public start needs adjusting, select a point on the saved map, choose **Use as my start**, confirm it in Neighbourhood and choose **Save start without downloading again**. This creates a new snapshot from the existing extract without a new download. Coordinates must still fall within its useful coverage.
 7. Add a personally known public place using **Add a place I know** in Neighbourhood. Supply an entrance and confirm access. Optional observed features become explicit evidence for Seek mode. A public-access confirmation cannot override an OSM prohibition.
 
@@ -83,7 +83,7 @@ To use a self-hosted or compatible Nominatim search endpoint, set `NUKKAD_GEOCOD
 
 ## Generate, review and go
 
-1. Choose **Plan a walk**, enter 20–60 available minutes and your explicit interests. Add optional context such as a slow walk or a familiar destination.
+1. Choose **Get started** on Home or **Plan a walk** in Neighbourhood once your start is confirmed, then enter 20–60 available minutes and your explicit interests. Add optional context such as a slow walk or a familiar destination.
 2. **Wander** uses bounded observation invitations. **Seek** requires recorded feature evidence and uses at most two stops to keep the card readable. Seek may have no eligible destinations in a sparse map.
 3. Wait for the local generation job. The model orders eligible place IDs and selects grounded reasons; code computes every walking leg, return, distance, stop time, reserve and daylight allowance. Ranking and wording fallbacks are labelled separately.
 4. Review numbered stops, streets, return, access uncertainty, generation time and latest departure. Inspect the actual surroundings yourself; mapped eligibility cannot guarantee safe or public access.
