@@ -29,3 +29,28 @@ def test_readiness_handles_unavailable_model(tmp_path, monkeypatch):
         response = client.get("/api/readiness")
     assert response.status_code == 200
     assert response.json()["model_status"] == "unavailable"
+
+
+def test_expired_generation_never_contacts_runtime(monkeypatch):
+    import time
+    from nukkad.ollama import ModelFailure, Ollama
+    from nukkad.domain import Ranking
+
+    model = Ollama(Config())
+    monkeypatch.setattr(
+        model, "models", lambda: pytest.fail("Inventory must not run after deadline")
+    )
+    with pytest.raises(ModelFailure, match="deadline"):
+        model.generate(Ranking, "", time.monotonic() - 1)
+
+
+def test_cloud_selection_retains_truthful_journal_fallback():
+    import time
+    from nukkad.journals import generate_journal
+    from nukkad.ollama import Ollama
+
+    result = generate_journal(
+        {"note": "I stayed home."}, Ollama(Config(model="example:cloud")), time.monotonic() + 1
+    )
+    assert result["mode"] == "extractive fallback"
+    assert result["metrics"]["attempts"][0]["category"] == "unsupported_model"

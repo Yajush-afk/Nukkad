@@ -24,24 +24,29 @@ class Ollama:
     def __init__(self, config: Config):
         if config.ollama_url != "http://127.0.0.1:11434":
             raise ValueError("Only the local Ollama server is supported")
-        if "cloud" in config.model.lower():
-            raise ModelFailure(
-                "Cloud models are disabled; choose a locally installed model", "unsupported_model"
-            )
         self.config = config
 
+    def remaining(self, cap=3):
+        deadline = getattr(self, "deadline", None)
+        remaining = min(cap, deadline - time.monotonic()) if deadline else cap
+        if remaining <= 0:
+            raise ModelFailure("Generation deadline exceeded", "deadline")
+        return remaining
+
     def models(self) -> list[dict]:
-        with httpx.Client(timeout=3, trust_env=False) as client:
+        with httpx.Client(timeout=self.remaining(), trust_env=False) as client:
             response = client.get(f"{self.config.ollama_url}/api/tags")
             response.raise_for_status()
             return response.json()["models"]
 
     def information(self):
-        with httpx.Client(timeout=3, trust_env=False) as client:
+        with httpx.Client(timeout=self.remaining(), trust_env=False) as client:
             version = client.get(f"{self.config.ollama_url}/api/version")
             version.raise_for_status()
             response = client.post(
-                f"{self.config.ollama_url}/api/show", json={"model": self.config.model}
+                f"{self.config.ollama_url}/api/show",
+                json={"model": self.config.model},
+                timeout=self.remaining(),
             )
             response.raise_for_status()
             body = response.json()
@@ -57,6 +62,10 @@ class Ollama:
         deadline: float,
         schema: dict | None = None,
     ) -> tuple[Response, dict]:
+        self.deadline = deadline
+        self.remaining()
+        if "cloud" in self.config.model.lower():
+            raise ModelFailure("Cloud models are disabled", "unsupported_model")
         try:
             installed = next(
                 (item for item in self.models() if item["name"] == self.config.model), None

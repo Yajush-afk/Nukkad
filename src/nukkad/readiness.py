@@ -53,7 +53,11 @@ def check_readiness(app):
         model_names = [item["name"] for item in inventory]
         installed = next((item for item in inventory if item["name"] == selected.model), None)
         model_status = "missing" if not installed else "ready"
-        if installed and (installed.get("remote_host") or installed.get("remote_model")):
+        if (
+            "cloud" in selected.model.lower()
+            or installed
+            and (installed.get("remote_host") or installed.get("remote_model"))
+        ):
             model_status = "unsupported"
         if model_status == "ready":
             capabilities = model.information()["capabilities"]
