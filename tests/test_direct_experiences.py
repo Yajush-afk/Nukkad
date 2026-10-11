@@ -26,8 +26,8 @@ def test_map_visit_is_idempotent_personal_memory_without_a_quest(registry, tmp_p
         assert not store.list("quest") and not store.list("outcome")
         assert len(store.list("experience")) == 1
         from nukkad.context import outing_context
-        from nukkad.planning import QuestInput
         from nukkad.places import Place
+        from nukkad.planning import QuestInput
 
         context = outing_context(
             store, QuestInput(minutes=30), [], [Place.model_validate(snapshot["places"][0])]
