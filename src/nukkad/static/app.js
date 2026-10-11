@@ -386,7 +386,6 @@ function selectMapPoint(point) {
     $("location-query").value=area.area.name;$("reuse-map").hidden=false;
     $("location-results").hidden=true;$("location-status").hidden=true;
     $("selected-location").textContent="Point chosen on your saved map. Confirm public access, then save this start.";
-    const controls=$("change-neighbourhood");if(controls)controls.open=true;
     form.scrollIntoView({block:"nearest"});form.elements.public_start_confirmed.focus({preventScroll:true});
   };
   const add=node("button","Add a place here");add.type="button";add.onclick=()=>beginPlaceEditor(point);

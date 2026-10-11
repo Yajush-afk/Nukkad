@@ -45,6 +45,7 @@ class Place(Record):
     valid: bool = True
     visited: bool = False
     round_trip_meters: float | None = None
+    last_report: str | None = None
     correction: str | None = None
     verified_at: str | None = None
 

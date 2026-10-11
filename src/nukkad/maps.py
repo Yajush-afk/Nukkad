@@ -428,6 +428,7 @@ class Maps:
             if corrected:
                 for key in (
                     "verification",
+                    "last_report",
                     "valid",
                     "entrance",
                     "entrance_node",
@@ -482,7 +483,7 @@ class Maps:
                 place = place.model_copy(
                     update={
                         key: correction[key]
-                        for key in ("verification", "valid", "access", "correction")
+                        for key in ("verification", "valid", "access", "correction", "last_report")
                         if key in correction
                     }
                 )

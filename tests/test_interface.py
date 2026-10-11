@@ -184,3 +184,19 @@ def test_home_explains_actual_local_model_responsibilities():
         svg = (static / "illustrations" / asset).read_text()
         assert "<svg" in svg and "<script" not in svg and "<image" not in svg
     assert re.search(r'<button[^>]*data-panel="setup"[^>]*>\s*Back to neighbourhood', html)
+
+
+def test_places_are_edited_beside_map_without_coordinate_controls():
+    static = Path(__file__).parents[1] / "src" / "nukkad" / "static"
+    html = (static / "index.html").read_text()
+    setup = html.split('<section id="setup"', 1)[1].split('<section id="quest-form-panel"', 1)[0]
+    assert (
+        setup.index('id="place-detail"')
+        < setup.index('id="pin-form"')
+        < setup.index('id="duplicate-review"')
+    )
+    assert not re.search(r"(?:Entrance|New entrance) (?:latitude|longitude)", html)
+    script = (static / "app.js").read_text()
+    assert "New entrance latitude" not in script and "New entrance longitude" not in script
+    assert "Map source & access details" not in script
+    assert "Report this place" in script
