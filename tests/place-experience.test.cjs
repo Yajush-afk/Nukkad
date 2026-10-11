@@ -91,7 +91,7 @@ test("upload failure preserves the saved visit and retries only remaining files"
   const f = fixture(async (path) => {
     if (path.includes("/photos")) {
       uploads++;
-      if (fail) {
+      if (fail && uploads === 2) {
         fail = false;
         throw Error("Broken photo");
       }
@@ -108,7 +108,7 @@ test("upload failure preserves the saved visit and retries only remaining files"
   }
   walk(form);
   const photos = inputs.find((n) => n.type === "file");
-  photos.files = [new Blob(["image"])];
+  photos.files = [new Blob(["saved image"]), new Blob(["broken image"])];
   photos.onchange();
   await form.onsubmit({ preventDefault() {} });
   assert.equal(writes, 1);
@@ -118,6 +118,6 @@ test("upload failure preserves the saved visit and retries only remaining files"
   photos.onchange();
   await form.onsubmit({ preventDefault() {} });
   assert.equal(writes, 2);
-  assert.equal(uploads, 2);
+  assert.equal(uploads, 3);
   assert.equal(f.notices.length, 1);
 });
