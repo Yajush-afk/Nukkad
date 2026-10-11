@@ -189,6 +189,12 @@ async function loadArea(current = () => true) {
   selectedPointLayer.clearLayers();
   $("place-detail").replaceChildren();
   const saved = !!area.area;
+  const controls = $("change-neighbourhood"), mapSection = document.querySelector("#setup .map-section");
+  if(saved) mapSection.after($("neighbourhood-next"),controls);
+  else controls.after(mapSection);
+  controls.open = !saved || !area.area.public_start_confirmed;
+  controls.querySelector("summary").textContent = saved ? "Change neighbourhood or start" : "Choose your neighbourhood";
+  setTimeout(()=>{if(current())map.invalidateSize();},30);
   for (const id of ["map-empty"]) $(id).hidden = saved;
   for (const id of ["map-help", "map-details", "choose-start", "reuse-map"])
     $(id).hidden = !saved;
@@ -390,6 +396,7 @@ function selectMapPoint(point) {
     $("location-query").value=area.area.name;$("reuse-map").hidden=false;
     $("location-results").hidden=true;$("location-status").hidden=true;
     $("selected-location").textContent="Point chosen on your saved map. Confirm public access, then save this start.";
+    $("change-neighbourhood").open=true;
     form.scrollIntoView({block:"nearest"});form.elements.public_start_confirmed.focus({preventScroll:true});
   };
   const add=node("button","Add a place here");add.type="button";add.onclick=()=>beginPlaceEditor(point);
@@ -1648,3 +1655,5 @@ $("copy-email").onclick = async () => {
   await NukkadNotifications.copyEmail({ clipboard: navigator.clipboard, tooltip: $("email-tooltip"), notify: message });
   $("copy-email").disabled = false;
 };
+
+$("change-neighbourhood").addEventListener("toggle",()=>map?.invalidateSize());
