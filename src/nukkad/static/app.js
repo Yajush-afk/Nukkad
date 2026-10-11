@@ -256,6 +256,10 @@ async function loadArea(current = () => true) {
   startDuplicateReview(current);
 }
 function inspectPlace(place) {
+  placeEditorState.changed();
+  reportEntrance = null;
+  $("add-place-details").hidden = true;
+  selectedPointLayer.clearLayers();
   const target = $("place-detail");
   target.replaceChildren(
     node("h2", place.name),
@@ -348,62 +352,84 @@ function inspectPlace(place) {
     ),
   );
 }
-function selectMapPoint(point) {
+const placeEditorState = NukkadPlaceEditor.create();
+let placeEntranceReady = false, reportEntrance = null;
+function pointMarker(point) {
   selectedPointLayer.clearLayers();
-  L.circleMarker([point.lat, point.lng], {
-    radius: 9,
-    color: "#b36c12",
-    fillColor: "#f5f1e7",
-    fillOpacity: 1,
-  }).addTo(selectedPointLayer);
-  const target = $("place-detail");
-  target.replaceChildren(
-    node("h2", "Use this point"),
-    node(
-      "p",
-      "Check that this point is on the actual public path before confirming.",
-      "hint",
-    ),
-  );
-  const actions = node("div", undefined, "buttonrow");
-  for (const [label, formId] of [
-    ["Use as my start", "area-form"],
-    ["Add a place here", "pin-form"],
-  ]) {
-    const button = node("button", label);
-    button.onclick = async () => {
-      const form = $(formId);
-      form.elements.lat.value = point.lat.toFixed(6);
-      form.elements.lon.value = point.lng.toFixed(6);
-      if (formId === "area-form") {
-        form.elements.public_start_confirmed.checked = false;
-        hasSelectedLocation = true;
-        locationRevision++;
-        $("location-query").value = area.area.name;
-        $("reuse-map").hidden = false;
-        $("location-results").hidden = true;
-        $("location-status").hidden = true;
-        $("selected-location").textContent =
-          "Point chosen on your saved map. Confirm that it is on a public walking path, then save this start.";
-      } else {
-        form.elements.confirmed.checked = false;
-        $("add-place-details").open = true;
-      }
-      const showing = show("setup");
-      const stillHere = navigation.checkpoint();
-      await showing;
-      if (!stillHere()) return;
-      form.scrollIntoView({ block: "start" });
-      form.elements[
-        formId === "area-form" ? "public_start_confirmed" : "name"
-      ].focus({
-        preventScroll: true,
-      });
-    };
-    actions.append(button);
-  }
-  target.append(actions);
-  target.scrollIntoView({ block: "nearest" });
+  L.circleMarker([point.lat, point.lng ?? point.lon], {radius:9,color:"#b36c12",fillColor:"#f5f1e7",fillOpacity:1}).addTo(selectedPointLayer);
+}
+function setPlaceEntrance(point, reviewed = true) {
+  placeEditorState.changed();
+  const form = $("pin-form");
+  form.elements.lat.value = point.lat;
+  form.elements.lon.value = point.lng ?? point.lon;
+  form.elements.confirmed.checked = false;
+  placeEntranceReady = reviewed;
+  $("place-entrance").textContent = reviewed
+    ? "Entrance chosen on your saved map. Check public access before saving."
+    : "Suggested map point. Check the actual entrance on the map before confirming.";
+  $("check-place-entrance").hidden = reviewed;
+  pointMarker(point);
+}
+function beginPlaceEditor(point) {
+  placeEditorState.changed();
+  reportEntrance = null;
+  $("add-place-details").hidden = false;
+  if (point) setPlaceEntrance(point);
+  $("add-place-details").scrollIntoView({block:"nearest"});
+  $("place-query").focus({preventScroll:true});
+}
+$("add-place").onclick = () => beginPlaceEditor();
+$("cancel-place").onclick = () => {
+  placeEditorState.changed();
+  placeSuggestions.cancel();
+  $("pin-form").reset();
+  placeEntranceReady = false;
+  $("place-entrance").textContent = "Choose an entrance on the map or search for a place.";
+  $("check-place-entrance").hidden = true;
+  $("add-place-details").hidden = true;
+  selectedPointLayer.clearLayers();
+};
+$("check-place-entrance").onclick = () => {
+  const form=$("pin-form");
+  if(form.elements.lat.value !== "") setPlaceEntrance({lat:Number(form.elements.lat.value),lon:Number(form.elements.lon.value)});
+};
+const placeSuggestions = NukkadSuggestions.create({
+  input:$("place-query"),target:$("place-suggestions"),status:$("place-search-status"),scope:"place",api,node,
+  current:()=>document.body.dataset.panel === "setup" && !$("add-place-details").hidden,
+  invalidate:()=>{
+    placeEditorState.changed();
+    const form=$("pin-form");form.elements.lat.value=form.elements.lon.value="";form.elements.confirmed.checked=false;
+    placeEntranceReady=false;$("check-place-entrance").hidden=true;
+    $("place-entrance").textContent="Choose an entrance on the map or choose a suggestion.";
+    selectedPointLayer.clearLayers();
+  },
+  select:(match)=>{
+    const existing=area?.places.find(place=>place.id===match.place_id);
+    if(existing){$("add-place-details").hidden=true;inspectPlace(existing);map.panTo([existing.point.lat,existing.point.lon]);return;}
+    setPlaceEntrance(match.point,false);map.panTo([match.point.lat,match.point.lon]);
+  },
+});
+function selectMapPoint(point) {
+  if(reportEntrance){reportEntrance.select(point);return;}
+  if(!$("add-place-details").hidden){setPlaceEntrance(point);return;}
+  placeEditorState.changed();
+  pointMarker(point);
+  const target=$("place-detail");
+  target.replaceChildren(node("h3","Use this point"),node("p","Choose the actual entrance on a public path.","hint"));
+  const actions=node("div",undefined,"buttonrow");
+  const start=node("button","Use as my start");start.type="button";
+  start.onclick=()=>{
+    const form=$("area-form");form.elements.lat.value=point.lat;form.elements.lon.value=point.lng;
+    form.elements.public_start_confirmed.checked=false;hasSelectedLocation=true;locationRevision++;
+    $("location-query").value=area.area.name;$("reuse-map").hidden=false;
+    $("location-results").hidden=true;$("location-status").hidden=true;
+    $("selected-location").textContent="Point chosen on your saved map. Confirm public access, then save this start.";
+    const controls=$("change-neighbourhood");if(controls)controls.open=true;
+    form.scrollIntoView({block:"nearest"});form.elements.public_start_confirmed.focus({preventScroll:true});
+  };
+  const add=node("button","Add a place here");add.type="button";add.onclick=()=>beginPlaceEditor(point);
+  actions.append(start,add);target.append(actions);target.scrollIntoView({block:"nearest"});
 }
 function renderQuest(value, navigate = true) {
   if (navigate && !navigation.isCurrent("preview", value.id))
@@ -814,23 +840,23 @@ $("reuse-map").onclick = async () => {
 };
 $("pin-form").onsubmit = async (event) => {
   event.preventDefault();
+  const current = placeEditorState.begin(navigation.checkpoint());
+  if(!current) return;
+  $("save-place").disabled=true;
   try {
-    const v = formValues("pin-form");
-    await api("/places", {
-      method: "POST",
-      body: {
-        name: v.name,
-        kind: v.kind,
-        entrance: { lat: Number(v.lat), lon: Number(v.lon) },
-        descriptors: v.descriptor ? [v.descriptor] : [],
-        public_access_confirmed: !!v.confirmed,
-      },
-    });
-    await loadArea();
+    if(!placeEntranceReady) throw Error("Choose or check the actual entrance on the map before saving.");
+    const v=formValues("pin-form");
+    const saved=await api("/places",{method:"POST",body:{name:v.name,kind:v.kind,entrance:{lat:Number(v.lat),lon:Number(v.lon)},descriptors:v.descriptor?[v.descriptor]:[],public_access_confirmed:!!v.confirmed}});
+    areaNeedsRefresh=true;
+    if(!current())return;
+    await loadArea(current);
+    if(!current())return;
+    $("cancel-place").click();
+    inspectPlace(area.places.find(place=>place.id===saved.id)||saved);
+    map.panTo([saved.point.lat,saved.point.lon]);
     message("Place saved. You can now find it on your map.");
-  } catch (e) {
-    report(e);
-  }
+  } catch(error){if(current())report(error);}
+  finally {placeEditorState.finish();$("save-place").disabled=false;}
 };
 $("quest-form").onsubmit = async (event) => {
   event.preventDefault();
