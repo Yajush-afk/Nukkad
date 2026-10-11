@@ -957,3 +957,18 @@ pre {
 
 .navigation-loading { max-width: 800px; margin: 1rem auto; padding: 16px 24px; border: 1px solid #d7dfd2; border-radius: 18px; background: #f6f2e8; color: #42624f; }
 .navigation-loading[hidden] { display: none; }
+
+/* Feedback never moves the document or takes keyboard focus. */
+.notification-rail { position: fixed; right: 24px; bottom: max(24px, env(safe-area-inset-bottom)); width: min(360px, calc(100vw - 32px)); z-index: 1200; pointer-events: none; }
+.notification-rail #job { position: static; width: auto; margin: 0 0 10px; padding: 14px; pointer-events: auto; border-radius: 16px; }
+#notifications { display: grid; gap: 8px; }
+.notification { display: flex; align-items: start; gap: 10px; padding: 13px 14px; color: var(--forest); background: #f7faf4; border: 1px solid #d3dfcd; border-radius: 14px; box-shadow: 0 8px 30px #203d2520; pointer-events: auto; font-size: .85rem; }
+.notification-error { color: #753d28; background: #fff8f2; border-color: #e7cdbd; }
+.notification-icon { font-weight: 800; }
+.notification-dismiss { margin-left: auto; min-width: 32px; min-height: 32px; padding: 2px 6px; border: none; background: transparent; }
+@media (max-width: 600px) { .notification-rail { right: 50%; transform: translateX(50%); bottom: max(12px, env(safe-area-inset-bottom)); } body:has(input:focus, textarea:focus, select:focus) .notification-rail { bottom: max(12px, env(safe-area-inset-bottom)); max-height: 28vh; overflow: auto; } }
+@media print { .notification-rail { display: none !important; } }
+
+.email-contact { position: relative; }
+#copy-email { border: 0; padding: 0; color: inherit; font: inherit; background: transparent; border-radius: 0; user-select: text; }
+#email-tooltip { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); white-space: nowrap; background: #244f39; color: white; font-size: .75rem; padding: 7px 11px; border-radius: 8px; }

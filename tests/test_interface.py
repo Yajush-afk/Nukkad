@@ -70,7 +70,8 @@ def test_interface_serves_both_local_logos_and_script_targets(tmp_path):
         decoration = client.get("/static/experience.js")
         assert set(re.findall(r'getElementById\("([\w-]+)"\)', decoration.text)) <= set(page.ids)
         assert 'href="https://x.com/Yajush_who"' in response.text
-        assert 'href="mailto:yajush24606@gmail.com"' in response.text
+        assert 'id="copy-email"' in response.text
+        assert "mailto:" not in response.text
         assert 'href="https://github.com/Yajush-afk/Nukkad"' in response.text
         assert "Created by" in response.text and "Yajush Srivastava" in response.text
 
