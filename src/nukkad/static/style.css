@@ -998,14 +998,37 @@ pre {
 #setup-controls { padding: 18px 0 4px; }
 .leaflet-control-attribution { font-size: 10px !important; background: #fffdf0e6 !important; max-width: 100%; }
 
-.folder-heading { text-align:left; padding:20px 24px; border:1px solid #dce5da; border-radius:24px; background:#f7faf4; }
-.folder-heading h1 { font-size:clamp(1.7rem,4vw,2.6rem); margin:12px 0 6px; overflow-wrap:anywhere; }
-.folder-heading .back-button { float:right; margin:0 0 16px 16px; }
-.folder-heading .eyebrow { margin:0; }
-.folder-heading .lede { font-size:.85rem; margin:0; }
+.panel-heading.folder-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  text-align: center;
+  padding: 20px 24px 24px;
+  border: 1px solid #dce5da;
+  border-radius: 24px;
+  background: #f7faf4;
+}
+.folder-heading h1 {
+  font-size: clamp(1.7rem, 4vw, 2.6rem);
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.folder-heading .back-button {
+  float: none;
+  justify-self: end;
+  max-width: 100%;
+  margin: 0 0 8px;
+}
+.panel-heading.folder-heading .eyebrow { margin: 0; }
+.folder-heading .lede { font-size: .85rem; margin: 0 auto; }
 .card-generation { margin:20px 0 28px; padding:16px 20px; border:1px solid #dce5da; border-radius:16px; background:#f8faf5; }
 .card-generation > summary { font-weight:600; }
-@media(max-width:600px) { .folder-heading .back-button { float:none; margin:0 0 16px; } }
+@media (max-width: 600px) {
+  .panel-heading.folder-heading { padding: 16px 18px 20px; }
+  .folder-heading .back-button { justify-self: start; }
+}
 
 .outcome-place { min-width:0; border:0; border-top:1px solid #dce5da; padding:18px 0; margin:0; }
 .outcome-place legend { font-size:.95rem; font-weight:600; padding:0 0 8px; }
