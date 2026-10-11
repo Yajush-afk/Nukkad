@@ -272,6 +272,7 @@ function inspectPlace(place) {
   reportEntrance = null;
   $("add-place-details").hidden = true;
   selectedPointLayer.clearLayers();
+  $("change-neighbourhood").open=false;
   const target = $("place-detail");
   target.replaceChildren(
     node("h2", place.name),
@@ -284,7 +285,23 @@ function inspectPlace(place) {
   );
   if (place.descriptors.length)
     target.append(node("p", place.descriptors.join(" · "), "hint"));
-  const corrections = disclosure("Report this place");
+  const actions = node("div", undefined, "selected-place-actions");
+  const experienceButton = node("button", "Add experience");experienceButton.type="button";
+  const reportButton = node("button", "Report this place");reportButton.type="button";
+  const closeButton=node("button","Close");closeButton.type="button";
+  const experiencePanel=node("div");
+  const corrections = node("div");corrections.hidden=true;
+  function chooseMode(mode){
+    experiencePanel.hidden=mode!=="experience";corrections.hidden=mode!=="report";
+    experienceButton.setAttribute("aria-pressed",String(mode==="experience"));reportButton.setAttribute("aria-pressed",String(mode==="report"));
+    if(mode==="report")toggleEntrance();else reportEntrance=null;
+  }
+  experienceButton.onclick=()=>chooseMode("experience");reportButton.onclick=()=>chooseMode("report");
+  closeButton.onclick=()=>{placeEditorState.changed();reportEntrance=null;target.replaceChildren();selectedPointLayer.clearLayers();$("add-place").hidden=false;};
+  actions.append(experienceButton,reportButton,closeButton);target.append(actions,experiencePanel,corrections);
+  $("add-place").hidden=true;
+  const today=new Intl.DateTimeFormat("en-CA",{timeZone:area.area.timezone,year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+  placeExperience.render(experiencePanel,place,()=>document.body.dataset.panel==="setup"&&target.contains(experiencePanel),today);
   const form = node("form",undefined,"form-grid");
   const select=node("select");
   for(const [value,label] of [["verify","I checked public access"],["entrance","Correct the entrance"],["not_there","This place is not here"],["closed","This place is closed"],["not_accessible","I could not access it"]]){
@@ -307,7 +324,6 @@ function inspectPlace(place) {
     }}:null;
   };
   select.onchange=toggleEntrance;toggleEntrance();
-  corrections.ontoggle=()=>{if(corrections.open)toggleEntrance();else reportEntrance=null;};
   const button=node("button","Save report");button.type="submit";
   form.append(actionLabel,detailLabel,entranceSummary,publicLabel,button);
   form.onsubmit=async event=>{
@@ -324,9 +340,10 @@ function inspectPlace(place) {
     }catch(error){if(current())report(error);}
     finally{placeEditorState.finish();button.disabled=false;}
   };
-  corrections.append(form);target.append(corrections);
+  corrections.append(form);chooseMode("experience");
 
 }
+const placeExperience=NukkadPlaceExperience.create({node,api,notify:message,checkpoint:()=>navigation.checkpoint(),onSaved:()=>{areaNeedsRefresh=true;}});
 const placeEditorState = NukkadPlaceEditor.create();
 let placeEntranceReady = false, placeLocationSource = null, reportEntrance = null;
 function pointMarker(point) {
@@ -350,6 +367,7 @@ function setPlaceEntrance(point, reviewed = true) {
 function beginPlaceEditor(point) {
   placeEditorState.changed();
   reportEntrance = null;
+  $("place-detail").replaceChildren();$("add-place").hidden=false;
   $("add-place-details").hidden = false;
   if (point) setPlaceEntrance(point);
   $("add-place-details").scrollIntoView({block:"nearest"});

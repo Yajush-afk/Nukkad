@@ -1011,3 +1011,15 @@ pre {
 .outcome-place legend { font-size:.95rem; font-weight:600; padding:0 0 8px; }
 .outcome-place select { margin-bottom:12px; }
 #copy-email { font-size:11px; }
+
+.selected-place-actions { display:flex; flex-wrap:wrap; gap:8px; margin:16px 0; }
+.selected-place-actions button { padding:9px 14px; font-size:.85rem; }
+.selected-place-actions button[aria-pressed="true"] { background:var(--forest); color:white; }
+.selected-place-actions button:last-child { margin-left:auto; background:transparent; }
+.place-experience-form { display:grid; gap:14px; }
+.place-experience-form > p:first-child { margin:0; font-weight:600; }
+.place-experience-form input[type="date"] { max-width:220px; }
+.place-experience-form button[type="submit"] { justify-self:start; }
+.place-visit-saved { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+.place-visit-saved p { flex-basis:100%; margin:0; }
+.inline-error { color:#873e29; font-size:.9rem; }

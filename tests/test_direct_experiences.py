@@ -5,7 +5,6 @@ from PIL import Image
 
 from nukkad.app import create_app
 from nukkad.backups import backup, restore
-from nukkad.config import Config
 from nukkad.storage import Store
 
 
