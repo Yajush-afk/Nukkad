@@ -142,3 +142,21 @@ the personal database and media were not changed.
 To repeat: open an isolated folder with a current card, then evaluate the contents
 of `tests/folder-layout.browser.js` using the collaborative preview. Expect
 `pass: true`. This browser probe supplements CI; Node only checks its syntax.
+
+### Wind through the pixel footer
+
+The footer has a complete pale-green bed drawn at one logical pixel per six CSS
+pixels, matching the hero sky's scale. Tuft positions are deterministic. Passing
+wind bends blade tips while every root remains fixed; the ground does not translate.
+The locally bundled SVG covers the same footer when Canvas 2D is unavailable.
+
+The renderer draws at most 15 frames per second and suspends offscreen, in hidden
+tabs, on page exit and for reduced motion. A ResizeObserver and window-resize
+listener rebuild the field when its dimensions change. Browser checks confirmed
+full-width coverage, changed pixel data during wind, offscreen suspension, six-pixel
+scaling at 1280 and 390 px widths, no horizontal overflow and clickable contacts.
+A sampled 211 × 75 frame rendered in approximately 1 ms on this machine; this is a
+single rendering measurement, not an energy-use benchmark. Motion/reduced-motion,
+resize, rooted geometry and missing-canvas fallbacks have deterministic Node coverage.
+Credits remain beneath the creator line and use a pale glass surface for readability.
+Physical phone checks remain pending.

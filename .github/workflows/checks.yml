@@ -19,6 +19,7 @@ jobs:
       - run: uv run pytest -q
       - run: node --check src/nukkad/static/app.js
       - run: node --check src/nukkad/static/experience.js
+      - run: node --check src/nukkad/static/grass.js
       - run: node --check src/nukkad/static/navigation.js
       - run: node --check src/nukkad/static/collection.js
       - run: node --test tests/*.test.cjs

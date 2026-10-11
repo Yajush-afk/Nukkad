@@ -29,22 +29,27 @@
     }
     return blades;
   }
-  function bend(blade, fraction, time) {
+  function wind(blade, time) {
     // Coherent gusts travel through the field, with small differences between tufts.
     const gust = Math.sin(time * 1.35 - blade.x * 0.045 - blade.y * 0.025);
     const flutter = Math.sin(time * 2.1 + blade.phase) * 0.18;
-    return Math.round(
-      blade.lean * fraction + (gust * 2.1 + flutter) * fraction * fraction,
-    );
+    return gust * 2.1 + flutter;
+  }
+  function offset(blade, fraction, gust) {
+    return Math.round(blade.lean * fraction + gust * fraction * fraction);
+  }
+  function bend(blade, fraction, time) {
+    return offset(blade, fraction, wind(blade, time));
   }
   function draw(context, width, height, blades, time) {
     context.fillStyle = "#e3edc9";
     context.fillRect(0, 0, width, height);
     for (const blade of blades) {
+      const gust = wind(blade, time);
       context.fillStyle = blade.colour;
       for (let step = 0; step <= blade.height; step++) {
         context.fillRect(
-          blade.x + bend(blade, step / blade.height, time),
+          blade.x + offset(blade, step / blade.height, gust),
           blade.y - step,
           1,
           1,
@@ -118,6 +123,7 @@
     observer.observe(footer);
     reduced.addEventListener("change", update);
     document.addEventListener("visibilitychange", update);
+    browser.addEventListener("resize", resize);
     browser.addEventListener("pagehide", () => {
       suspended = true;
       update();
