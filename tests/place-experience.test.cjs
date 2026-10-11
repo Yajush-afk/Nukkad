@@ -113,6 +113,9 @@ test("upload failure preserves the saved visit and retries only remaining files"
   await form.onsubmit({ preventDefault() {} });
   assert.equal(writes, 1);
   assert.equal(f.notices.length, 0);
+  assert.equal(photos.disabled, false);
+  photos.files = [new Blob(["replacement image"])];
+  photos.onchange();
   await form.onsubmit({ preventDefault() {} });
   assert.equal(writes, 2);
   assert.equal(uploads, 2);
