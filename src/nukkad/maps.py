@@ -57,18 +57,9 @@ def distance(a: Point, b: Point) -> float:
 
 
 def nearest_node(graph: nx.MultiDiGraph, point: Point, max_distance: float = 50) -> int:
-    if not graph.nodes:
-        raise ValueError("No mapped walking network is available")
-    node = min(
-        graph.nodes,
-        key=lambda item: distance(
-            point, Point(lat=graph.nodes[item]["y"], lon=graph.nodes[item]["x"])
-        ),
-    )
-    actual = Point(lat=graph.nodes[node]["y"], lon=graph.nodes[node]["x"])
-    if distance(point, actual) > max_distance:
-        raise ValueError("Select an entrance on or within 50 metres of a mapped walking street")
-    return node
+    from nukkad.snapping import snap_point
+
+    return snap_point(graph, point, max_distance)[0]
 
 
 def tags(element) -> dict[str, str]:
@@ -271,13 +262,15 @@ class Maps:
 
             walking = pedestrian_graph(graph)
             try:
-                start_node = nearest_node(walking, area.start)
+                from nukkad.snapping import snap_point
+
+                start_node, start_snap = snap_point(walking, area.start)
             except ValueError:
                 if area.public_start_confirmed:
                     raise
                 # A geocoded building/locality centre is enough to download a map,
                 # but is never silently promoted to a confirmed walking entrance.
-                start_node = None
+                start_node, start_snap = None, None
             connected = (
                 (nx.descendants(walking, start_node) & nx.ancestors(walking, start_node))
                 | {start_node}
@@ -290,6 +283,7 @@ class Maps:
                 "id": snapshot_id,
                 "area": area.model_dump(),
                 "start_node": start_node,
+                "start_snap": start_snap,
                 "acquired_at": now(),
                 "source": source,
                 "synthetic": synthetic,
@@ -394,11 +388,12 @@ class Maps:
                     "valid",
                     "entrance",
                     "entrance_node",
+                    "snap",
                     "correction",
                     "verified_at",
                     "access",
                 ):
-                    data[key] = corrected[key]
+                    data[key] = corrected.get(key)
             if prohibited(data["tags"]):
                 data.update(valid=False, access="prohibited")
             result.append(Place.model_validate(data))
@@ -416,12 +411,19 @@ class Maps:
                 if place.id not in corrections or place.entrance is None:
                     continue
                 try:
-                    node = nearest_node(walking, place.entrance)
+                    from nukkad.snapping import snap_point
+
+                    node, snap = snap_point(
+                        walking,
+                        Point.model_validate(place.snap["original"])
+                        if place.snap
+                        else place.entrance,
+                    )
                     entrance = Point(lat=walking.nodes[node]["y"], lon=walking.nodes[node]["x"])
                 except ValueError:
-                    node, entrance = None, None
+                    node, entrance, snap = None, None, None
                 result[index] = place.model_copy(
-                    update={"entrance_node": node, "entrance": entrance}
+                    update={"entrance_node": node, "entrance": entrance, "snap": snap}
                 )
         visited = {
             key for outcome in self.store.list("outcome") for key in outcome.get("reached_ids", [])

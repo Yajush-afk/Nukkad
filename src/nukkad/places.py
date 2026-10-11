@@ -30,6 +30,7 @@ class Place(Record):
     point: Point
     entrance: Point | None = None
     entrance_node: int | None = None
+    snap: dict | None = None
     tags: dict[str, str] = Field(default_factory=dict)
     descriptors: list[Annotated[str, Field(min_length=1, max_length=180)]] = Field(
         default_factory=list, max_length=8
@@ -81,7 +82,7 @@ def seek_features(place: Place | dict) -> dict[str, dict]:
 def prohibited(tags: dict) -> bool:
     return (
         tags.get("access") in {"no", "private", "military"}
-        or tags.get("foot") in {"no", "private"}
+        or tags.get("foot") in {"no", "private", "use_sidepath"}
         or tags.get("landuse") in {"military", "construction"}
         or tags.get("highway")
         in {"construction", "proposed", "motorway", "motorway_link", "trunk", "trunk_link"}

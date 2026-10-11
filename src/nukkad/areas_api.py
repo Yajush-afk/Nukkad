@@ -6,8 +6,9 @@ from typing import Annotated
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 
 from nukkad.jobs import Result
-from nukkad.maps import MAX_EXTRACT_BYTES, Maps, nearest_node
+from nukkad.maps import MAX_EXTRACT_BYTES, Maps
 from nukkad.places import AreaInput, Correction, CustomPlace, Place, prohibited
+from nukkad.snapping import snap_point
 from nukkad.storage import identity, now
 
 router = APIRouter(prefix="/api")
@@ -115,7 +116,7 @@ def add_place(value: CustomPlace, request: Request):
     from nukkad.planning import pedestrian_graph
 
     graph = pedestrian_graph(registry.graph())
-    node = nearest_node(graph, value.entrance)
+    node, snap = snap_point(graph, value.entrance)
     point = {"lat": graph.nodes[node]["y"], "lon": graph.nodes[node]["x"]}
     place = Place(
         id=f"user-{identity()}",
@@ -124,6 +125,7 @@ def add_place(value: CustomPlace, request: Request):
         point=value.entrance,
         entrance=point,
         entrance_node=node,
+        snap=snap,
         descriptors=value.descriptors,
         source="user",
         access="confirmed",
@@ -150,9 +152,10 @@ def correct_place(key: str, value: Correction, request: Request):
             from nukkad.planning import pedestrian_graph
 
             graph = pedestrian_graph(registry.graph())
-            node = nearest_node(graph, value.entrance)
+            node, snap = snap_point(graph, value.entrance)
             data.update(
                 entrance_node=node,
+                snap=snap,
                 entrance={"lat": graph.nodes[node]["y"], "lon": graph.nodes[node]["x"]},
             )
     data["correction"] = value.detail
