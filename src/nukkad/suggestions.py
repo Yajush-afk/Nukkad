@@ -42,7 +42,7 @@ def suggestion(name, label, point, source, group, *, place_id=None, source_id=No
     point = Point.model_validate(point).model_dump()
     key = place_id or source_id or hashlib.sha256(f"{label}|{point}".encode()).hexdigest()[:24]
     return {
-        "id": f"{group}:{key}",
+        "id": f"location:{key}",
         "name": str(name)[:200],
         "label": str(label)[:1000],
         "point": point,
@@ -59,11 +59,14 @@ def build_index(store):
     snapshot = store.get("snapshot", active["snapshot_id"]) if active else None
     aliases = store.keyed("place_alias")
     corrections = store.keyed("place")
-    items, seen = [], set()
+    items, seen, by_place = [], set(), {}
     for original in [*(snapshot or {}).get("places", []), *corrections.values()]:
         root = canonical_id(store, original["id"], aliases)
         data = {**original, **corrections.get(original["id"], {}), **corrections.get(root, {})}
-        if root in seen or not within_area(data["point"], active):
+        if root in by_place:
+            by_place[root]["_search_text"] += " " + original["name"]
+            continue
+        if not within_area(data["point"], active):
             continue
         seen.add(root)
         tags = data.get("tags", {})
@@ -84,6 +87,8 @@ def build_index(store):
                 ),
             )
         )
+        items[-1]["_search_text"] = original["name"]
+        by_place[root] = items[-1]
     # Street geometry is display metadata already stored in the snapshot.
     for index, feature in enumerate((snapshot or {}).get("geometry", {}).get("features", [])):
         name = feature.get("properties", {}).get("name")
@@ -123,6 +128,7 @@ def build_index(store):
                         source_id=source_id,
                     )
                 )
+                items[-1]["_expires_at"] = cached["expires_at"]
     return items
 
 
@@ -130,12 +136,15 @@ def local_matches(store, cache, value):
     revision = store.revision_key(
         ("area", "snapshot", "place", "place_alias", "location_search", "location_suggestion")
     )
-    items = cache.get("suggestions", (revision, int(time.time() // 60)), lambda: build_index(store))
+    items = cache.get("suggestions", revision, lambda: build_index(store))
     words = value.query.casefold().split()
     active = store.get("area", "active")
     result, seen = [], set()
     for item in items:
-        if not all(word in (item["name"] + " " + item["label"]).casefold() for word in words):
+        if item.get("_expires_at", float("inf")) <= time.time():
+            continue
+        text = (item["name"] + " " + item["label"] + " " + item.get("_search_text", "")).casefold()
+        if not all(word in text for word in words):
             continue
         if value.scope == "place" and not within_area(item["point"], active):
             continue
@@ -143,7 +152,7 @@ def local_matches(store, cache, value):
         if key in seen:
             continue
         seen.add(key)
-        result.append(item)
+        result.append({key: value for key, value in item.items() if not key.startswith("_")})
         if len(result) == 12:
             break
     return result
@@ -156,9 +165,11 @@ def suggest(value: SuggestInput, request: Request):
     online = {"status": "not_requested", "cooldown_seconds": 0}
     if value.online:
         remote, online = state.photon.search(state.store, value)
-        existing = {item["place_id"] for item in matches if item["place_id"]}
+        existing = {item["place_id"] or item["source_id"] or item["id"] for item in matches}
         matches.extend(
-            item for item in remote if not item["place_id"] or item["place_id"] not in existing
+            item
+            for item in remote
+            if (item["place_id"] or item["source_id"] or item["id"]) not in existing
         )
     return {"matches": matches, "online": online}
 

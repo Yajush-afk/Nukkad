@@ -252,3 +252,37 @@ test("unsaved card text survives rerender including an empty edit", async () => 
     true,
   );
 });
+
+test("card edits made during a save are retained under its new version", async () => {
+  let release;
+  const folder = sampleFolder();
+  const updated = {
+    ...folder,
+    current_card: { ...folder.current_card, id: "new-card" },
+  };
+  const f = fixture({
+    api: async (path, opts = {}) => {
+      if (opts.method === "PATCH")
+        return new Promise((resolve) => (release = resolve));
+      if (path === "/readiness")
+        return { local_ai_ready: false, model_capabilities: [] };
+      return updated;
+    },
+  });
+  await f.ui.renderFolder(folder, () => true);
+  let nodes = f.all(f.get("folder-content"));
+  const input = nodes.find((x) => x.tag === "textarea");
+  const editor = nodes.find((x) => x.tag === "form");
+  input.value = "They noticed shapes.";
+  input.oninput();
+  const saving = editor.onsubmit({ preventDefault() {} });
+  input.value = "They also noticed colours.";
+  input.oninput();
+  release({ id: "new-card" });
+  await saving;
+  nodes = f.all(f.get("folder-content"));
+  assert.equal(
+    nodes.find((x) => x.tag === "textarea").value,
+    "They also noticed colours.",
+  );
+});

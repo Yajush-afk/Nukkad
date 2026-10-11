@@ -6,6 +6,7 @@
     setTimer = setTimeout,
     clearTimer = clearTimeout,
     now = Date.now,
+    onChange = () => {},
   }) {
     const visible = [],
       pending = [];
@@ -59,6 +60,7 @@
         target.append(box);
         resume(item);
       }
+      onChange();
     }
     function dismiss(item) {
       pause(item);

@@ -1006,3 +1006,8 @@ pre {
 .card-generation { margin:20px 0 28px; padding:16px 20px; border:1px solid #dce5da; border-radius:16px; background:#f8faf5; }
 .card-generation > summary { font-weight:600; }
 @media(max-width:600px) { .folder-heading .back-button { float:none; margin:0 0 16px; } }
+
+.outcome-place { min-width:0; border:0; border-top:1px solid #dce5da; padding:18px 0; margin:0; }
+.outcome-place legend { font-size:.95rem; font-weight:600; padding:0 0 8px; }
+.outcome-place select { margin-bottom:12px; }
+#copy-email { font-size:11px; }

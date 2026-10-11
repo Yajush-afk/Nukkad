@@ -1,7 +1,7 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { create } = require("../src/nukkad/static/suggestions.js");
-function fixture() {
+function fixture(overrides = {}) {
   const timers = [],
     requests = [],
     selected = [];
@@ -31,7 +31,6 @@ function fixture() {
   const target = node("ul");
   target.id = "matches";
   const status = node("p");
-  let resolveNext;
   const api = (path, options) =>
     new Promise((resolve) => requests.push({ path, options, resolve }));
   const ui = create({
@@ -50,6 +49,7 @@ function fixture() {
       const i = timers.indexOf(cb);
       if (i >= 0) timers.splice(i, 1);
     },
+    ...overrides,
   });
   return { input, target, status, ui, requests, timers, selected };
 }
@@ -125,4 +125,20 @@ test("explicit Search results replace autocomplete results and support keyboard 
   f.input.keydown({ key: "ArrowDown", preventDefault() {} });
   f.input.keydown({ key: "Enter", preventDefault() {} });
   assert.equal(f.selected[0].id, "explicit");
+});
+
+test("leaving and returning cannot publish an earlier search reply", async () => {
+  let revision = 0;
+  const f = fixture({
+    checkpoint: () => {
+      const saved = revision;
+      return () => saved === revision;
+    },
+  });
+  f.input.value = "Sample";
+  const pending = f.ui.changed();
+  revision += 2;
+  f.requests[0].resolve({ matches: [item("stale")] });
+  await pending;
+  assert.equal(f.target.children.length, 0);
 });

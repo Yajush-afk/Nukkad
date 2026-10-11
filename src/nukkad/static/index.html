@@ -51,7 +51,13 @@
       </a>
     </header>
     <main id="main">
-      <p id="navigation-loading" class="navigation-loading" role="status" aria-live="polite" hidden></p>
+      <p
+        id="navigation-loading"
+        class="navigation-loading"
+        role="status"
+        aria-live="polite"
+        hidden
+      ></p>
       <section id="home" class="panel" aria-labelledby="home-title">
         <div class="hero" id="sky-hero">
           <canvas id="pixel-sky" aria-hidden="true"></canvas>
@@ -307,138 +313,145 @@
         <div class="panel-heading">
           <p class="eyebrow">YOUR NEIGHBOURHOOD</p>
           <h1 id="setup-title">Start close to home.</h1>
-          <p class="lede">
-            Enter a place or address, choose the match, and download the
-            surrounding map.
-          </p>
+          <p class="lede">Your saved map, walking start and nearby places.</p>
         </div>
         <details id="change-neighbourhood" class="disclosure" open>
           <summary>Change neighbourhood or start</summary>
           <div id="setup-controls">
-        <form id="location-form" class="form-stack">
-          <label for="location-query">Where do you want to explore?</label>
-          <div class="location-search-row">
-            <input
-              id="location-query"
-              name="query"
-              type="search"
-              minlength="3"
-              maxlength="240"
-              placeholder="Ahinsa Khand 1, Indirapuram, Ghaziabad"
-              required
-              aria-describedby="location-help"
-              autocomplete="off"
-            />
-            <button id="search-location" class="primary">Search</button>
-          </div>
-          <p class="hint" id="location-help">
-            Enter a public place, locality or street and include the city.
-            Search sends this text to OpenStreetMap’s Nominatim service; don’t
-            include flat numbers or personal details.
-          </p>
-          <p id="location-status" role="status" aria-live="polite" hidden></p>
-          <ul
-            id="location-results"
-            class="location-results"
-            aria-label="Matching locations"
-            hidden
-          ></ul>
-          <p class="hint">
-            Online suggestions send your typed location and neighbourhood context to Photon. Notes and photos are never included. Location results ©
-            <a href="https://www.openstreetmap.org/copyright"
-              >OpenStreetMap contributors</a
-            >
-          </p>
-        </form>
-        <form id="area-form" class="form-stack">
-          <input name="lat" type="hidden" />
-          <input name="lon" type="hidden" />
-          <fieldset class="form-section">
-            <legend>Your selected location</legend>
-            <p id="selected-location">
-              Search above and choose a matching location.
-            </p>
-            <div class="form-grid">
-              <label
-                >Explore within (metres)<input
-                  name="radius_meters"
-                  type="number"
-                  min="200"
-                  max="3000"
-                  value="2000"
+            <form id="location-form" class="form-stack">
+              <label for="location-query">Where do you want to explore?</label>
+              <div class="location-search-row">
+                <input
+                  id="location-query"
+                  name="query"
+                  type="search"
+                  minlength="3"
+                  maxlength="240"
+                  placeholder="Ahinsa Khand 1, Indirapuram, Ghaziabad"
                   required
-                /><small
-                  >2,000 metres = 2 km around your selected point.</small
-                ></label
-              >
-              <div>
-                <button type="button" id="choose-start" hidden>
-                  Choose my walking start on the map
-                </button>
-                <p class="hint" id="start-map-hint">
-                  Download the map first. Then select the public gate or street
-                  where your walk will begin.
-                </p>
+                  aria-describedby="location-help"
+                  autocomplete="off"
+                />
+                <button id="search-location" class="primary">Search</button>
               </div>
-              <p class="hint wide" id="start-help">
-                Search locates the place or area, which may be inside a
-                building. It does not confirm a public walking entrance.
+              <p class="hint" id="location-help">
+                Enter a public place, locality or street and include the city.
+                Search sends this text to OpenStreetMap’s Nominatim service;
+                don’t include flat numbers or personal details.
               </p>
-              <label class="check wide"
-                ><input name="public_start_confirmed" type="checkbox" /><span
-                  >I’ve checked that the selected point is on a public walking
-                  path.<small
-                    >Leave this unchecked until you’ve checked the actual
-                    starting point.</small
-                  ></span
-                ></label
-              >
-            </div>
-          </fieldset>
-          <details class="disclosure">
-            <summary>Map options &amp; local time</summary>
-            <div class="disclosure-body">
-              <label
-                >Neighbourhood name<input
-                  name="name"
-                  value="My neighbourhood"
-                  required
-                  maxlength="100"
-                /><small>A label for your saved map.</small></label
-              >
-              <label
-                >Timezone<input
-                  name="timezone"
-                  value="Asia/Kolkata"
-                  required
-                /><small
-                  >Used for daylight checks and departure times.</small
-                ></label
-              >
-              <label
-                >Import a saved map (optional)<input
-                  name="extract"
-                  type="file"
-                  accept=".osm,.xml"
-                /><small
-                  >Choose an OpenStreetMap .osm or .xml file, up to 32 MiB. A
-                  photo of a map won’t work.</small
-                ></label
-              >
-            </div>
-          </details>
-          <div class="form-actions">
-            <button class="primary" id="acquire-area">
-              Fetch my neighbourhood</button
-            ><button type="button" id="reuse-map" hidden>
-              Save start without downloading again
-            </button>
-          </div>
-          <p class="hint">
-            Downloading needs internet. Once saved, your map is available
-            offline. A new download keeps your previous maps and walks.
-          </p>
-        </form>
+              <p
+                id="location-status"
+                role="status"
+                aria-live="polite"
+                hidden
+              ></p>
+              <ul
+                id="location-results"
+                class="location-results"
+                aria-label="Matching locations"
+                hidden
+              ></ul>
+              <p class="hint">
+                Online suggestions send your typed location and neighbourhood
+                context to Photon. Notes and photos are never included. Location
+                results ©
+                <a href="https://www.openstreetmap.org/copyright"
+                  >OpenStreetMap contributors</a
+                >
+              </p>
+            </form>
+            <form id="area-form" class="form-stack">
+              <input name="lat" type="hidden" />
+              <input name="lon" type="hidden" />
+              <fieldset class="form-section">
+                <legend>Your selected location</legend>
+                <p id="selected-location">
+                  Search above and choose a matching location.
+                </p>
+                <div class="form-grid">
+                  <label
+                    >Explore within (metres)<input
+                      name="radius_meters"
+                      type="number"
+                      min="200"
+                      max="3000"
+                      value="2000"
+                      required
+                    /><small
+                      >2,000 metres = 2 km around your selected point.</small
+                    ></label
+                  >
+                  <div>
+                    <button type="button" id="choose-start" hidden>
+                      Choose my walking start on the map
+                    </button>
+                    <p class="hint" id="start-map-hint">
+                      Download the map first. Then select the public gate or
+                      street where your walk will begin.
+                    </p>
+                  </div>
+                  <p class="hint wide" id="start-help">
+                    Search locates the place or area, which may be inside a
+                    building. It does not confirm a public walking entrance.
+                  </p>
+                  <label class="check wide"
+                    ><input
+                      name="public_start_confirmed"
+                      type="checkbox"
+                    /><span
+                      >I’ve checked that the selected point is on a public
+                      walking path.<small
+                        >Leave this unchecked until you’ve checked the actual
+                        starting point.</small
+                      ></span
+                    ></label
+                  >
+                </div>
+              </fieldset>
+              <details class="disclosure">
+                <summary>Map options &amp; local time</summary>
+                <div class="disclosure-body">
+                  <label
+                    >Neighbourhood name<input
+                      name="name"
+                      value="My neighbourhood"
+                      required
+                      maxlength="100"
+                    /><small>A label for your saved map.</small></label
+                  >
+                  <label
+                    >Timezone<input
+                      name="timezone"
+                      value="Asia/Kolkata"
+                      required
+                    /><small
+                      >Used for daylight checks and departure times.</small
+                    ></label
+                  >
+                  <label
+                    >Import a saved map (optional)<input
+                      name="extract"
+                      type="file"
+                      accept=".osm,.xml"
+                    /><small
+                      >Choose an OpenStreetMap .osm or .xml file, up to 32 MiB.
+                      A photo of a map won’t work.</small
+                    ></label
+                  >
+                </div>
+              </details>
+              <div class="form-actions">
+                <button class="primary" id="acquire-area">
+                  Fetch my neighbourhood</button
+                ><button type="button" id="reuse-map" hidden>
+                  Save start without downloading again
+                </button>
+              </div>
+              <p class="hint">
+                Downloading needs internet. Once saved, your map is available
+                offline. A new download keeps your previous maps and walks.
+              </p>
+            </form>
           </div>
         </details>
         <div class="map-section">
@@ -461,7 +474,10 @@
               <a href="#location-query">Search for your neighbourhood above</a>
             </div>
           </div>
-          <div class="map-controls"><div id="map-zoom"></div><button type="button" id="my-start" disabled>My start</button></div>
+          <div class="map-controls">
+            <div id="map-zoom"></div>
+            <button type="button" id="my-start" disabled>My start</button>
+          </div>
           <div class="map-footer">
             <span id="progress"
               >Your visits will appear here after your first walk.</span
@@ -477,27 +493,81 @@
           </p>
           <div id="place-detail" aria-live="polite"></div>
 
-          <div class="buttonrow"><button type="button" id="add-place">Add a place</button></div>
-          <section id="add-place-details" class="context-editor" aria-labelledby="add-place-title" hidden>
+          <div class="buttonrow">
+            <button type="button" id="add-place">Add a place</button>
+          </div>
+          <section
+            id="add-place-details"
+            class="context-editor"
+            aria-labelledby="add-place-title"
+            hidden
+          >
             <h3 id="add-place-title">Add a place</h3>
             <form id="pin-form" class="form-grid">
-              <input name="lat" type="hidden" /><input name="lon" type="hidden" />
-              <label class="wide">Place name<input id="place-query" name="name" required maxlength="200" autocomplete="off" /></label>
-              <ul id="place-suggestions" class="location-results wide" aria-label="Matching places" hidden></ul>
-              <p id="place-search-status" class="hint wide" role="status" hidden></p>
-              <label>Type of place<select name="kind"><option value="landmark">Landmark</option><option value="park">Park</option><option value="garden">Garden</option><option value="market">Market</option><option value="artwork">Artwork</option><option value="tree">Tree</option><option value="court">Sports court</option></select></label>
-              <label class="wide">Something you’ve seen here (optional)<input name="descriptor" maxlength="120" placeholder="A detail visible from a public path" /></label>
-              <p id="place-entrance" class="hint wide">Choose an entrance on the map or search for a place.</p>
-              <button type="button" id="check-place-entrance" hidden>Use this map point as the entrance</button>
-              <label class="check wide"><input type="checkbox" name="confirmed" required />I’ve checked that this entrance is on a public walking path.</label>
-              <div class="buttonrow wide"><button class="primary" id="save-place">Save place</button><button type="button" id="cancel-place">Cancel</button></div>
+              <input name="lat" type="hidden" /><input
+                name="lon"
+                type="hidden"
+              />
+              <label class="wide"
+                >Place name<input
+                  id="place-query"
+                  name="name"
+                  required
+                  maxlength="200"
+                  autocomplete="off"
+              /></label>
+              <ul
+                id="place-suggestions"
+                class="location-results wide"
+                aria-label="Matching places"
+                hidden
+              ></ul>
+              <p
+                id="place-search-status"
+                class="hint wide"
+                role="status"
+                hidden
+              ></p>
+              <label
+                >Type of place<select name="kind">
+                  <option value="landmark">Landmark</option>
+                  <option value="park">Park</option>
+                  <option value="garden">Garden</option>
+                  <option value="market">Market</option>
+                  <option value="artwork">Artwork</option>
+                  <option value="tree">Tree</option>
+                  <option value="court">Sports court</option>
+                </select></label
+              >
+              <label class="wide"
+                >Something you’ve seen here (optional)<input
+                  name="descriptor"
+                  maxlength="120"
+                  placeholder="A detail visible from a public path"
+              /></label>
+              <p id="place-entrance" class="hint wide">
+                Choose an entrance on the map or search for a place.
+              </p>
+              <button type="button" id="check-place-entrance" hidden>
+                Use this map point as the entrance
+              </button>
+              <label class="check wide"
+                ><input type="checkbox" name="confirmed" required />I’ve checked
+                that this entrance is on a public walking path.</label
+              >
+              <div class="buttonrow wide">
+                <button class="primary" id="save-place">Save place</button
+                ><button type="button" id="cancel-place">Cancel</button>
+              </div>
             </form>
-            <div class="form-actions neighbourhood-next" id="neighbourhood-next">
-          <button class="primary" id="plan-walk" hidden>Plan a walk</button>
-        </div>
-      </section>
+            <div
+              class="form-actions neighbourhood-next"
+              id="neighbourhood-next"
+            >
+              <button class="primary" id="plan-walk" hidden>Plan a walk</button>
+            </div>
+          </section>
           <div id="duplicate-review" aria-live="polite"></div>
-
         </div>
       </section>
       <section
@@ -553,7 +623,7 @@
               ></label
             >
             <label class="wide"
-              >Anything else about today? (optional)<textarea
+              >Today’s purpose (optional)<textarea
                 name="state"
                 maxlength="500"
                 placeholder="A slow walk, somewhere familiar, or a change of scene…"
@@ -569,9 +639,8 @@
           </div>
         </form>
         <p class="hint">
-          Nukkad checks mapped walking paths, distance, return time and your
-          daylight settings. If no complete route fits, it will ask you to
-          adjust your plan.
+          Every route includes the return walk and checks your distance, time
+          and daylight limits.
         </p>
       </section>
       <section
@@ -613,9 +682,16 @@
           />
         </details>
       </section>
-      <section id="place-folder" class="panel" hidden aria-labelledby="folder-title">
+      <section
+        id="place-folder"
+        class="panel"
+        hidden
+        aria-labelledby="folder-title"
+      >
         <div class="panel-heading folder-heading">
-          <button type="button" data-panel="history" class="back-button">← Back to Dashboard</button>
+          <button type="button" data-panel="history" class="back-button">
+            ← Back to Dashboard
+          </button>
           <p class="eyebrow">YOUR PLACE COLLECTION</p>
           <h1 id="folder-title">A place to remember.</h1>
           <p id="folder-caption" class="lede"></p>
@@ -635,7 +711,10 @@
             Revisit a route, update your visit report, or keep an observation.
           </p>
         </div>
-        <section id="place-collection" aria-labelledby="place-collection-title"></section>
+        <section
+          id="place-collection"
+          aria-labelledby="place-collection-title"
+        ></section>
         <h2 class="walk-history-heading">Walk history</h2>
         <div id="history-list"></div>
         <details class="disclosure form-stack">
@@ -804,15 +883,15 @@
             <button class="primary">Save settings</button>
           </div>
         </form>
-          <details class="quiet-details" id="map-details">
-            <summary>Map information</summary>
-            <p id="snapshot-info" class="hint"></p>
-            <p class="hint">
-              Visits come from your reports, not GPS tracking. A mapped place
-              may be closed or inaccessible. Streets show saved map data, not
-              the paths you have walked.
-            </p>
-          </details>
+        <details class="quiet-details" id="map-details">
+          <summary>Map information</summary>
+          <p id="snapshot-info" class="hint"></p>
+          <p class="hint">
+            Visits come from your reports, not GPS tracking. A mapped place may
+            be closed or inaccessible. Streets show saved map data, not the
+            paths you have walked.
+          </p>
+        </details>
       </section>
       <section
         id="outcome"
@@ -843,15 +922,8 @@
                 min="0"
                 max="1440"
             /></label>
-            <fieldset class="form-section wide">
-              <legend>Which stops did you reach?</legend>
-              <p class="hint">
-                Only stops you mark as reached count as visited.
-              </p>
-              <div id="outcome-stops" class="form-grid"></div>
-            </fieldset>
             <label class="wide"
-              >Your note (optional)<textarea
+              >Your walk note (optional)<textarea
                 name="note"
                 maxlength="8000"
                 rows="4"
@@ -859,6 +931,13 @@
               ></textarea
               ><small>Your words are saved as written.</small></label
             >
+            <fieldset class="form-section wide">
+              <legend>Which stops did you reach?</legend>
+              <p class="hint">
+                Only stops you mark as reached count as visited.
+              </p>
+              <div id="outcome-stops" class="form-grid"></div>
+            </fieldset>
             <label class="wide" id="reason-label"
               >Why did you turn back? (optional)<input
                 name="reason"
@@ -889,11 +968,11 @@
       </section>
     </main>
     <div class="notification-rail" aria-label="Task progress and notifications">
-    <aside id="job" hidden aria-live="polite">
-      <div><strong>Working on it…</strong><span id="job-message"></span></div>
-      <button id="cancel-job">Cancel</button>
-    </aside>
-    <div id="notifications"></div>
+      <aside id="job" hidden aria-live="polite">
+        <div><strong>Working on it…</strong><span id="job-message"></span></div>
+        <button id="cancel-job">Cancel</button>
+      </aside>
+      <div id="notifications"></div>
     </div>
     <footer class="site-footer">
       <div class="footer-wordmark" aria-hidden="true">NUKKAD</div>
@@ -907,8 +986,19 @@
             >X / @Yajush_who <span aria-hidden="true">↗</span></a
           >
           <span class="email-contact">
-            <span id="email-tooltip" role="status" aria-live="polite" hidden></span>
-            <button type="button" id="copy-email" aria-label="Copy email address">yajush24606@gmail.com</button>
+            <span
+              id="email-tooltip"
+              role="status"
+              aria-live="polite"
+              hidden
+            ></span>
+            <button
+              type="button"
+              id="copy-email"
+              aria-label="Copy email address"
+            >
+              yajush24606@gmail.com
+            </button>
           </span>
           <a
             href="https://github.com/Yajush-afk/Nukkad"
@@ -918,7 +1008,16 @@
           >
         </div>
       </div>
-      <p class="map-credits">Special thanks: <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · <a href="https://github.com/openstreetmap" target="_blank" rel="noopener noreferrer">GitHub</a></p>
+      <p class="map-credits">
+        Special thanks:
+        <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ·
+        <a
+          href="https://github.com/openstreetmap"
+          target="_blank"
+          rel="noopener noreferrer"
+          >GitHub</a
+        >
+      </p>
     </footer>
   </body>
 </html>

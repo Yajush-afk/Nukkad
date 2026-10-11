@@ -207,6 +207,7 @@
         editor.append(save);
         editor.onsubmit = async (event) => {
           event.preventDefault();
+          if (save.disabled) return;
           const checkpoint = navigation.checkpoint();
           try {
             retain();
@@ -263,7 +264,8 @@
       }
       visitLabel.append(visits);
       generation.append(visitLabel);
-      let capable = false;
+      let capable = false,
+        generating = false;
       const visionStatus = node(
         "p",
         "Checking local vision. Reading, editing and manual templates remain available.",
@@ -281,8 +283,9 @@
           async () => {
             const navigationCurrent = navigation.checkpoint();
             const checkpoint = () => navigationCurrent() && current();
-            if (button.disabled) return;
-            button.disabled = true;
+            if (button.disabled || generating) return;
+            generating = true;
+            updateGeneration();
             try {
               const job = await api(
                 `/collection/${encodeURIComponent(folder.id)}/generate`,
@@ -298,6 +301,7 @@
             } catch (error) {
               if (checkpoint()) report(error);
             } finally {
+              generating = false;
               updateGeneration();
             }
           },
@@ -311,8 +315,8 @@
         const hasPhotos =
           folder.visits.find((visit) => visit.id === visits.value)?.photos
             .length > 0;
-        aiButton.disabled = !capable || !hasPhotos;
-        manualButton.disabled = !hasPhotos;
+        aiButton.disabled = generating || !capable || !hasPhotos;
+        manualButton.disabled = generating || !hasPhotos;
       };
       visits.onchange = updateGeneration;
       // Plain DOM test fixtures do not automatically select the first option.
@@ -389,16 +393,25 @@
               action(text, async () => {
                 const checkpoint = navigation.checkpoint();
                 try {
-                  await api(`/outcomes/${visit.id}/journal`, {
+                  const submitted = draft.value;
+                  const updated = await api(`/outcomes/${visit.id}/journal`, {
                     method: "PATCH",
                     body: {
                       status,
-                      text: draft.value,
+                      text: submitted,
                       version_id: visit.journal.version_id,
                     },
                   });
+                  const newer = journalDrafts.get(visit.journal.version_id);
+                  if (
+                    newer !== undefined &&
+                    newer !== submitted &&
+                    updated?.version_id
+                  )
+                    journalDrafts.set(updated.version_id, newer);
                   journalDrafts.delete(visit.journal.version_id);
-                  if (checkpoint()) await reload(folder.id, checkpoint);
+                  if (checkpoint() && current())
+                    await reload(folder.id, checkpoint);
                 } catch (error) {
                   if (checkpoint()) report(error);
                 }
