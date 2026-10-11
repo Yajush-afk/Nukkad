@@ -142,3 +142,17 @@ def test_home_uses_a_static_fictional_map_and_one_entry_button():
     script = (static / "app.js").read_text()
     assert "bubblingMouseEvents: false" in script
     assert 'if (id === "setup")' in script
+
+
+def test_hero_branding_and_layout_contracts():
+    static = Path(__file__).parents[1] / "src" / "nukkad" / "static"
+    html = (static / "index.html").read_text()
+    css = (static / "experience.css").read_text()
+    motion = (static / "experience.js").read_text()
+    assert 'id="sky-motion"' not in html and '"sky-motion"' not in motion
+    assert 'class="brand-symbol"' in html and 'class="brand-text">Nukkad' in html
+    assert "Star on GitHub" in html and 'rel="noopener noreferrer"' in html
+    assert "min-height: 100svh" in css
+    assert "max-width: 1040px" in css and "max-width: 800px" in css
+    assert 'body[data-panel="home"] main' in css
+    assert "prefers-reduced-motion" in motion and "visibilitychange" in motion
