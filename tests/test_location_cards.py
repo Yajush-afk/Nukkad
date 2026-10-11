@@ -9,7 +9,7 @@ from PIL import Image
 from nukkad.app import create_app
 from nukkad.backups import backup, restore
 from nukkad.config import Config
-from nukkad.journals import WrittenJournal
+from nukkad.journals import JournalNarrative
 from nukkad.location_cards import CardSummary, CoverChoice, validate_summary
 from nukkad.ollama import ModelFailure
 from nukkad.outcomes import Outcome, save_outcome
@@ -54,22 +54,15 @@ def token(client):
 
 def ai_response(photo):
     def response(self, response_type, prompt, deadline, schema=None, images=None, image_ids=None):
-        if response_type is not WrittenJournal:
+        if response_type is not JournalNarrative:
             assert images and len(images) == 1
         if response_type is CoverChoice:
             return CoverChoice(
                 photo_id=photo["id"], reason="Selection: A clear view for the reported observation."
             ), {}
-        if response_type is WrittenJournal:
+        if response_type is JournalNarrative:
             assert not images
-            return WrittenJournal(
-                passages=[
-                    {
-                        "text": "They enjoyed noticing tree outlines.",
-                        "quote": "I enjoyed noticing tree outlines.",
-                    }
-                ]
-            ), {}
+            return JournalNarrative(text="They enjoyed noticing tree outlines."), {}
         return CardSummary(
             summary="They enjoyed noticing tree outlines during their reported visit.",
             evidence_ids=["note"],

@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from nukkad.app import create_app
-from nukkad.journals import WrittenJournal, generate_journal, validate_written
+from nukkad.journals import JournalNarrative, WrittenJournal, generate_journal, validate_written
 from nukkad.ollama import ModelFailure
 
 
@@ -54,8 +54,8 @@ def test_journal_versions_and_interest_review_are_separate(registry, monkeypatch
     store.put("outcome", "visit", source)
 
     def response(*args):
-        return WrittenJournal(
-            passages=[{"text": "They enjoyed tree shapes.", "quote": source["note"]}],
+        return JournalNarrative(
+            text="They enjoyed tree shapes.",
             interests=[{"theme": "trees", "quote": source["note"]}],
         ), {}
 
@@ -101,7 +101,7 @@ def test_journal_generation_cannot_overwrite_review_during_inference(registry, m
     def response(*args):
         entered.set()
         assert release.wait(3)
-        return draft(), {}
+        return JournalNarrative(text="They enjoyed tree shapes."), {}
 
     monkeypatch.setattr("nukkad.ollama.Ollama.generate", response)
     with TestClient(create_app(registry[0].config), base_url="http://127.0.0.1") as client:
@@ -185,13 +185,8 @@ def test_evidence_allows_grounded_paraphrase_and_sentence_initial_pronouns():
 def test_invalid_interest_does_not_discard_a_valid_written_journal():
     class Response:
         def generate(self, *args):
-            return WrittenJournal(
-                passages=[
-                    {
-                        "text": "They noticed people working out.",
-                        "quote": "I saw people working out.",
-                    }
-                ],
+            return JournalNarrative(
+                text="They noticed people working out.",
                 interests=[{"theme": "workouts", "quote": "I saw people working out."}],
             ), {}
 
@@ -204,3 +199,37 @@ def test_invalid_interest_does_not_discard_a_valid_written_journal():
     assert result["text"] == "They noticed people working out."
     assert result["interests"] == []
     assert result["metrics"]["interest_validation"]["rejected"] == 1
+
+
+def test_journal_prose_rejects_editorial_placeholders():
+    with pytest.raises(ValueError, match="placeholders"):
+        validate_written(
+            draft(
+                "They had a preference for [no explicit preference mentioned].",
+                "I enjoyed tree shapes.",
+            ),
+            {"note": "I enjoyed tree shapes."},
+        )
+
+
+def test_short_note_uses_broad_evidence_and_bounded_narrative_schema():
+    note = "I enjoyed tree shapes."
+
+    class Response:
+        def generate(self, response_type, prompt, deadline, schema):
+            assert "text" in schema["properties"]
+            assert schema["properties"]["interests"]["maxItems"] == 0
+            return JournalNarrative(text="They enjoyed tree shapes."), {}
+
+    result = generate_journal(
+        {"note": note}, Response(), time.monotonic() + 1, propose_interests=False
+    )
+    assert result["mode"] == "local AI journal"
+
+
+def test_visit_story_retains_reported_appreciation_and_person():
+    source = {"note": "I loved this place and saw people doing yoga."}
+    with pytest.raises(ValueError, match="positive experience"):
+        validate_written(draft("They saw people doing yoga.", source["note"]), source)
+    with pytest.raises(ValueError, match="generic scene"):
+        validate_written(draft("People were doing yoga in the place.", source["note"]), source)

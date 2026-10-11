@@ -169,7 +169,7 @@ def generate_visit(model, experience, photos, images, stage, deadline, earlier_c
     journal_result = None
     if experience["note"].strip():
         stage("Writing a separate third-person experience journal")
-        journal_result = generate_journal(experience, model, deadline)
+        journal_result = generate_journal(experience, model, deadline, propose_interests=False)
     writing = VisitWriting(
         summary=summary.summary,
         evidence_ids=summary.evidence_ids,
