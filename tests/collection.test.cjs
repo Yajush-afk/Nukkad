@@ -1,7 +1,7 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { create } = require("../src/nukkad/static/collection.js");
-function fixture() {
+function fixture(overrides = {}) {
   const make = (tag, text) => ({
     tag,
     textContent: text || "",
@@ -54,6 +54,7 @@ function fixture() {
       throw error;
     },
     message: () => {},
+    ...overrides,
   });
   const all = (item) => [item, ...item.children.flatMap(all)];
   return { ui, get, all, navigated };
@@ -159,4 +160,95 @@ test("place journal history is readable and an empty unsaved edit survives reren
   await f.ui.renderFolder(folder, () => true);
   nodes = f.all(f.get("folder-content"));
   assert.equal(nodes.find((x) => x.tag === "textarea").value, "");
+});
+
+const sampleFolder = () => ({
+  id: "place",
+  name: "Sample park",
+  current_card: {
+    id: "card",
+    experience_id: "visit",
+    photo_id: "photo",
+    summary: "They noticed outlines.",
+    visit_date: "2026-10-11",
+    mode: "Manual template",
+  },
+  visits: [
+    {
+      id: "visit",
+      outcome_id: "walk",
+      visit_date: "2026-10-11",
+      note: "I noticed outlines.",
+      photos: [{ id: "photo" }],
+    },
+  ],
+  card_versions: [],
+});
+test("folder reading and manual controls render before readiness resolves", async () => {
+  let release;
+  const f = fixture({
+    api: () => new Promise((resolve) => (release = resolve)),
+  });
+  await f.ui.renderFolder(sampleFolder(), () => true);
+  let nodes = f.all(f.get("folder-content"));
+  assert.ok(nodes.some((x) => x.textContent === "Photos, visit by visit."));
+  assert.equal(
+    nodes.find((x) => x.textContent === "Create manual template").disabled,
+    false,
+  );
+  assert.equal(
+    nodes.find((x) => x.textContent === "Regenerate with local AI").disabled,
+    true,
+  );
+  release({ local_ai_ready: true, model_capabilities: ["vision"] });
+  await new Promise((r) => setImmediate(r));
+  assert.equal(
+    nodes.find((x) => x.textContent === "Regenerate with local AI").disabled,
+    false,
+  );
+});
+test("stale readiness cannot enable a newer folder and failure keeps manual actions", async () => {
+  const pending = [];
+  const f = fixture({
+    api: () =>
+      new Promise((resolve, reject) => pending.push({ resolve, reject })),
+  });
+  await f.ui.renderFolder(sampleFolder(), () => true);
+  await f.ui.renderFolder({ ...sampleFolder(), id: "new" }, () => true);
+  const nodes = f.all(f.get("folder-content"));
+  pending[0].resolve({ local_ai_ready: true, model_capabilities: ["vision"] });
+  await new Promise((r) => setImmediate(r));
+  assert.equal(
+    nodes.find((x) => x.textContent === "Regenerate with local AI").disabled,
+    true,
+  );
+  pending[1].reject(Error("Offline"));
+  await new Promise((r) => setImmediate(r));
+  assert.equal(
+    nodes.find((x) => x.textContent === "Create manual template").disabled,
+    false,
+  );
+  assert.ok(
+    nodes.some((x) => x.textContent.includes("manual templates still work")),
+  );
+});
+test("unsaved card text survives rerender including an empty edit", async () => {
+  const f = fixture();
+  const folder = sampleFolder();
+  await f.ui.renderFolder(folder, () => true);
+  let nodes = f.all(f.get("folder-content"));
+  const input = nodes.find((x) => x.tag === "textarea");
+  input.value = "";
+  input.oninput();
+  await f.ui.renderFolder(folder, () => true);
+  nodes = f.all(f.get("folder-content"));
+  assert.equal(nodes.find((x) => x.tag === "textarea").value, "");
+  assert.equal(
+    nodes.find(
+      (x) =>
+        x.tag === "details" &&
+        x.children[0].textContent === "Edit this Location Card",
+    ).open,
+    true,
+  );
 });
