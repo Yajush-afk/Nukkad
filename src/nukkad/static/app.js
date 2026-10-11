@@ -13,6 +13,7 @@ let navigation,
   sessionToken,
   questMap,
   questLayers,
+  routeZoomControls,
   selectedPointLayer,
   hasSelectedLocation = false,
   locationRevision = 0;
@@ -901,10 +902,11 @@ async function init() {
 }
 function createMap() {
   if (map) return;
-  map = L.map("map", { attributionControl: false }).setView(
+  map = L.map("map", { attributionControl: false, zoomControl: false, scrollWheelZoom: false, touchZoom: true, minZoom:12, maxZoom:19 }).setView(
     [28.6394, 77.3606],
     15,
   );
+  NukkadMapControls.create({map,target:$("map-zoom"),node,baseline:15});
   geometryLayer = L.geoJSON(null, {
     style: (feature) => ({
       color: "#c3cdbd",
@@ -1363,7 +1365,7 @@ async function renderRouteMap(value) {
   const saved = await api(`/snapshots/${value.snapshot_id}/map`);
   if (quest?.id !== value.id) return;
   if (!questMap) {
-    questMap = L.map("quest-map", { attributionControl: false }).setView(
+    questMap = L.map("quest-map", { attributionControl: false, zoomControl: false, scrollWheelZoom: false, touchZoom:true, minZoom:10, maxZoom:19 }).setView(
       [value.start.lat, value.start.lon],
       16,
     );
