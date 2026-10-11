@@ -110,13 +110,16 @@
             "span",
             folder.current_card_id
               ? folder.stale
-                ? "Card needs an update"
+                ? "Card needs updating"
                 : "Location Card kept"
               : "No card yet",
           ),
-          node("span", "↗", "folder-arrow"),
         );
-        tile.append(cover, tab, bottom);
+        const sheet = node("div", undefined, "folder-sheet");
+        sheet.append(tab, bottom);
+        const arrow = node("span", "↗", "folder-arrow");
+        arrow.setAttribute("aria-hidden", "true");
+        tile.append(cover, sheet, arrow);
         grid.append(tile);
       }
       target.append(grid);
