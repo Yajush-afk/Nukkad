@@ -262,11 +262,6 @@ button,
   padding: 20px;
 }
 #job {
-  max-width: 850px;
-  left: 50%;
-  right: auto;
-  width: calc(100% - 40px);
-  transform: translateX(-50%);
   border-radius: 20px;
   background: #264b3bef;
   -webkit-backdrop-filter: blur(12px);

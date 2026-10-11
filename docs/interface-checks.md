@@ -40,3 +40,13 @@ The visible history label is Dashboard and its heading is Your neighbourhood not
 An unresolved readiness response no longer delays cards/photos/journals or manual actions. Revision guards reject older readiness responses. Browser checks verified current-card-first ordering, responsive grids, unsaved summary retention and Back/Forward. A direct-preview reload exposed an old dependency on the uninitialised Neighbourhood map; removal and focused regression coverage now allow every stop and export action to render independently.
 
 The isolated HTTP integration fixture exercises explicit search, import, start confirmation, local suggestions, custom-place verification, route preview, generation with labelled model fallback, acceptance/export, outcome/place note, synthetic photo upload, manual card creation/edit/export and stable collection/version counts. All writes and images stay in temporary/synthetic data. Real Photon availability, physical phone gestures and outdoor trials remain separate from deterministic software checks.
+
+### Viewport progress alignment
+
+The selected-place screenshot exposed a legacy `#job` transform in the later theme
+stylesheet. The rail was correctly fixed to the viewport, but its progress child
+was translated 180 px left. Removed the obsolete centring and explicitly reset
+child positioning. Browser geometry now places progress at the rail's right edge,
+24 px from the usable desktop viewport. Existing notification timers, persistent
+errors and cancellation remain unchanged. The stylesheet regression and notification
+suite pass; no personal records were written for this check.
