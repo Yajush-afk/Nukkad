@@ -1,6 +1,7 @@
 "use strict";
 const $ = (id) => document.getElementById(id);
-let area,
+let navigation,
+  area,
   quest,
   activeJob,
   map,
@@ -97,12 +98,7 @@ function renderPanel(id) {
       `${area.area.name} · ${area.area.timezone} · returning to your start`;
 }
 function show(id) {
-  if (document.body.dataset.panel === id) return;
-  renderPanel(id);
-  const heading = $(id).querySelector("h1");
-  heading.tabIndex = -1;
-  heading.focus({ preventScroll: true });
-  window.scrollTo({ top: 0, behavior: "instant" });
+  return navigation.go(id, quest?.id);
 }
 function report(error) {
   message(error.message || String(error), true);
@@ -362,7 +358,7 @@ function selectMapPoint(point) {
     ["Add a place here", "pin-form"],
   ]) {
     const button = node("button", label);
-    button.onclick = () => {
+    button.onclick = async () => {
       const form = $(formId);
       form.elements.lat.value = point.lat.toFixed(6);
       form.elements.lon.value = point.lng.toFixed(6);
@@ -380,7 +376,7 @@ function selectMapPoint(point) {
         form.elements.confirmed.checked = false;
         $("add-place-details").open = true;
       }
-      show("setup");
+      await show("setup");
       form.scrollIntoView({ block: "start" });
       form.elements[
         formId === "area-form" ? "public_start_confirmed" : "name"
@@ -393,9 +389,10 @@ function selectMapPoint(point) {
   target.append(actions);
   target.scrollIntoView({ block: "nearest" });
 }
-function renderQuest(value) {
+function renderQuest(value, navigate = true) {
+  if (navigate && !navigation.isCurrent("preview", value.id))
+    return navigation.go("preview", value.id, { quest: value });
   quest = value;
-  show("preview");
   renderRouteMap(value).catch(report);
   const accepted = value.status === "accepted";
   $("preview-stage").textContent = accepted
@@ -526,11 +523,12 @@ function renderQuest(value) {
   $("card-preview").hidden = false;
   $("card-preview").src = "/api/quests/" + value.id + "/card.svg";
 }
-async function loadHistory() {
+async function loadHistory(current = () => true) {
   const [values, outcomes] = await Promise.all([
     api("/quests"),
     api("/outcomes"),
   ]);
+  if (!current()) return;
   const byQuest = new Map(
     outcomes.map((outcome) => [outcome.quest_id, outcome]),
   );
@@ -602,18 +600,20 @@ async function loadHistory() {
     item.append(actions);
     target.append(item);
   }
-  await interestControls($("interest-review"));
+  await interestControls($("interest-review"), undefined, current);
 }
-document.querySelectorAll("a[data-panel], button[data-panel]").forEach((button) => {
-  button.onclick = (event) => {
-    event.preventDefault();
-    show(button.dataset.panel);
-  };
-});
+document
+  .querySelectorAll("a[data-panel], button[data-panel]")
+  .forEach((button) => {
+    button.onclick = (event) => {
+      event.preventDefault();
+      show(button.dataset.panel);
+    };
+  });
 $("open-quest").onclick = () =>
   show(area?.area?.public_start_confirmed ? "quest-form-panel" : "setup");
-$("choose-start").onclick = () => {
-  show("home");
+$("choose-start").onclick = async () => {
+  await show("home");
   message(
     "Select your public starting point on the map, then choose ‘Use as my start’. Save it in Neighbourhood.",
   );
@@ -918,50 +918,60 @@ async function refreshReadiness() {
     $("models").append(item);
   }
 }
-init().catch(report);
-$("return").onclick = async () => {
-  try {
-    show("outcome");
-    $("outcome-stops").replaceChildren();
-    const existing = await api("/quests/" + quest.id + "/outcome");
-    for (const [index, place] of quest.stops.entries()) {
-      const label = node("label", `${index + 1}. ${place.name}`);
-      const select = node("select");
-      select.name = "stop-" + place.id;
-      for (const status of ["unresolved", "reached", "skipped"]) {
-        const option = node(
-          "option",
-          {
-            unresolved: "Not recorded",
-            reached: "Reached this stop",
-            skipped: "Skipped this stop",
-          }[status],
-        );
-        option.value = status;
-        select.append(option);
-      }
-      select.value =
-        existing?.stops.find((item) => item.id === place.id)?.status ||
-        "unresolved";
-      label.append(select);
-      $("outcome-stops").append(label);
+const initialized = init();
+const outcomeDrafts = new Map();
+let outcomeQuest;
+function retainOutcomeDraft() {
+  if (outcomeQuest) outcomeDrafts.set(outcomeQuest, formValues("outcome-form"));
+}
+async function renderOutcome(value, existing, current) {
+  if (!current()) return;
+  if (outcomeQuest === value.id) return;
+  retainOutcomeDraft();
+  outcomeQuest = value.id;
+  quest = value;
+  $("outcome-stops").replaceChildren();
+  for (const [index, place] of quest.stops.entries()) {
+    const label = node("label", `${index + 1}. ${place.name}`);
+    const select = node("select");
+    select.name = "stop-" + place.id;
+    for (const status of ["unresolved", "reached", "skipped"]) {
+      const option = node(
+        "option",
+        {
+          unresolved: "Not recorded",
+          reached: "Reached this stop",
+          skipped: "Skipped this stop",
+        }[status],
+      );
+      option.value = status;
+      select.append(option);
     }
-    for (const name of [
-      "status",
-      "note",
-      "reason",
-      "actual_minutes",
-      "screen_minutes",
-    ])
-      $("outcome-form").elements[name].value =
-        existing?.[name] ?? (name === "status" ? "completed" : "");
-    updateOutcomeReason();
-    $("journal-review").replaceChildren();
-    if (existing && window.showJournal) await window.showJournal(existing);
-  } catch (e) {
-    report(e);
+    select.value =
+      outcomeDrafts.get(value.id)?.["stop-" + place.id] ||
+      existing?.stops.find((item) => item.id === place.id)?.status ||
+      "unresolved";
+    label.append(select);
+    $("outcome-stops").append(label);
   }
-};
+  for (const name of [
+    "status",
+    "note",
+    "reason",
+    "actual_minutes",
+    "screen_minutes",
+  ])
+    $("outcome-form").elements[name].value =
+      outcomeDrafts.get(value.id)?.[name] ??
+      existing?.[name] ??
+      (name === "status" ? "completed" : "");
+  updateOutcomeReason();
+  $("journal-review").replaceChildren();
+  if (existing && window.showJournal)
+    await window.showJournal(existing, current);
+}
+$("return").onclick = () => show("outcome");
+
 function updateOutcomeReason() {
   $("reason-label").hidden =
     $("outcome-form").elements.status.value !== "turned_back";
@@ -996,7 +1006,8 @@ $("outcome-form").onsubmit = async (event) => {
     report(e);
   }
 };
-window.showJournal = async (outcome) => {
+window.showJournal = async (outcome, current = () => true) => {
+  if (!current()) return;
   const target = $("journal-review");
   target.replaceChildren(node("h2", "Your original note"));
   const original = node("pre", outcome.original_note);
@@ -1026,6 +1037,7 @@ window.showJournal = async (outcome) => {
   };
   target.append(generate);
   const journal = await api("/outcomes/" + outcome.id + "/journal");
+  if (!current()) return;
   if (journal) {
     target.append(
       node("h2", "Review your reflection"),
@@ -1063,10 +1075,11 @@ window.showJournal = async (outcome) => {
   }
   const holder = node("div");
   target.append(holder);
-  await interestControls(holder, outcome.id);
+  await interestControls(holder, outcome.id, current);
 };
-async function interestControls(target, source) {
+async function interestControls(target, source, current = () => true) {
   const items = await api("/interests");
+  if (!current()) return;
   target.replaceChildren();
   for (const item of items.filter(
     (item) =>
@@ -1227,3 +1240,57 @@ async function renderRouteMap(value) {
     });
   }, 40);
 }
+
+// Resolve routes from persistent records; navigation itself never performs writes.
+navigation = NukkadNavigation.createNavigation({
+  browser: window,
+  async resolve(route, current, supplied) {
+    await initialized;
+    if (!current()) return route;
+    if (route.view === "plan" && !area?.area?.public_start_confirmed)
+      return { view: "neighbourhood", walk: null };
+    if (["preview", "note"].includes(route.view)) {
+      try {
+        if (!route.walk) throw Error("Choose a saved walk first.");
+        const value =
+          supplied?.quest ||
+          (await api("/quests/" + encodeURIComponent(route.walk)));
+        if (!current()) return route;
+        if (route.view === "note" && value.status !== "accepted")
+          return { view: "preview", walk: value.id, quest: value };
+        const outcome =
+          route.view === "note"
+            ? await api("/quests/" + encodeURIComponent(value.id) + "/outcome")
+            : null;
+        return { ...route, quest: value, outcome };
+      } catch (error) {
+        return {
+          view: "history",
+          walk: null,
+          notice:
+            "That walk could not be opened. Choose a saved walk from My walks.",
+        };
+      }
+    }
+    return route;
+  },
+  async render(route, current) {
+    const id = NukkadNavigation.panels[route.view];
+    renderPanel(id);
+    const heading = $(id).querySelector("h1");
+    heading.tabIndex = -1;
+    heading.focus({ preventScroll: true });
+    if (route.quest) quest = route.quest;
+    if (route.view === "preview") renderQuest(route.quest, false);
+    if (route.view === "note")
+      await renderOutcome(route.quest, route.outcome, current);
+    if (route.view === "history") await loadHistory(current);
+    if (route.view === "settings") {
+      const air = await api("/air-quality");
+      if (current()) renderAir(air);
+    }
+    if (route.notice && current()) message(route.notice);
+  },
+  onError: report,
+});
+initialized.then(() => navigation.start()).catch(report);
