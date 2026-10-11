@@ -497,15 +497,7 @@
         </div>
       </section>
           <div id="duplicate-review" aria-live="polite"></div>
-          <details class="quiet-details" id="map-details" hidden>
-            <summary>About this map</summary>
-            <p id="snapshot-info" class="hint"></p>
-            <p class="hint">
-              Visits come from your reports, not GPS tracking. A mapped place
-              may be closed or inaccessible. Streets show saved map data, not
-              the paths you have walked.
-            </p>
-          </details>
+
         </div>
       </section>
       <section
@@ -812,6 +804,15 @@
             <button class="primary">Save settings</button>
           </div>
         </form>
+          <details class="quiet-details" id="map-details">
+            <summary>Map information</summary>
+            <p id="snapshot-info" class="hint"></p>
+            <p class="hint">
+              Visits come from your reports, not GPS tracking. A mapped place
+              may be closed or inaccessible. Streets show saved map data, not
+              the paths you have walked.
+            </p>
+          </details>
       </section>
       <section
         id="outcome"
@@ -917,6 +918,7 @@
           >
         </div>
       </div>
+      <p class="map-credits">Special thanks: <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · <a href="https://github.com/openstreetmap" target="_blank" rel="noopener noreferrer">GitHub</a></p>
     </footer>
   </body>
 </html>

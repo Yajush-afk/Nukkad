@@ -20,19 +20,26 @@
       minus.disabled = map.getZoom() <= map.getMinZoom();
       plus.disabled = map.getZoom() >= map.getMaxZoom();
     };
-    minus.onclick = () => map.zoomOut();
-    plus.onclick = () => map.zoomIn();
+    minus.onclick = () => map.zoomOut(1, { animate: false });
+    plus.onclick = () => map.zoomIn(1, { animate: false });
     value.onclick = () => (reset ? reset() : map.setZoom(base));
     map.scrollWheelZoom.disable();
     map.on("zoomend", update);
     const container = map.getContainer();
+    let pinchDelta = 0;
     container.addEventListener(
       "wheel",
       (event) => {
         // Browsers represent trackpad pinch as Ctrl+wheel. Ordinary wheel passes to the page.
-        if (!event.ctrlKey || event.deltaY === 0) return;
+        if (!event.ctrlKey || event.deltaY === 0) {
+          pinchDelta = 0;
+          return;
+        }
         event.preventDefault();
-        const step = event.deltaY < 0 ? 1 : -1;
+        pinchDelta += event.deltaY * (event.deltaMode === 1 ? 16 : 1);
+        if (Math.abs(pinchDelta) < 60) return;
+        const step = pinchDelta < 0 ? 1 : -1;
+        pinchDelta = 0;
         map.setZoom(
           Math.max(
             map.getMinZoom(),

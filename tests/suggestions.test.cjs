@@ -118,3 +118,11 @@ test("online failure leaves local matches visible", async () => {
   assert.equal(f.target.hidden, false);
   assert.equal(f.status.textContent, "Provider unavailable");
 });
+
+test("explicit Search results replace autocomplete results and support keyboard choice", () => {
+  const f = fixture();
+  f.ui.show([item("explicit")]);
+  f.input.keydown({ key: "ArrowDown", preventDefault() {} });
+  f.input.keydown({ key: "Enter", preventDefault() {} });
+  assert.equal(f.selected[0].id, "explicit");
+});

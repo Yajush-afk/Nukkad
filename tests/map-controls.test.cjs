@@ -75,11 +75,23 @@ test("a fitted route can set its own baseline and reset action", () => {
   assert.equal(f.target.children[1].textContent, "200%");
 });
 
-test('delayed map fitting checks both navigation and walk identity',()=>{
- const source=require('node:fs').readFileSync('src/nukkad/static/app.js','utf8');
- const route=source.slice(source.indexOf('async function renderRouteMap('),source.indexOf('// Resolve routes'));
- assert.match(route,/if \(!current\(\) \|\| quest\?\.id !== value.id\) return/);
- assert.match(route,/routeFitId!==value.id/);
- assert.match(source,/map.setView\(\[area.area.start.lat,area.area.start.lon\],15\)/);
- assert.doesNotMatch(source,/getCurrentPosition/);
+test("delayed map fitting checks both navigation and walk identity", () => {
+  const source = require("node:fs").readFileSync(
+    "src/nukkad/static/app.js",
+    "utf8",
+  );
+  const route = source.slice(
+    source.indexOf("async function renderRouteMap("),
+    source.indexOf("// Resolve routes"),
+  );
+  assert.match(
+    route,
+    /if \(!current\(\) \|\| quest\?\.id !== value.id\) return/,
+  );
+  assert.match(route, /routeFitId!==value.id/);
+  assert.match(
+    source,
+    /map.setView\(\[area.area.start.lat,area.area.start.lon\],15,\{animate:false\}\)/,
+  );
+  assert.doesNotMatch(source, /getCurrentPosition/);
 });

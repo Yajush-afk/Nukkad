@@ -196,10 +196,11 @@ async function loadArea(current = () => true) {
   controls.querySelector("summary").textContent = saved ? "Change neighbourhood or start" : "Choose your neighbourhood";
   setTimeout(()=>{if(current())map.invalidateSize();},30);
   for (const id of ["map-empty"]) $(id).hidden = saved;
-  for (const id of ["map-help", "map-details", "choose-start", "reuse-map"])
+  for (const id of ["map-help", "choose-start", "reuse-map"])
     $(id).hidden = !saved;
   $("plan-walk").hidden = !area.area?.public_start_confirmed;
   $("my-start").disabled = !saved;
+  $("add-place").disabled = !saved;
   $("area-status").textContent = !saved
     ? "Not set up"
     : area.area.public_start_confirmed
@@ -729,18 +730,7 @@ $("location-form").onsubmit = async (event) => {
     $("location-status").textContent = result.matches.length
       ? "Choose the location you meant:"
       : "No match found. Try the locality or a nearby landmark with the city, for example ‘Ahinsa Khand 1, Indirapuram, Ghaziabad’.";
-    for (const match of result.matches) {
-      const item = node("li");
-      const button = node("button", undefined, "location-result");
-      button.type = "button";
-      button.append(node("strong", match.name), node("span", match.label));
-      button.onclick = () => {
-        neighbourhoodSuggestions.choose(match);
-      };
-      button.setAttribute("aria-pressed", "false");
-      item.append(button);
-      target.append(item);
-    }
+    neighbourhoodSuggestions.show(result.matches.map((match,index)=>({...match,id:`explicit-${index}`,group:"Search results"})));
     target.hidden = !result.matches.length;
   } catch (error) {
     if (revision === locationRevision && current()) {
@@ -1373,7 +1363,7 @@ function renderAir(value) {
 }
 
 $("my-start").onclick = () => {
-  if(area?.area) map.setView([area.area.start.lat,area.area.start.lon],15);
+  if(area?.area) map.setView([area.area.start.lat,area.area.start.lon],15,{animate:false});
 };
 async function renderRouteMap(value, current = navigation.checkpoint()) {
   const saved = await api(`/snapshots/${value.snapshot_id}/map`);
@@ -1387,7 +1377,7 @@ async function renderRouteMap(value, current = navigation.checkpoint()) {
     questLayers = L.featureGroup().addTo(questMap);
     L.control
       .attribution({ prefix: false })
-      .addAttribution("Map data © OpenStreetMap contributors")
+      .addAttribution('Map data © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>')
       .addTo(questMap);
   }
   questLayers.clearLayers();
@@ -1543,6 +1533,7 @@ navigation = NukkadNavigation.createNavigation({
     if (route.view === "folder")
       await collectionUI.renderFolder(route.folder, current);
     if (route.view === "settings") {
+      void loadMapInformation(current);
       $("readiness").textContent = "Checking local components…";
       void refreshReadiness(current).catch((error) => {
         if (current()) $("readiness").textContent = error.message;
@@ -1657,3 +1648,14 @@ $("copy-email").onclick = async () => {
 };
 
 $("change-neighbourhood").addEventListener("toggle",()=>map?.invalidateSize());
+
+async function loadMapInformation(current) {
+  try {
+    const [summary,snapshots]=await Promise.all([api("/area/status"),api("/snapshots")]);
+    if(!current())return;
+    const saved=snapshots.find(item=>item.id===summary.snapshot_id);
+    $("snapshot-info").textContent=saved
+      ? `${saved.area.name} · saved ${new Date(saved.acquired_at).toLocaleDateString()} · ${saved.source} · ${saved.mapped_total} eligible mapped places when saved. Earlier snapshot counts stay unchanged.`
+      : "No neighbourhood map saved yet.";
+  } catch(error){if(current())$("snapshot-info").textContent=`Map information unavailable: ${error.message}`;}
+}

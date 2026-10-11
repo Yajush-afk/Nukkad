@@ -988,3 +988,9 @@ pre {
 .map-zoom button { min-width: 44px; min-height: 44px; border: 0; border-radius: 0; background: transparent; margin: 0; }
 .map-zoom button:nth-child(2) { min-width: 76px; border-inline: 1px solid #dce5d7; font-variant-numeric: tabular-nums; font-size: .85rem; }
 .map-zoom button:focus-visible { outline-offset: -4px; }
+
+.map-credits { color: #607465; font-size: .78rem; text-align: center; margin-top: 24px; }
+.map-credits a { color: inherit; text-underline-offset: 3px; }
+#change-neighbourhood { margin: 22px 0; }
+#setup-controls { padding: 18px 0 4px; }
+.leaflet-control-attribution { font-size: 10px !important; background: #fffdf0e6 !important; max-width: 100%; }
