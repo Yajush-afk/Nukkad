@@ -13,6 +13,7 @@ class Point(Record):
 class RankedPlace(Record):
     id: str
     reason: str = Field(min_length=1, max_length=240)
+    evidence_ids: list[str] = Field(default_factory=list, max_length=4)
 
 
 class Ranking(Record):
@@ -24,6 +25,7 @@ class Observation(Record):
     activity: str = Field(pattern="^(sound|shape|colour|activity|detail|compare)$")
     text: str = Field(min_length=5, max_length=180)
     feature_id: str | None = Field(default=None, max_length=100)
+    evidence_ids: list[str] = Field(default_factory=list, max_length=4)
 
 
 class Observations(Record):
