@@ -35,6 +35,7 @@ def snapshot_member(name):
 
 
 def validate_references(store):
+    store.check_record_versions()
     experiences = {item["id"]: item for item in store.list("experience")}
     photos = {item["id"]: item for item in store.list("photo")}
     for item in experiences.values():

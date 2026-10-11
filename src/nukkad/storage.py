@@ -88,6 +88,19 @@ class Store:
                 ],
             )
 
+    def check_record_versions(self):
+        """Legacy unversioned records remain readable; future versions need newer code."""
+        with self.connect() as connection:
+            rows = connection.execute("SELECT kind,data FROM records").fetchall()
+        for kind, encoded in rows:
+            value = json.loads(encoded)
+            version = value.get("record_version")
+            maximum = 2 if kind in {"journal", "journal_version"} else 1
+            if version is not None and (type(version) is not int or not 1 <= version <= maximum):
+                raise ValueError(
+                    f"Unsupported {kind} record version; use a compatible Nukkad release"
+                )
+
     def delete(self, kind: str, key: str) -> None:
         with self.connect() as connection:
             connection.execute("DELETE FROM records WHERE kind=? AND id=?", (kind, key))

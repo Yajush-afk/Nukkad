@@ -84,3 +84,19 @@ def test_missing_text_capability_is_not_ai_ready(registry, monkeypatch):
     assert result["model_status"] == "unsupported"
     assert not result["local_ai_ready"]
     assert result["deterministic_ready"]
+
+
+def test_future_record_version_invalidates_cached_readiness(registry, monkeypatch):
+    monkeypatch.setattr("nukkad.ollama.Ollama.models", lambda self: [{"name": self.config.model}])
+    monkeypatch.setattr(
+        "nukkad.ollama.Ollama.information", lambda self: {"capabilities": ["completion"]}
+    )
+    with TestClient(create_app(registry[0].config), base_url="http://127.0.0.1") as client:
+        assert client.get("/api/readiness").json()["database"] == "ready"
+        registry[1].put("location_card", "future", {"record_version": 99})
+        value = client.get("/api/readiness").json()
+        assert value["application"] == "saved_data_damaged" and not value["deterministic_ready"]
+        assert "record version" in value["checks"]["database"]["reason"]
+        assert client.get("/api/quests").status_code == 200
+        registry[1].delete("location_card", "future")
+        assert client.get("/api/readiness").json()["database"] == "ready"
