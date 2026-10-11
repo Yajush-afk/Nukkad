@@ -156,11 +156,11 @@ body {
   opacity: 1;
 }
 main {
-  max-width: 1328px;
-  padding: 0 32px;
+  max-width: 848px;
+  padding: 0 24px;
 }
 .panel {
-  max-width: 900px;
+  max-width: 800px;
   margin: 0 auto;
   padding: 65px 0 90px;
 }
@@ -182,7 +182,7 @@ main {
 #history-list,
 .walk-summary {
   width: 100%;
-  max-width: 900px;
+  max-width: 800px;
   margin-left: auto;
   margin-right: auto;
 }
@@ -262,7 +262,7 @@ button,
   backdrop-filter: blur(12px);
 }
 #message {
-  max-width: 900px;
+  max-width: 800px;
   margin: 20px auto;
   border-radius: 12px;
 }
@@ -637,7 +637,7 @@ h1[tabindex="-1"]:focus {
   user-select: none;
 }
 .footer-meta {
-  max-width: 1180px;
+  max-width: 1040px;
   margin: 18px auto 0;
   display: flex;
   justify-content: space-between;
