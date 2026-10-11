@@ -912,3 +912,10 @@ pre {
     flex-direction: column;
   }
 }
+
+/* Private visit photos stay compact beside the reporting form. */
+.photo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 14px; }
+.photo-grid figure { margin: 0; }
+.photo-grid img { display: block; width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 12px; }
+.photo-grid button { margin-top: 8px; font-size: 0.85rem; }
+.place-upload { padding: 24px; border: 1px solid #dde6dc; border-radius: 18px; }

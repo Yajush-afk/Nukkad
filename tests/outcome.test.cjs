@@ -26,8 +26,8 @@ function fixture() {
     formValues: () => Object.fromEntries(Object.entries(get("outcome-form").elements).map(([key, input]) => [key, input.value])),
     updateOutcomeReason() {}, labelFor: (v) => v, show() {},
     loadArea: async () => {}, message: (v) => messages.push(v), report: (e) => { throw e; },
-    interestControls: async () => {},
-    api: async (path) => journals.get(path.split("/")[2]) || null,
+    interestControls: async () => {}, renderPlacePhotos: async()=>{},
+    api: async (path) => path.endsWith("/experiences") ? [] : journals.get(path.split("/")[2]) || null,
   });
   const source = fs.readFileSync("src/nukkad/static/app.js", "utf8");
   vm.runInContext(source.slice(source.indexOf("const outcomeDrafts"), source.indexOf("async function interestControls")), context);
