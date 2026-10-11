@@ -1,5 +1,4 @@
 from contextlib import asynccontextmanager
-from dataclasses import replace
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -13,14 +12,12 @@ from nukkad.config import Config
 from nukkad.geocoding import router as geocoding_router
 from nukkad.jobs import Busy, Jobs
 from nukkad.memory import router as memory_router
-from nukkad.ollama import Ollama
 from nukkad.outcomes import router as outcomes_router
-from nukkad.planning import Settings
 from nukkad.planning_api import router as planning_router
 from nukkad.quests_api import router as quests_router
 from nukkad.runtime_lock import RuntimeLock
 from nukkad.security import install_security
-from nukkad.storage import Store
+from nukkad.storage import SourceChanged, Store
 
 
 def create_app(config: Config | None = None) -> FastAPI:
@@ -58,6 +55,10 @@ def create_app(config: Config | None = None) -> FastAPI:
     def home():
         return FileResponse(static / "index.html")
 
+    @app.exception_handler(SourceChanged)
+    async def stale_source(request: Request, error: SourceChanged):
+        return JSONResponse({"detail": str(error)}, status_code=409)
+
     @app.exception_handler(ValueError)
     async def invalid_input(request: Request, error: ValueError):
         return JSONResponse({"detail": str(error)}, status_code=422)
@@ -68,22 +69,8 @@ def create_app(config: Config | None = None) -> FastAPI:
 
     @app.get("/api/readiness")
     def readiness():
-        selected = Settings.model_validate(
-            store.get("settings", "active") or {"model": config.model}
-        ).model
-        try:
-            models = Ollama(replace(config, model=selected)).models()
-            model_names = [model["name"] for model in models]
-            model_status = "ready" if selected in model_names else "missing"
-        except Exception:
-            model_names, model_status = [], "unavailable"
-        return {
-            "application": "ready",
-            "model_status": model_status,
-            "models": model_names,
-            "selected_model": selected,
-            "database": "ready",
-            "area_ready": store.get("area", "active") is not None,
-        }
+        from nukkad.readiness import check_readiness
+
+        return check_readiness(app)
 
     return app
