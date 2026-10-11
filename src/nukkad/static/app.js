@@ -348,7 +348,8 @@ function inspectPlace(place) {
   corrections.append(node("p",accessNote(place),"hint"),form);chooseMode("experience");
 
 }
-const placeExperience=NukkadPlaceExperience.create({node,api,notify:message,checkpoint:()=>navigation.checkpoint(),onSaved:(id)=>{
+const visitMemory=NukkadVisitMemory.create({api,runJob});
+const placeExperience=NukkadPlaceExperience.create({node,api,notify:message,onGenerate:(visit,current,retry)=>visitMemory.prepare(visit,current,retry),checkpoint:()=>navigation.checkpoint(),onSaved:(id)=>{
   areaNeedsRefresh=true;
   const place=area?.places.find(item=>item.id===id);if(place)place.visited=true;
   const detail=$("place-detail"),status=detail.querySelector(".place-visit-status");
@@ -1096,7 +1097,9 @@ async function renderPlacePhotos(outcomeId, screenCurrent = navigation.checkpoin
         if(files.length+photos.length>5) throw Error("Choose at most five photos in total for this visit.");
         if(files.some(file=>file.size>20*1024*1024)) throw Error("Each photo must be at most 20 MiB.");
         upload.disabled=true;
-        for(const file of files){const data = new FormData();data.append("photo", file);await api(`/experiences/${experience.id}/photos`, {method:"POST",body:data});}
+        let revision=experience.revision;
+        for(const file of files){const data = new FormData();data.append("photo", file);const saved=await api(`/experiences/${experience.id}/photos`, {method:"POST",body:data});revision=saved.experience_revision;}
+        await visitMemory.prepare({...experience,revision},screenCurrent);
       } catch(error){failure=error;} finally {
         if(screenCurrent()) {await renderPlacePhotos(outcomeId,screenCurrent);if(failure) report(failure);else message("Photos saved locally.");}
       }
@@ -1207,6 +1210,10 @@ $("outcome-form").onsubmit = async (event) => {
       },
     });
     areaNeedsRefresh = true;
+    const visits=await api(`/outcomes/${outcome.id}/experiences`);
+    for(const visit of visits.filter(v=>v.active&&v.note.trim())) {
+      try {await visitMemory.prepare(visit,current);}catch(error){if(current()) message(`Visits saved. ${error.message}`,true);}
+    }
     if (!current()) return;
     message(
       "Note and visits saved. Only the stops you marked as reached count as visited.",
@@ -1592,6 +1599,8 @@ const collectionUI = NukkadCollection.create({
   $,
   navigation,
   runJob,
+  prepareVisit:visitMemory.prepare,
+  renderVisitEditor:(target,place,current,today,existing,onComplete)=>placeExperience.render(target,place,current,today,existing,onComplete),
   report,
   message,
 });
