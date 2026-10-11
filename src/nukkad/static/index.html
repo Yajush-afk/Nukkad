@@ -10,6 +10,7 @@
     <script defer src="/static/vendor/leaflet.js"></script>
     <script defer src="/static/navigation.js"></script>
     <script defer src="/static/collection.js"></script>
+    <script defer src="/static/notifications.js"></script>
     <script defer src="/static/app.js"></script>
     <script defer src="/static/experience.js"></script>
   </head>
@@ -48,7 +49,6 @@
     </header>
     <main id="main">
       <p id="navigation-loading" class="navigation-loading" role="status" aria-live="polite" hidden></p>
-      <div id="message" role="status" aria-live="polite" hidden></div>
       <section id="home" class="panel" aria-labelledby="home-title">
         <div class="hero" id="sky-hero">
           <canvas id="pixel-sky" aria-hidden="true"></canvas>
@@ -918,10 +918,13 @@
         <div id="journal-review" class="form-stack"></div>
       </section>
     </main>
+    <div class="notification-rail" aria-label="Task progress and notifications">
     <aside id="job" hidden aria-live="polite">
       <div><strong>Working on it…</strong><span id="job-message"></span></div>
       <button id="cancel-job">Cancel</button>
     </aside>
+    <div id="notifications"></div>
+    </div>
     <footer class="site-footer">
       <div class="footer-wordmark" aria-hidden="true">NUKKAD</div>
       <div class="footer-meta">

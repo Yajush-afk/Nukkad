@@ -58,10 +58,9 @@ function accessNote(place) {
     return "Entrance shown on the map; public access has not been personally confirmed.";
   return "Public access is unknown. Check from a public path and skip if blocked.";
 }
+const notifications = NukkadNotifications.create({ target: $("notifications"), node });
 function message(text, error = false) {
-  $("message").textContent = text;
-  $("message").hidden = !text;
-  $("message").setAttribute("role", error ? "alert" : "status");
+  notifications.notify(text, error);
 }
 async function api(path, options = {}) {
   if (
@@ -112,7 +111,6 @@ function show(id) {
 }
 function report(error) {
   message(error.message || String(error), true);
-  $("message").scrollIntoView({ behavior: "instant", block: "start" });
 }
 function formValues(id) {
   return Object.fromEntries(new FormData($(id)));
