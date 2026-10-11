@@ -651,6 +651,13 @@ h1[tabindex="-1"]:focus {
   flex-wrap: wrap;
   gap: 18px;
 }
+.footer-credit {
+  display: grid;
+  gap: 4px;
+}
+.footer-credit .map-credits {
+  text-align: inherit;
+}
 .site-footer p {
   font:
     11px/1.7 "DejaVu Sans",
