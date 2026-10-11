@@ -899,7 +899,7 @@ body[data-panel="home"] main {
   max-width: none;
   padding: 0;
 }
-#home > :is(.home-story, .open-story, .imagined-map) {
+#home > :is(.home-story, .open-story, .imagined-map, .ai-story) {
   width: calc(100% - 48px);
   max-width: 1040px;
   margin-left: auto;
@@ -909,7 +909,7 @@ body[data-panel="home"] main {
   max-width: 1040px;
 }
 @media (max-width: 760px) {
-  #home > :is(.home-story, .open-story, .imagined-map) {
+  #home > :is(.home-story, .open-story, .imagined-map, .ai-story) {
     width: calc(100% - 32px);
   }
 }
@@ -955,5 +955,50 @@ body[data-panel="home"] main {
     font-size: 10px;
     padding: 12px 10px;
     gap: 5px;
+  }
+}
+
+.ai-story {
+  padding-top: 35px;
+}
+.ai-steps .step-art {
+  height: 185px;
+}
+.ai-steps .step-copy h3 {
+  font-size: 25px;
+}
+.planner-note {
+  max-width: 760px;
+  margin: 55px auto 0;
+  padding: 25px 30px;
+  text-align: center;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: #f6faf7;
+}
+.planner-note h3 {
+  margin: 0 0 12px;
+  font-size: 24px;
+}
+.planner-note p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.ai-story .open-story {
+  margin-top: 55px;
+}
+.open-story p + p {
+  margin-top: 18px;
+}
+.open-story .fallback-note {
+  font-size: 12px;
+}
+@media (max-width: 760px) {
+  .ai-story {
+    padding-top: 20px;
+  }
+  .planner-note {
+    padding: 24px 18px;
   }
 }
