@@ -117,6 +117,8 @@ def test_busy_providers_recover_with_smaller_complete_tiles(registry, monkeypatc
     full = re.search(r'way\["highway"\]\(([^)]+)\)', calls[0]).group(1)
     tiled = [re.search(r'way\["highway"\]\(([^)]+)\)', q).group(1) for q in calls[2:]]
     assert len(set(tiled)) == 4 and full not in tiled
+    acquired = maps.acquire(area, path, activate=False)
+    assert acquired["graph_fingerprint"] and acquired["places"]
 
 
 def test_failed_tile_keeps_previous_target_and_active_snapshot(registry, monkeypatch, tmp_path):

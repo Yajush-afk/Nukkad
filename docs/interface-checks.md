@@ -64,3 +64,17 @@ the existing folder as a second visit without changing its one-card count.
 HTTP regressions cover direct visits without quests, idempotency, stale edits,
 future dates, source aliases, dependent journal/interest/card invalidation, photo
 upload and backup/restore. Personal data was not used for test writes.
+
+### Intermittent neighbourhood acquisition
+
+The reported main-provider 504 / backup-provider 500 is reproduced by controlled
+HTTP responses. Previously the download stopped after those two failures. The new
+regression recovers through four smaller sections, preserves the original bounds,
+and deduplicates source nodes. Failed sections, conflicting edits, missing geometry,
+rate limits and cancellation leave the previous target and active snapshot intact.
+
+A separate live acquisition using the personal area's location/radius (read only)
+succeeded in a temporary data directory, importing 162 destinations and writing a
+walking graph. It took 47.6 seconds including graph processing. This proves that
+acquisition worked at that time, not that public Overpass availability is guaranteed
+or that the revised query is always faster. The personal snapshot was not replaced.
