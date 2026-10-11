@@ -963,7 +963,7 @@ pre {
 
 /* Feedback never moves the document or takes keyboard focus. */
 .notification-rail { position: fixed; right: 24px; bottom: max(24px, env(safe-area-inset-bottom)); width: min(360px, calc(100vw - 32px)); z-index: 1200; pointer-events: none; }
-.notification-rail #job { position: static; width: auto; margin: 0 0 10px; padding: 14px; pointer-events: auto; border-radius: 16px; }
+.notification-rail #job { position: static; inset: auto; transform: none; width: auto; max-width: none; margin: 0 0 10px; padding: 14px; pointer-events: auto; border-radius: 16px; }
 #notifications { display: grid; gap: 8px; }
 .notification { display: flex; align-items: start; gap: 10px; padding: 13px 14px; color: var(--forest); background: #f7faf4; border: 1px solid #d3dfcd; border-radius: 14px; box-shadow: 0 8px 30px #203d2520; pointer-events: auto; font-size: .85rem; }
 .notification-error { color: #753d28; background: #fff8f2; border-color: #e7cdbd; }
