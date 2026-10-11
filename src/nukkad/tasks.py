@@ -49,6 +49,26 @@ def run_task(model, response_type, prompt, deadline, validator, schema=None, *, 
                     "status": "rejected",
                     "category": category,
                     "validation_rule": rule,
+                    "validation_message": str(error)
+                    if not isinstance(error, ModelFailure)
+                    and str(error)
+                    in {
+                        "Each passage needs an exact nonempty source quote",
+                        "Write about the person's reported visit, not a generic scene caption",
+                        "Retain the reported positive experience in the narrative",
+                        "Retain the reported discovery about previous awareness",
+                        "Write the journal in third person",
+                        "Do not add emotions absent from the supporting quote",
+                        "Do not turn negative experience into enjoyment",
+                        "Do not add achievements or encounters absent from the quote",
+                        "Do not add names absent from the source passage",
+                        "Do not add unsupported dates, counts or measurements",
+                        "A not-taken outcome cannot become a completed outing",
+                        "Keep the journal within its editable text limit",
+                        "Write only the visit narrative; remove placeholders and editorial comments",
+                        "Include the full supporting sentence for every negative, skipped or uncertain report",
+                    }
+                    else None,
                     "metrics": error.diagnostics if isinstance(error, ModelFailure) else metrics,
                 }
             )

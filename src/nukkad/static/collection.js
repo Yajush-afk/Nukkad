@@ -327,7 +327,23 @@
       const photosArea = node("section", undefined, "visits-gallery");
       photosArea.append(node("h2", "Photos, visit by visit."));
       const journals = node("section", undefined, "place-journals");
-      journals.append(node("h2", "The longer story."));
+      const originals = node("section", undefined, "place-originals");
+      originals.append(node("h2", "Your original experience."));
+      const hasWrittenJournal = folder.visits.some(
+        (visit) =>
+          visit.journal && visit.journal.mode !== "extractive fallback",
+      );
+      journals.append(
+        node("h2", hasWrittenJournal ? "The longer story." : "AI journal"),
+      );
+      if (!folder.visits.some((visit) => visit.journal))
+        journals.append(
+          node(
+            "p",
+            "No AI journal has been created for this visit yet. Your original experience is saved below.",
+            "hint",
+          ),
+        );
       for (const visit of folder.visits) {
         const group = node("section", undefined, "visit-group");
         group.append(
@@ -356,7 +372,7 @@
         photosArea.append(group);
         if (visit.note) {
           const source = node("pre", visit.note, "journal-text");
-          journals.append(
+          originals.append(
             details(
               `Original experience · ${date(visit.visit_date, visit.timezone)}`,
               source,
@@ -366,10 +382,15 @@
         if (visit.journal) {
           const section = node("section", undefined, "journal-entry");
           section.append(
-            node("h3", date(visit.visit_date, visit.timezone)),
+            node(
+              "h3",
+              `${date(visit.visit_date, visit.timezone)}${visit.journal.mode === "extractive fallback" ? " · Original note fallback" : ""}`,
+            ),
             node(
               "p",
-              `${visit.journal.mode} · ${visit.journal.status}`,
+              visit.journal.mode === "extractive fallback"
+                ? "AI could not produce a validated journal. This is an extract of your original note, not AI-written prose."
+                : `${visit.journal.mode} · ${visit.journal.status}`,
               "hint",
             ),
             node("pre", visit.journal.text, "journal-text"),
@@ -440,7 +461,7 @@
           journals.append(section);
         }
       }
-      target.append(photosArea, journals);
+      target.append(photosArea, journals, originals);
       const older = folder.card_versions.filter((item) => item.id !== card?.id);
       if (older.length) {
         const versions = node("div", undefined, "card-version-list");

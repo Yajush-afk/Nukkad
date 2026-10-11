@@ -17,7 +17,7 @@ from nukkad.domain import Record
 from nukkad.grounding import FORBIDDEN, validate_evidence
 from nukkad.identities import canonical_id
 from nukkad.jobs import Result
-from nukkad.journals import WrittenJournal, generate_journal
+from nukkad.journals import WrittenJournal, generate_journal, validate_feelings
 from nukkad.ollama import Ollama
 from nukkad.photos import file_info, verified_media_path
 from nukkad.planning_api import settings
@@ -67,21 +67,7 @@ def validate_summary(text, note="", place_name="", *, generated=False):
         return
     if FORBIDDEN.search(text):
         raise ValueError("Do not add access, history or health claims to the summary")
-    words = set(re.findall(r"\w+", note.casefold()))
-    emotions = set(
-        re.findall(
-            r"\b(enjoyed|loved|liked|happy|calm|relaxed|proud|pleased|sad|afraid|angry|disliked|hated)\b",
-            text.casefold(),
-        )
-    )
-    if not emotions <= words:
-        raise ValueError("Feelings must come from the experience note")
-    if (
-        emotions
-        and re.search(r"\b(not|never|didn't|disliked|hated)\b", note, re.I)
-        and not re.search(r"\b(not|never|didn't|disliked|hated)\b", text, re.I)
-    ):
-        raise ValueError("Do not turn negative experience into enjoyment")
+    validate_feelings(text, note)
     if not set(re.findall(r"\d+", text)) <= set(re.findall(r"\d+", note)):
         raise ValueError("Do not infer dates or quantities from images")
     named = re.findall(r"(?<![.!?] )\b[A-Z][a-z]+\b", text[1:])
@@ -183,7 +169,7 @@ def generate_visit(model, experience, photos, images, stage, deadline, earlier_c
     journal_result = None
     if experience["note"].strip():
         stage("Writing a separate third-person experience journal")
-        journal_result = generate_journal(experience, model, deadline)
+        journal_result = generate_journal(experience, model, deadline, propose_interests=False)
     writing = VisitWriting(
         summary=summary.summary,
         evidence_ids=summary.evidence_ids,

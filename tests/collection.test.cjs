@@ -103,7 +103,7 @@ test("a folder starts with its Location Card and groups photos by visit", async 
   assert.equal(target.children[0].children[0].textContent, "Location CARD");
   const nodes = f.all(target);
   assert.ok(nodes.some((x) => x.textContent === "Photos, visit by visit."));
-  assert.ok(nodes.some((x) => x.textContent === "The longer story."));
+  assert.ok(nodes.some((x) => x.textContent === "AI journal"));
   assert.ok(
     nodes.some(
       (x) => x.tag === "img" && x.src === "/api/location-cards/card/export.png",
@@ -284,5 +284,34 @@ test("card edits made during a save are retained under its new version", async (
   assert.equal(
     nodes.find((x) => x.tag === "textarea").value,
     "They also noticed colours.",
+  );
+});
+
+test("an original note is never presented as an AI-written longer story", async () => {
+  const f = fixture();
+  await f.ui.renderFolder(
+    {
+      id: "place",
+      name: "Sample park",
+      current_card: null,
+      card_versions: [],
+      visits: [
+        {
+          id: "visit",
+          source_kind: "place",
+          outcome_id: null,
+          visit_date: "2026-10-11",
+          note: "Loved the place. I never knew it was nearby.",
+          photos: [],
+        },
+      ],
+    },
+    () => true,
+  );
+  const nodes = f.all(f.get("folder-content"));
+  assert.ok(nodes.some((x) => x.textContent === "Your original experience."));
+  assert.ok(!nodes.some((x) => x.textContent === "The longer story."));
+  assert.ok(
+    nodes.some((x) => /No AI journal has been created/.test(x.textContent)),
   );
 });

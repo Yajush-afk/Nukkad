@@ -121,3 +121,16 @@ Area/duplicate keys use relevant SQLite record IDs/update revisions and active g
 file size/modification/change timestamps. The cache is process-local and contains no
 new persistent records. New writes invalidate derived responses rather than delaying
 correctness until a TTL expires. It does not cache acceptance, export or route decisions.
+
+### Visit writing validation
+
+Short source notes (up to 1,000 characters) use a flat narrative response. Application
+code attaches the unchanged note as its supporting passage; this avoids asking a small
+model to reproduce the note beside its prose. Longer notes retain passage-level exact
+quotes. Evidence establishes traceability, not a proof of every paraphrase. Discovery
+phrases such as “never knew” do not negate reported enjoyment. Ordinary supported
+paraphrases are allowed, while invented emotions, encounters and numbers remain rejected.
+Journal validation and inferred-interest validation are independent: an invalid interest
+is excluded and counted, without discarding valid prose. Card journals request prose only.
+Original notes have a separate reading section; missing AI drafts and extractive fallbacks
+are labelled explicitly rather than presented as a generated story.
