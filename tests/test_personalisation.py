@@ -60,3 +60,25 @@ def test_untrusted_note_is_bounded_data_not_prompt_instructions(registry):
     ):
         with pytest.raises(ValueError):
             validate_prose(suggestion)
+
+
+def test_place_experience_is_retrieved_before_global_walk_notes(registry):
+    maps, store = registry[:2]
+    store.put(
+        "experience",
+        "place-note",
+        {
+            "id": "place-note",
+            "place_id": "osm-way-20",
+            "active": True,
+            "note": "I liked noticing the repeating outlines.",
+        },
+    )
+    store.put(
+        "experience",
+        "skipped",
+        {"id": "skipped", "place_id": "osm-way-20", "active": False, "note": "I did not go."},
+    )
+    context = outing_context(store, QuestInput(), [], maps.places())
+    assert context["notes"][0]["id"] == "place-note"
+    assert not any(note["id"] == "skipped" for note in context["notes"])
