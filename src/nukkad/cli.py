@@ -12,7 +12,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Local neighbourhood discovery")
     parser.add_argument(
         "command",
-        choices=["serve", "benchmark", "backup", "restore", "evaluate", "demo"],
+        choices=["serve", "benchmark", "backup", "restore", "evaluate", "evaluate-vision", "demo"],
         nargs="?",
         default="serve",
     )
@@ -38,6 +38,12 @@ def main() -> None:
         from nukkad.benchmark import benchmark
 
         benchmark(config)
+    elif args.command == "evaluate-vision":
+        from nukkad.vision_evaluation import evaluate_vision
+
+        if not args.output:
+            parser.error("evaluate-vision requires --output (a new private directory)")
+        evaluate_vision(config, args.output)
     elif args.command == "evaluate":
         from nukkad.evaluation import evaluate
 

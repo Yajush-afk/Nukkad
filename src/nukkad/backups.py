@@ -35,6 +35,7 @@ def snapshot_member(name):
 
 
 def validate_references(store):
+    store.check_record_versions()
     experiences = {item["id"]: item for item in store.list("experience")}
     photos = {item["id"]: item for item in store.list("photo")}
     for item in experiences.values():
@@ -54,6 +55,8 @@ def validate_references(store):
             raise ValueError("Backup original photo fingerprint is inconsistent")
     versions = {item["id"]: item for item in store.list("location_card_version")}
     for item in versions.values():
+        if item.get("record_version") != 1:
+            raise ValueError("Backup card record version is unsupported")
         if (
             item["experience_id"] not in experiences
             or item.get("photo_id") not in photos

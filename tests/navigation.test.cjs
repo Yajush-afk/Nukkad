@@ -146,3 +146,15 @@ test("operation checkpoints expire when navigation leaves their screen", async (
   await f.navigation.go("settings");
   assert.equal(current(), false);
 });
+
+test('place folders restore with Back and Forward while history excludes private media',async()=>{
+  const f=fixture(async(route,current,supplied)=>({...route,...supplied}));
+  await f.navigation.start();await f.navigation.go('history');
+  await f.navigation.go('place-folder','osm-node-2',{folder:{note:'private experience',photos:['private photo']}});
+  assert.match(f.browser.location.href,/view=folder&place=osm-node-2/);
+  assert.equal(f.browser.history.state.place,'osm-node-2');
+  assert.equal(JSON.stringify(f.entries).includes('private experience'),false);
+  await f.travel(-1);assert.equal(f.rendered.at(-1),'history');
+  await f.travel(1);assert.equal(f.rendered.at(-1),'folder');
+  assert.ok(f.navigation.isCurrent('folder','osm-node-2'));
+});

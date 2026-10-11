@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="/static/experience.css" />
     <script defer src="/static/vendor/leaflet.js"></script>
     <script defer src="/static/navigation.js"></script>
+    <script defer src="/static/collection.js"></script>
     <script defer src="/static/app.js"></script>
     <script defer src="/static/experience.js"></script>
   </head>
@@ -650,6 +651,15 @@
           />
         </details>
       </section>
+      <section id="place-folder" class="panel" hidden aria-labelledby="folder-title">
+        <div class="panel-heading">
+          <button type="button" data-panel="history" class="back-button">← My walks</button>
+          <p class="eyebrow">YOUR PLACE COLLECTION</p>
+          <h1 id="folder-title">A place to remember.</h1>
+          <p id="folder-caption" class="lede"></p>
+        </div>
+        <div id="folder-content"></div>
+      </section>
       <section
         id="history"
         class="panel"
@@ -663,6 +673,8 @@
             Revisit a route, update your visit report, or keep an observation.
           </p>
         </div>
+        <section id="place-collection" aria-labelledby="place-collection-title"></section>
+        <h2 class="walk-history-heading">Walk history</h2>
         <div id="history-list"></div>
         <details class="disclosure form-stack">
           <summary>Interests from my notes</summary>

@@ -11,6 +11,7 @@ from nukkad.cards import router as cards_router
 from nukkad.config import Config
 from nukkad.geocoding import router as geocoding_router
 from nukkad.jobs import Busy, Jobs
+from nukkad.location_cards import router as location_router
 from nukkad.memory import router as memory_router
 from nukkad.outcomes import router as outcomes_router
 from nukkad.photos import install_media
@@ -47,6 +48,7 @@ def create_app(config: Config | None = None) -> FastAPI:
     app.include_router(cards_router)
     app.include_router(outcomes_router)
     app.include_router(memory_router)
+    app.include_router(location_router)
     app.include_router(air_router)
     install_media(app)
     install_security(app)

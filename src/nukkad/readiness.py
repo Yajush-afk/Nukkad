@@ -5,6 +5,7 @@ import time
 from dataclasses import replace
 
 import cairosvg
+from PIL import ImageFont
 
 from nukkad.context import active_interests
 from nukkad.maps import Maps
@@ -24,7 +25,7 @@ def _check_readiness(app):
     )
     with store.connect() as connection:
         revisions = connection.execute(
-            "SELECT kind,id,updated FROM records WHERE kind IN ('settings','area','place','place_alias','profile','interest','snapshot') ORDER BY kind,id"
+            "SELECT kind,id,updated FROM records ORDER BY kind,id"
         ).fetchall()
     key = repr((selected.model_dump(), revisions, sorted(stamps)))
     cached = getattr(app.state, "readiness_cache", None)
@@ -36,6 +37,7 @@ def _check_readiness(app):
         checks[name] = {"status": status, "reason": reason}
 
     try:
+        store.check_record_versions()
         with store.connect() as connection:
             healthy = connection.execute("PRAGMA quick_check").fetchone()[0] == "ok"
             version = connection.execute("PRAGMA user_version").fetchone()[0]
@@ -44,8 +46,14 @@ def _check_readiness(app):
             "ready" if healthy and version == 1 else "damaged",
             "Local database integrity and version checked",
         )
-    except sqlite3.Error:
-        put("database", "damaged", "Database could not be checked; restore a backup")
+    except (sqlite3.Error, ValueError) as error:
+        put(
+            "database",
+            "damaged",
+            str(error)
+            if isinstance(error, ValueError)
+            else "Database could not be checked; restore a backup",
+        )
     model_names, model_status, capabilities = [], "unavailable", []
     try:
         model = Ollama(replace(config, model=selected.model))
@@ -119,6 +127,8 @@ def _check_readiness(app):
             put("start", "unavailable", "Repair the saved map or choose a connected start")
             put("destinations", "unavailable", "Walking connections could not be checked")
     try:
+        ImageFont.truetype("DejaVuSans.ttf", 23)
+        ImageFont.truetype("DejaVuSans-Bold.ttf", 42)
         cairosvg.svg2png(
             bytestring=b'<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><text y="7" font-family="DejaVu Sans">N</text></svg>'
         )
@@ -130,7 +140,7 @@ def _check_readiness(app):
         for name in ("database", "map", "start", "destinations", "renderer")
     )
     result = {
-        "application": "ready",
+        "application": "ready" if checks["database"]["status"] == "ready" else "saved_data_damaged",
         "database": checks["database"]["status"],
         "area_ready": checks["map"]["status"] == "ready",
         "model_status": model_status,

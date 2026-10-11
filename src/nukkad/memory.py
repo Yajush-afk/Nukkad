@@ -10,7 +10,7 @@ from nukkad.jobs import Result
 from nukkad.journals import generate_journal, validate_preferences
 from nukkad.ollama import Ollama
 from nukkad.planning_api import settings
-from nukkad.storage import identity, now
+from nukkad.storage import SourceChanged, identity, now
 
 router = APIRouter(prefix="/api")
 
@@ -28,6 +28,7 @@ class Reflection(Record):
 class Review(Record):
     status: Literal["accepted", "rejected", "removed"]
     text: str | None = Field(default=None, max_length=2000)
+    version_id: str | None = None
 
 
 def validate_reflection(value: Reflection, note: str):
@@ -39,7 +40,7 @@ def validate_reflection(value: Reflection, note: str):
 @router.post("/outcomes/{key}/reflect")
 def reflect(key: str, request: Request):
     store = request.app.state.store
-    outcome = store.get("outcome", key)
+    outcome = store.get("outcome", key) or store.get("experience", key)
     if not outcome:
         raise HTTPException(404, "Unknown outcome")
     if not outcome["note"].strip():
@@ -59,7 +60,7 @@ def reflect(key: str, request: Request):
             "passages": generated["passages"],
             "record_version": 2,
             "version_id": identity(),
-            "source_revision": outcome.get("updated_at"),
+            "source_revision": outcome.get("revision") or outcome.get("updated_at"),
             "status": "pending",
             "mode": generated["mode"],
             "metrics": generated["metrics"],
@@ -94,7 +95,12 @@ def reflect(key: str, request: Request):
             records.append(("interest", item["id"], item))
         stage("Saving reviewable drafts")
         return Result(
-            {"outcome_id": key}, records, [("outcome", key, outcome), ("journal", key, previous)]
+            {"outcome_id": key},
+            records,
+            [
+                ("outcome" if store.get("outcome", key) else "experience", key, outcome),
+                ("journal", key, previous),
+            ],
         )
 
     return request.app.state.jobs.submit("Reflect on return note", action)
@@ -111,9 +117,12 @@ def review_interest(key: str, value: Review, request: Request):
     item = store.get("interest", key)
     if not item:
         raise HTTPException(404, "Unknown interest")
-    outcome = store.get("outcome", item["source_note_id"])
+    outcome = store.get("outcome", item["source_note_id"]) or store.get(
+        "experience", item["source_note_id"]
+    )
     if value.status == "accepted" and (
         not outcome
+        or item.get("status") in {"invalidated", "superseded"}
         or outcome["note"] != item["source_note"]
         or item["quote"] not in outcome["note"]
     ):
@@ -129,7 +138,11 @@ def review_interest(key: str, value: Review, request: Request):
             "theme": value.text.strip() if value.text is not None else item["theme"],
             "reviewed_at": now(),
         },
-        source=("outcome", item["source_note_id"], outcome),
+        source=(
+            "outcome" if store.get("outcome", item["source_note_id"]) else "experience",
+            item["source_note_id"],
+            outcome,
+        ),
         previous=item,
     )
     return updated
@@ -146,8 +159,15 @@ def review_journal(key: str, value: Review, request: Request):
     item = store.get("journal", key)
     if not item:
         raise HTTPException(404, "Unknown draft")
-    outcome = store.get("outcome", key)
-    if value.status == "accepted" and (not outcome or outcome["note"] != item["source_note"]):
+    if value.version_id and value.version_id != item.get("version_id"):
+        raise SourceChanged("Journal changed; reopen its latest version before saving edits")
+    outcome = store.get("outcome", key) or store.get("experience", key)
+    if value.status == "accepted" and (
+        not outcome
+        or item.get("status") == "invalidated"
+        or outcome.get("active", True) is False
+        or outcome["note"] != item["source_note"]
+    ):
         raise ValueError("Source note changed; regenerate this draft")
     updated = {
         **item,
@@ -163,7 +183,10 @@ def review_journal(key: str, value: Review, request: Request):
             ("journal_version", previous_id, {**item, "version_id": previous_id}),
             ("journal_version", updated["version_id"], updated),
         ],
-        [("outcome", key, outcome), ("journal", key, item)],
+        [
+            ("outcome" if store.get("outcome", key) else "experience", key, outcome),
+            ("journal", key, item),
+        ],
     )
     return updated
 

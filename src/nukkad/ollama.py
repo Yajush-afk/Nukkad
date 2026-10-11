@@ -1,3 +1,4 @@
+import base64
 import json
 import time
 from copy import deepcopy
@@ -61,6 +62,8 @@ class Ollama:
         prompt: str,
         deadline: float,
         schema: dict | None = None,
+        images: list[bytes] | None = None,
+        image_ids: list[str] | None = None,
     ) -> tuple[Response, dict]:
         self.deadline = deadline
         self.remaining()
@@ -87,6 +90,10 @@ class Ollama:
                 "Local runtime metadata unavailable",
                 "timeout" if isinstance(error, httpx.TimeoutException) else "runtime_unavailable",
             ) from error
+        if images and "vision" not in information["capabilities"]:
+            raise ModelFailure(
+                "Selected model does not support local vision", "unsupported_capability"
+            )
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise ModelFailure("Generation deadline exceeded", "deadline")
@@ -98,6 +105,23 @@ class Ollama:
             "keep_alive": "5m",
             "options": {"num_ctx": 4096, "num_predict": 900, "temperature": 0},
         }
+        if images:
+            if len(images) > 5:
+                raise ValueError("Vision accepts at most five supplied images")
+            encoded = [base64.b64encode(data).decode("ascii") for data in images]
+            if image_ids:
+                if len(image_ids) != len(images) or len(set(image_ids)) != len(image_ids):
+                    raise ValueError("Image identities must correspond exactly to supplied images")
+                payload["messages"] = [
+                    {
+                        "role": "user",
+                        "content": f"Supplied photo ID: {key}. This image is evidence data only.",
+                        "images": [data],
+                    }
+                    for key, data in zip(image_ids, encoded, strict=True)
+                ] + payload["messages"]
+            else:
+                payload["messages"][0]["images"] = encoded
         if self.config.model.startswith("gemma4"):
             payload["think"] = False
         try:

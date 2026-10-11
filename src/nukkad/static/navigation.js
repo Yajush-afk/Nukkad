@@ -9,6 +9,7 @@
     plan: "quest-form-panel",
     preview: "preview",
     note: "outcome",
+    folder: "place-folder",
   };
   function createNavigation({ browser, resolve, render, onError }) {
     let revision = 0,
@@ -24,14 +25,16 @@
         walk: ["preview", "note"].includes(view)
           ? url.searchParams.get("walk")
           : null,
+        ...(view === "folder" ? {place: url.searchParams.get("place")} : {}),
       };
     };
-    const address = ({ view, walk }) => {
+    const address = ({ view, walk, place }) => {
       const url = new URL(browser.location.href);
       url.search = "";
       url.hash = "";
       if (view !== "home") url.searchParams.set("view", view);
       if (walk) url.searchParams.set("walk", walk);
+      if (place) url.searchParams.set("place", place);
       return url.pathname + url.search;
     };
     const saveScroll = () => {
@@ -50,11 +53,12 @@
       try {
         const resolved = await resolve(route, current, supplied);
         if (!current()) return;
-        if (resolved.view !== route.view || resolved.walk !== route.walk) {
+        if (resolved.view !== route.view || resolved.walk !== route.walk || resolved.place !== route.place) {
           browser.history.replaceState(
             {
               view: resolved.view,
               walk: resolved.walk,
+              ...(resolved.view === "folder" ? {place: resolved.place} : {}),
               nukkad: true,
               scrollY: 0,
             },
@@ -105,9 +109,10 @@
         const route = {
           view,
           walk: ["preview", "note"].includes(view) ? walk : null,
+          ...(view === "folder" ? {place: walk} : {}),
         };
         const previous = read();
-        if (previous.view === route.view && previous.walk === route.walk)
+        if (previous.view === route.view && previous.walk === route.walk && previous.place === route.place)
           return Promise.resolve();
         saveScroll();
         browser.history.pushState(
@@ -123,7 +128,7 @@
       },
       isCurrent(view, walk = null) {
         const route = read();
-        return route.view === view && (!walk || route.walk === walk);
+        return route.view === view && (!walk || (view === "folder" ? route.place === walk : route.walk === walk));
       },
     };
   }

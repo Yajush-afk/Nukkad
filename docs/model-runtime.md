@@ -56,3 +56,9 @@ A short synthetic turned-back note produced a third-person journal with three
 exact supporting passages in 1.166 seconds with warm Gemma 4 E2B weights. It
 retained the unreached market and closed-gate report, proposed no interests and
 did not pad the sparse note to the suggested longer-journal length.
+
+## Vision task contract
+
+Ollama's native [chat API](https://docs.ollama.com/api/chat), [vision inputs](https://docs.ollama.com/capabilities/vision) and [structured outputs](https://docs.ollama.com/capabilities/structured-outputs) support the existing local adapter. Nukkad supplies orientation-correct, metadata-free inference variants with a maximum long edge of 1,024 px, up to five images. Each supplied ID accompanies its image message. The selected installed model must advertise vision; cloud-backed models remain blocked before any image request.
+
+Cover selection and summary are separate stages; journal drafting uses the established text-only contract. They share a 180-second deadline, context 4096 and temperature 0. Gemma 4 thinking stays disabled. There is no silent switch to another model. A journal validation failure retains an explicitly labelled extractive journal without discarding a valid card. Cover/summary failure retains the previous card and offers manual creation. See [evaluation.md](evaluation.md) for measured one-, three- and five-image E2B results and the incorrect cover-selection example. Gemma 3 text compatibility measurements are separate; they do not establish equivalent vision performance.

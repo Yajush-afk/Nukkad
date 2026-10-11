@@ -55,6 +55,9 @@ def experience_records(store, quest, outcome, inputs, existing_items=None):
             "status": outcome["status"],
             "revision": identity(),
             "visit_date": old["visit_date"] if old else outcome["created_at"],
+            "timezone": old.get("timezone", quest.get("timezone", "UTC"))
+            if old
+            else quest.get("timezone", "UTC"),
             "created_at": old["created_at"] if old else now(),
             "updated_at": now(),
             "revisions": [
@@ -65,6 +68,12 @@ def experience_records(store, quest, outcome, inputs, existing_items=None):
             else [],
         }
         records.append(("experience", key, item))
+        records.extend(
+            ("interest", item["id"], {**item, "status": "invalidated"})
+            for item in store.list("interest")
+            if item.get("source_note_id") == key
+            and item.get("status") not in {"removed", "rejected"}
+        )
         journal = store.get("journal", key)
         if journal:
             records.append(("journal", key, {**journal, "status": "invalidated"}))
