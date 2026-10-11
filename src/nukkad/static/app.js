@@ -14,6 +14,8 @@ let navigation,
   questMap,
   questLayers,
   routeZoomControls,
+  routeFit = null,
+  routeFitId = null,
   selectedPointLayer,
   hasSelectedLocation = false,
   locationRevision = 0;
@@ -191,6 +193,7 @@ async function loadArea(current = () => true) {
   for (const id of ["map-help", "map-details", "choose-start", "reuse-map"])
     $(id).hidden = !saved;
   $("plan-walk").hidden = !area.area?.public_start_confirmed;
+  $("my-start").disabled = !saved;
   $("area-status").textContent = !saved
     ? "Not set up"
     : area.area.public_start_confirmed
@@ -396,7 +399,8 @@ function renderQuest(value, navigate = true) {
   if (navigate && !navigation.isCurrent("preview", value.id))
     return navigation.go("preview", value.id, { quest: value });
   quest = value;
-  renderRouteMap(value).catch(report);
+  const mapCurrent = navigation.checkpoint();
+  renderRouteMap(value, mapCurrent).catch(error=>{if(mapCurrent())report(error);});
   const accepted = value.status === "accepted";
   $("preview-stage").textContent = accepted
     ? "03 / SAVE IT & HEAD OUT"
@@ -1361,14 +1365,18 @@ function renderAir(value) {
   );
 }
 
-async function renderRouteMap(value) {
+$("my-start").onclick = () => {
+  if(area?.area) map.setView([area.area.start.lat,area.area.start.lon],15);
+};
+async function renderRouteMap(value, current = navigation.checkpoint()) {
   const saved = await api(`/snapshots/${value.snapshot_id}/map`);
-  if (quest?.id !== value.id) return;
+  if (!current() || quest?.id !== value.id) return;
   if (!questMap) {
     questMap = L.map("quest-map", { attributionControl: false, zoomControl: false, scrollWheelZoom: false, touchZoom:true, minZoom:10, maxZoom:19 }).setView(
       [value.start.lat, value.start.lon],
       16,
     );
+    routeZoomControls = NukkadMapControls.create({map:questMap,target:$("route-zoom"),node,reset:()=>routeFit?.()});
     questLayers = L.featureGroup().addTo(questMap);
     L.control
       .attribution({ prefix: false })
@@ -1417,12 +1425,16 @@ async function renderRouteMap(value) {
   })
     .addTo(questLayers)
     .bindTooltip("Start + return");
-  setTimeout(() => {
+  routeFitId=value.id;
+  routeFit=()=>{
+    if(!current()||quest?.id!==value.id||routeFitId!==value.id)return;
     questMap.invalidateSize();
-    questMap.fitBounds(L.featureGroup(routes).getBounds(), {
-      padding: [35, 35],
-    });
-  }, 40);
+    const bounds=L.featureGroup(routes).getBounds();
+    if(bounds.isValid())questMap.fitBounds(bounds,{padding:[35,35],animate:false});
+    else questMap.setView([value.start.lat,value.start.lon],15);
+    routeZoomControls.setBaseline(questMap.getZoom());
+  };
+  setTimeout(()=>{if(current()&&quest?.id===value.id)routeFit();},40);
 }
 
 // Resolve routes from persistent records; navigation itself never performs writes.
