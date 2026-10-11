@@ -11,7 +11,14 @@
     note: "outcome",
     folder: "place-folder",
   };
-  function createNavigation({ browser, resolve, render, onError }) {
+  function createNavigation({
+    browser,
+    resolve,
+    render,
+    onError,
+    prepare = () => {},
+    settled = () => {},
+  }) {
     let revision = 0,
       loading = false,
       scrollTimer;
@@ -25,7 +32,7 @@
         walk: ["preview", "note"].includes(view)
           ? url.searchParams.get("walk")
           : null,
-        ...(view === "folder" ? {place: url.searchParams.get("place")} : {}),
+        ...(view === "folder" ? { place: url.searchParams.get("place") } : {}),
       };
     };
     const address = ({ view, walk, place }) => {
@@ -51,14 +58,19 @@
       loading = true;
       clearTimeout(scrollTimer);
       try {
+        prepare(route, current);
         const resolved = await resolve(route, current, supplied);
         if (!current()) return;
-        if (resolved.view !== route.view || resolved.walk !== route.walk || resolved.place !== route.place) {
+        if (
+          resolved.view !== route.view ||
+          resolved.walk !== route.walk ||
+          resolved.place !== route.place
+        ) {
           browser.history.replaceState(
             {
               view: resolved.view,
               walk: resolved.walk,
-              ...(resolved.view === "folder" ? {place: resolved.place} : {}),
+              ...(resolved.view === "folder" ? { place: resolved.place } : {}),
               nukkad: true,
               scrollY: 0,
             },
@@ -66,6 +78,7 @@
             address(resolved),
           );
           scrollY = 0;
+          prepare(resolved, current);
         }
         await render(resolved, current);
         if (!current()) return;
@@ -76,7 +89,10 @@
       } catch (error) {
         if (current()) onError(error);
       } finally {
-        if (current()) loading = false;
+        if (current()) {
+          loading = false;
+          settled();
+        }
       }
     }
     browser.history.scrollRestoration = "manual";
@@ -109,10 +125,14 @@
         const route = {
           view,
           walk: ["preview", "note"].includes(view) ? walk : null,
-          ...(view === "folder" ? {place: walk} : {}),
+          ...(view === "folder" ? { place: walk } : {}),
         };
         const previous = read();
-        if (previous.view === route.view && previous.walk === route.walk && previous.place === route.place)
+        if (
+          previous.view === route.view &&
+          previous.walk === route.walk &&
+          previous.place === route.place
+        )
           return Promise.resolve();
         saveScroll();
         browser.history.pushState(
@@ -128,7 +148,11 @@
       },
       isCurrent(view, walk = null) {
         const route = read();
-        return route.view === view && (!walk || (view === "folder" ? route.place === walk : route.walk === walk));
+        return (
+          route.view === view &&
+          (!walk ||
+            (view === "folder" ? route.place === walk : route.walk === walk))
+        );
       },
     };
   }
