@@ -75,7 +75,7 @@ async def import_area(
 
 def map_revision(request, *, duplicates=False):
     store = request.app.state.store
-    kinds = ["area", "snapshot", "place", "place_alias", "outcome"]
+    kinds = ["area", "snapshot", "place", "place_alias", "outcome", "experience"]
     if duplicates:
         kinds.append("place_duplicate")
     area = store.get("area", "active")

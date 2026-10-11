@@ -475,6 +475,11 @@ class Maps:
             for outcome in self.store.list("outcome")
             for key in outcome.get("reached_ids", [])
         }
+        visited.update(
+            canonical_id(self.store, item["place_id"], aliases)
+            for item in self.store.list("experience")
+            if item.get("active")
+        )
         grouped = {}
         for place in result:
             root = canonical_id(self.store, place.id, aliases)
