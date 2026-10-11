@@ -162,7 +162,7 @@ def test_saved_visit_preparation_is_revision_bound_and_idempotent(registry, monk
         assert wait(client, job.json())["status"] == "complete"
         again = client.post(f"/api/experiences/{key}/prepare", json=request).json()
         assert again["id"] == job.json()["id"]
-        assert len(calls) == 3 and len(store.list("location_card_version")) == 1
+        assert len(calls) == 2 and len(store.list("location_card_version")) == 1
         assert not store.list("quest")
         folder = client.get(f"/api/collection/{source}").json()
         assert folder["visits"][0]["generation"]["status"] == "complete"
@@ -213,3 +213,56 @@ def test_note_only_preparation_is_visible_and_explicit_retry_preserves_sources(
         assert store.get("experience", key) == visit
         assert len(store.list("journal_version")) == 2
         assert not store.list("quest") and not store.list("location_card_version")
+
+
+def test_automatic_visit_keeps_the_written_story_when_vision_fails(registry, monkeypatch):
+    from nukkad.journals import JournalNarrative
+    from nukkad.ollama import ModelFailure
+
+    source = registry[2]["places"][0]["id"]
+    key = "9" * 32
+
+    def response(self, response_type, *args, **kwargs):
+        if response_type is JournalNarrative:
+            return JournalNarrative(text="They enjoyed tree shapes."), {}
+        raise ModelFailure("Vision unavailable", "unsupported_capability")
+
+    monkeypatch.setattr("nukkad.ollama.Ollama.generate", response)
+    with TestClient(create_app(registry[0].config), base_url="http://127.0.0.1") as client:
+        client.headers["X-Nukkad-Token"] = client.get("/api/session").json()["token"]
+        client.put(
+            f"/api/places/{source}/experiences/{key}", json={"note": "I enjoyed tree shapes."}
+        )
+        output = io.BytesIO()
+        Image.new("RGB", (40, 40), "green").save(output, "PNG")
+        photo = client.post(
+            f"/api/experiences/{key}/photos",
+            files={"photo": ("synthetic.png", output.getvalue(), "image/png")},
+        ).json()
+        job = client.post(
+            f"/api/experiences/{key}/prepare",
+            json={"source_revision": photo["experience_revision"]},
+        ).json()
+        state = wait(client, job)
+        assert state["status"] == "complete"
+        assert state["result"]["card_error"] == "unsupported_capability"
+        assert state["result"]["journal_mode"] == "local AI journal"
+        assert registry[1].get("journal", key)["text"] == "They enjoyed tree shapes."
+        assert registry[1].list("photo") and not registry[1].list("location_card_version")
+
+
+def test_saved_direct_visit_remains_editable_when_the_current_map_changes(registry):
+    source = registry[2]["places"][0]["id"]
+    key = "8" * 32
+    with TestClient(create_app(registry[0].config), base_url="http://127.0.0.1") as client:
+        client.headers["X-Nukkad-Token"] = client.get("/api/session").json()["token"]
+        path = f"/api/places/{source}/experiences/{key}"
+        visit = client.put(path, json={"note": "I noticed green outlines."}).json()
+        registry[1].put("area", "active", {})
+        changed = client.put(
+            path,
+            json={"note": "I enjoyed these green outlines.", "source_revision": visit["revision"]},
+        )
+        assert changed.status_code == 200, changed.text
+        assert changed.json()["original_note"] == visit["note"]
+        assert changed.json()["snapshot_id"] == visit["snapshot_id"]

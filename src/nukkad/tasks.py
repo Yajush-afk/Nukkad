@@ -10,7 +10,7 @@ def run_task(model, response_type, prompt, deadline, validator, schema=None, *, 
     model_tag = getattr(getattr(model, "config", None), "model", None)
     for attempt in range(2):
         began = time.monotonic()
-        metrics = {}
+        metrics, value = {}, None
         try:
             value, metrics = model.generate(response_type, prompt + correction, deadline, schema)
             validator(value)
@@ -72,8 +72,14 @@ def run_task(model, response_type, prompt, deadline, validator, schema=None, *, 
                     "metrics": error.diagnostics if isinstance(error, ModelFailure) else metrics,
                 }
             )
+            previous = value.model_dump_json() if value is not None else ""
             correction = (
-                "\nPrevious response was rejected: "
+                (
+                    "\nPrevious structured response to repair: " + previous
+                    if len(previous) <= 1800
+                    else ""
+                )
+                + "\nPrevious response was rejected: "
                 + str(error)
                 + ". Correct only the rejected fields."
             )

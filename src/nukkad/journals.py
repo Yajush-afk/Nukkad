@@ -7,6 +7,7 @@ from pydantic import Field
 
 from nukkad.domain import Record
 from nukkad.ollama import ModelFailure
+from nukkad.storage import identity, now
 from nukkad.tasks import run_task
 
 
@@ -148,7 +149,7 @@ def generate_journal(source, model, deadline, *, propose_interests=True):
         "Write a readable English mini-story of the reported visit in third person (they/their). "
         "Use one or two connected paragraphs, not a caption or sentence-by-sentence substitutions. "
         "Open with what made this visit distinctive; weave together why they went, what they noticed, "
-        "how they explicitly described the experience, and any discovery they reported. "
+        "how they explicitly described the experience (retain reported_appreciation when supplied), and any discovery they reported. "
         "For a detailed note, aim for 70-120 words; sparse notes stay brief. "
         "Use ONLY supplied facts. Do not invent feelings, events, visits or names. "
         "Preserve negatives, uncertainty, skipped stops and not-taken reports. "
@@ -164,6 +165,11 @@ def generate_journal(source, model, deadline, *, propose_interests=True):
             {
                 "note": note[:2400],
                 "status": source.get("status"),
+                "reported_appreciation": next(
+                    iter(re.findall(r"\b(love|loved|liked|enjoy|enjoyed)\b", note, re.I)), None
+                )
+                if not has_negative_experience(note)
+                else None,
                 "reported_stops": source.get("stops", []),
             },
             ensure_ascii=False,
@@ -195,7 +201,7 @@ def generate_journal(source, model, deadline, *, propose_interests=True):
             lambda value: validate_written(passages(value), source, check_interests=False),
             schema,
             task="written_journal",
-            version=5,
+            version=6,
         )
         value = passages(value)
         interests, rejected = [], []
@@ -221,3 +227,36 @@ def generate_journal(source, model, deadline, *, propose_interests=True):
             "mode": "extractive fallback",
             "metrics": error.diagnostics,
         }
+
+
+def versioned_journal(source, generated, previous):
+    """Publishing a draft preserves every reviewed predecessor."""
+    journal = {
+        "id": source["id"],
+        "version_id": identity(),
+        "record_version": 2,
+        "source_note_id": source["id"],
+        "source_note": source["note"],
+        "source_revision": source.get("revision") or source.get("updated_at"),
+        "text": generated["text"],
+        "passages": generated["passages"],
+        "status": "pending",
+        "mode": generated["mode"],
+        "created_at": now(),
+        "metrics": generated["metrics"],
+    }
+    retain_previous = (
+        generated["mode"] == "extractive fallback"
+        and previous
+        and previous.get("mode") != "extractive fallback"
+        and previous.get("status") != "invalidated"
+        and previous.get("source_note") == source["note"]
+    )
+    records = [
+        *([] if retain_previous else [("journal", journal["id"], journal)]),
+        ("journal_version", journal["version_id"], journal),
+    ]
+    if previous:
+        old_id = previous.get("version_id") or identity()
+        records.append(("journal_version", old_id, {**previous, "version_id": old_id}))
+    return journal, records

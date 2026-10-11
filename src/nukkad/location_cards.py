@@ -17,8 +17,8 @@ from nukkad.domain import Record
 from nukkad.grounding import FORBIDDEN, validate_evidence
 from nukkad.identities import canonical_id
 from nukkad.jobs import Result, visit_generation, visit_job_context
-from nukkad.journals import WrittenJournal, generate_journal, validate_feelings
-from nukkad.ollama import Ollama
+from nukkad.journals import WrittenJournal, generate_journal, validate_feelings, versioned_journal
+from nukkad.ollama import ModelFailure, Ollama
 from nukkad.photos import file_info, verified_media_path
 from nukkad.planning_api import settings
 from nukkad.storage import SourceChanged, identity, now
@@ -90,7 +90,9 @@ class VisionModel:
         )
 
 
-def generate_visit(model, experience, photos, images, stage, deadline, earlier_context=()):
+def generate_visit(
+    model, experience, photos, images, stage, deadline, earlier_context=(), *, journal_result=None
+):
     data = {
         "note": experience["note"][:2400],
         "place_name": experience["place_name"],
@@ -105,7 +107,11 @@ def generate_visit(model, experience, photos, images, stage, deadline, earlier_c
     )
     vision = VisionModel(model, images, [photo["id"] for photo in photos])
     ids = [photo["id"] for photo in photos]
-    stage("Choosing a supplied cover photo with local vision")
+    stage(
+        "Using the only supplied photo as cover"
+        if len(ids) == 1
+        else "Choosing a supplied cover photo with local vision"
+    )
     schema = CoverChoice.model_json_schema()
     schema["properties"]["photo_id"] = {"type": "string", "enum": ids}
 
@@ -115,17 +121,22 @@ def generate_visit(model, experience, photos, images, stage, deadline, earlier_c
         if FORBIDDEN.search(value.reason):
             raise ValueError("Explain photographic suitability without access or history claims")
 
-    chosen, cover_metrics = run_task(
-        vision,
-        CoverChoice,
-        "Choose one supplied photo for relevance to this reported experience and suitability as a cover. Give a brief subjective selection reason. "
-        + common,
-        deadline,
-        validate_cover,
-        schema,
-        task="location_cover",
-        version=1,
-    )
+    if len(ids) == 1:
+        # There is no selection decision to send to the GPU.
+        chosen = CoverChoice(photo_id=ids[0], reason="Only supplied photo; used as the cover.")
+        cover_metrics = {"mode": "single supplied photo", "attempts": []}
+    else:
+        chosen, cover_metrics = run_task(
+            vision,
+            CoverChoice,
+            "Choose one supplied photo for relevance to this reported experience and suitability as a cover. Give a brief subjective selection reason. "
+            + common,
+            deadline,
+            validate_cover,
+            schema,
+            task="location_cover",
+            version=1,
+        )
     selected_index = ids.index(chosen.photo_id)
     summary_model = VisionModel(model, [images[selected_index]], [chosen.photo_id])
     summary_data = {
@@ -169,8 +180,7 @@ def generate_visit(model, experience, photos, images, stage, deadline, earlier_c
         task="location_summary",
         version=5,
     )
-    journal_result = None
-    if experience["note"].strip():
+    if journal_result is None and experience["note"].strip():
         stage("Writing a separate third-person experience journal")
         journal_result = generate_journal(experience, model, deadline, propose_interests=False)
     writing = VisitWriting(
@@ -371,23 +381,43 @@ def generate_card(source: str, value: CardRequest, request: Request):
 
     def action(stage):
         metrics, journal, writing, reason = {}, None, None, "User-selected template cover"
+        generated_journal, card_error = None, None
+        version, records = None, []
         if value.mode == "ai":
             model = Ollama(replace(config, model=settings(request).model))
             deadline = time.monotonic() + 180
+            if value.automatic and experience["note"].strip():
+                stage("Writing a separate third-person experience journal")
+                generated_journal = generate_journal(
+                    experience, model, deadline, propose_interests=False
+                )
             images = [
                 verified_media_path(config.data_dir, item["files"]["inference"]).read_bytes()
                 for item in photos
             ]
-            chosen, writing, metrics = generate_visit(
-                model, experience, photos, images, stage, deadline, earlier_context
-            )
-            photo = next(item for item in photos if item["id"] == chosen.photo_id)
-            summary, journal, reason, mode = (
-                writing.summary,
-                writing.journal,
-                chosen.reason,
-                "Local vision AI",
-            )
+            try:
+                chosen, writing, metrics = generate_visit(
+                    model,
+                    experience,
+                    photos,
+                    images,
+                    stage,
+                    deadline,
+                    earlier_context,
+                    journal_result=generated_journal,
+                )
+                photo = next(item for item in photos if item["id"] == chosen.photo_id)
+                summary, journal, reason, mode = (
+                    writing.summary,
+                    writing.journal,
+                    chosen.reason,
+                    "Local vision AI",
+                )
+            except ModelFailure as error:
+                if not value.automatic:
+                    raise
+                card_error = error.category
+                metrics = {"card_failure": error.diagnostics}
         else:
             stage("Rendering a manual template card")
             photo, summary, mode = (
@@ -395,49 +425,43 @@ def generate_card(source: str, value: CardRequest, request: Request):
                 "The visitor recorded this place as a reached stop.",
                 "Manual template",
             )
-        stage("Rendering the predefined Location Card")
-        version, records = card_records(
-            config,
-            store,
-            root,
-            experience,
-            photo,
-            summary,
-            mode,
-            metrics=metrics,
-            selection_reason=reason,
-        )
+        if not card_error:
+            stage("Rendering the predefined Location Card")
+            version, records = card_records(
+                config,
+                store,
+                root,
+                experience,
+                photo,
+                summary,
+                mode,
+                metrics=metrics,
+                selection_reason=reason,
+            )
         if writing and writing.journal_mode:
-            item = {
-                "id": experience["id"],
-                "version_id": identity(),
-                "record_version": 2,
-                "source_note_id": experience["id"],
-                "source_note": experience["note"],
-                "source_revision": experience["revision"],
+            generated_journal = {
                 "text": "\n\n".join(p.text for p in journal.passages)
                 if journal
                 else writing.fallback_journal_text,
                 "passages": [p.model_dump() for p in journal.passages] if journal else [],
-                "status": "pending",
                 "mode": writing.journal_mode,
-                "created_at": now(),
                 "metrics": metrics["journal"],
             }
-            records.extend(
-                [("journal", item["id"], item), ("journal_version", item["version_id"], item)]
-            )
-            if previous_journal:
-                old_id = previous_journal.get("version_id") or identity()
-                records.append(
-                    ("journal_version", old_id, {**previous_journal, "version_id": old_id})
-                )
+        if generated_journal:
+            _, journal_records = versioned_journal(experience, generated_journal, previous_journal)
+            records.extend(journal_records)
         stage("Publishing the reviewed-source card version")
         return Result(
             {
                 "place_id": root,
-                "card_id": version["id"],
-                "journal_mode": writing.journal_mode if writing else None,
+                "card_id": version["id"] if version else None,
+                "card_error": card_error,
+                "card_mode": mode if version else None,
+                "journal_mode": writing.journal_mode
+                if writing
+                else generated_journal["mode"]
+                if generated_journal
+                else None,
             },
             records,
             expected,
