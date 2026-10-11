@@ -78,7 +78,7 @@ async function api(path, options = {}) {
   }
   return r.json();
 }
-function show(id) {
+function renderPanel(id) {
   document.body.dataset.panel = id;
   document.dispatchEvent(new Event("nukkad:panel"));
   document.querySelectorAll(".panel").forEach((e) => (e.hidden = e.id !== id));
@@ -92,11 +92,13 @@ function show(id) {
   });
   message("");
   if (id === "home") setTimeout(() => map?.invalidateSize(), 30);
-  if (id === "history") loadHistory().catch(report);
-  if (id === "settings") api("/air-quality").then(renderAir).catch(report);
   if (id === "quest-form-panel")
     $("walk-context").textContent =
       `${area.area.name} · ${area.area.timezone} · returning to your start`;
+}
+function show(id) {
+  if (document.body.dataset.panel === id) return;
+  renderPanel(id);
   const heading = $(id).querySelector("h1");
   heading.tabIndex = -1;
   heading.focus({ preventScroll: true });
@@ -602,7 +604,7 @@ async function loadHistory() {
   }
   await interestControls($("interest-review"));
 }
-document.querySelectorAll("[data-panel]").forEach((button) => {
+document.querySelectorAll("a[data-panel], button[data-panel]").forEach((button) => {
   button.onclick = (event) => {
     event.preventDefault();
     show(button.dataset.panel);
