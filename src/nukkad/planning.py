@@ -105,6 +105,12 @@ class Planner:
             )
         self.graph = pedestrian_graph(maps.graph(self.snapshot))
         self.start_node = self.snapshot["start_node"]
+        if self.snapshot.get("start_snap"):
+            from nukkad.snapping import snap_point
+
+            self.start_node, _ = snap_point(
+                self.graph, Point.model_validate(self.snapshot["area"]["start"])
+            )
         if self.start_node not in self.graph:
             raise NoQuest(
                 "Starting point is not on an eligible walking street; choose a public start"
@@ -124,6 +130,16 @@ class Planner:
                 raise NoQuest("No eligible mapped walking connection") from error
             self.paths[key] = nodes, length
         return self.paths[key]
+
+    def coordinates(self, path):
+        from nukkad.snapping import edge_line
+
+        result = []
+        for u, v in zip(path, path[1:], strict=False):
+            data = min(self.graph[u][v].values(), key=lambda item: item["length"])
+            points = [list(point) for point in edge_line(self.graph, u, v, data).coords]
+            result.extend(points if not result else points[1:])
+        return result
 
     def turns(self, path: list[int]) -> int:
         bearings = []
@@ -147,6 +163,21 @@ class Planner:
     ) -> list[Place]:
         result = []
         for place in self.maps.places(self.snapshot):
+            if place.snap and place.valid and place.entrance:
+                from nukkad.snapping import snap_point
+
+                try:
+                    node, snap = snap_point(
+                        self.graph, Point.model_validate(place.snap["original"])
+                    )
+                    place = place.model_copy(
+                        update={
+                            "entrance_node": node,
+                            "entrance": Point.model_validate(snap["projected"]),
+                        }
+                    )
+                except ValueError:
+                    continue
             if (
                 not place.valid
                 or prohibited(place.tags)
@@ -266,9 +297,7 @@ class Planner:
                 {
                     "number": index + 1,
                     "meters": round(length, 1),
-                    "coordinates": [
-                        [self.graph.nodes[node]["x"], self.graph.nodes[node]["y"]] for node in path
-                    ],
+                    "coordinates": self.coordinates(path),
                     "streets": streets,
                 }
             )

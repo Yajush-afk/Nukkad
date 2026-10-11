@@ -303,7 +303,9 @@ dependencies = [
     { name = "osmnx" },
     { name = "platformdirs" },
     { name = "pydantic" },
+    { name = "pyproj" },
     { name = "python-multipart" },
+    { name = "shapely" },
     { name = "uvicorn" },
 ]
 
@@ -324,7 +326,9 @@ requires-dist = [
     { name = "osmnx", specifier = ">=2.0,<3" },
     { name = "platformdirs", specifier = ">=4.3" },
     { name = "pydantic", specifier = ">=2.10" },
+    { name = "pyproj", specifier = ">=3.7" },
     { name = "python-multipart", specifier = ">=0.0.20" },
+    { name = "shapely", specifier = ">=2.1" },
     { name = "uvicorn", specifier = ">=0.34" },
 ]
 

@@ -6,7 +6,7 @@ requires-python = ">=3.12,<3.13"
 license = "MIT"
 dependencies = [
   "fastapi>=0.115", "uvicorn>=0.34", "httpx>=0.28", "pydantic>=2.10",
-  "platformdirs>=4.3", "osmnx>=2.0,<3", "networkx>=3.4", "astral>=3.2",
+  "platformdirs>=4.3", "shapely>=2.1", "pyproj>=3.7", "osmnx>=2.0,<3", "networkx>=3.4", "astral>=3.2",
   "cairosvg>=2.7", "cairocffi>=1.7", "python-multipart>=0.0.20",
 ]
 
