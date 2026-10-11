@@ -154,11 +154,9 @@ async function runJob(value, finished, current = navigation.checkpoint()) {
           if (current()) return await finished(job.result, current);
           const mapChanged = !!job.result?.snapshot_id;
           if (mapChanged) areaNeedsRefresh = true;
-          message(
-            mapChanged
-              ? "Your saved map is ready in Neighbourhood."
-              : "Your local task finished. Open My walks to review it.",
-          );
+          // Progress is global; record-specific completion feedback is not.
+          // Returning to a record refreshes its saved results.
+
           return;
         }
         throw Error(job.message);
@@ -167,7 +165,7 @@ async function runJob(value, finished, current = navigation.checkpoint()) {
     }
   } catch (error) {
     if (current()) throw error;
-    message(error.message || String(error), true);
+    // A departed screen must not publish a delayed record error.
   } finally {
     activeJob = null;
     $("job").hidden = true;
@@ -811,7 +809,7 @@ $("reuse-map").onclick = async () => {
       current,
     );
   } catch (e) {
-    report(e);
+    if (current()) report(e);
   }
 };
 $("pin-form").onsubmit = async (event) => {
@@ -855,7 +853,7 @@ $("quest-form").onsubmit = async (event) => {
       current,
     );
   } catch (e) {
-    report(e);
+    if (current()) report(e);
   }
 };
 $("accept").onclick = async () => {
@@ -866,16 +864,17 @@ $("accept").onclick = async () => {
     });
     if (current()) renderQuest(value);
   } catch (e) {
-    report(e);
+    if (current()) report(e);
   }
 };
 $("print").onclick = async () => {
+  const current = navigation.checkpoint();
   try {
     await api("/quests/" + quest.id + "/accept", { method: "POST" });
     await $("card-preview").decode();
-    window.print();
+    if (current()) window.print();
   } catch (error) {
-    report(error);
+    if (current()) report(error);
   }
 };
 let cardWasOpenBeforePrint;
@@ -1312,7 +1311,7 @@ async function interestControls(target, source, current = navigation.checkpoint(
           });
           if (current()) await interestControls(target, source, current);
         } catch (e) {
-          report(e);
+          if (current()) report(e);
         }
       };
       actions.append(button);
@@ -1333,11 +1332,12 @@ async function interestControls(target, source, current = navigation.checkpoint(
     );
 }
 $("refresh-air").onclick = async () => {
+  const current = navigation.checkpoint();
   try {
     const value = await api("/air-quality/refresh", { method: "POST" });
-    renderAir(value);
+    if (current()) renderAir(value);
   } catch (e) {
-    report(e);
+    if (current()) report(e);
   }
 };
 
@@ -1627,3 +1627,18 @@ async function renderDuplicateReview(current = () => true) {
   }
   target.append(details);
 }
+
+function positionFeedback() {
+  const rail = document.querySelector(".notification-rail");
+  rail.style.bottom = "";
+  if (window.innerWidth > 600) return;
+  const active = document.activeElement;
+  if (!active?.matches("input, textarea, select, button")) return;
+  const rect = active.getBoundingClientRect();
+  const viewportHeight = window.visualViewport?.height || window.innerHeight;
+  if (rect.bottom > viewportHeight - rail.offsetHeight - 20)
+    rail.style.bottom = Math.max(12, window.innerHeight - rect.top + 12) + "px";
+}
+document.addEventListener("focusin", positionFeedback);
+document.addEventListener("focusout", () => setTimeout(positionFeedback, 0));
+window.visualViewport?.addEventListener("resize", positionFeedback);

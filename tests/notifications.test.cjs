@@ -28,3 +28,11 @@ test('clipboard success is deliberate and failure never shows a success',async()
  assert.equal(await copyEmail({clipboard:{writeText:async()=>{throw Error('Denied');}},tooltip,notify:x=>failure=x}),false);
  assert.equal(tooltip.hidden,true);assert.match(failure,/manually/);
 });
+
+test('reporting has no scroll or focus side effect and jobs suppress departed-record feedback',()=>{
+ const source=require('node:fs').readFileSync('src/nukkad/static/app.js','utf8');
+ const report=source.slice(source.indexOf('function report('),source.indexOf('function formValues('));
+ assert.doesNotMatch(report,/scrollIntoView|focus\(/);
+ const jobs=source.slice(source.indexOf('async function runJob('),source.indexOf('async function loadArea('));
+ assert.doesNotMatch(jobs,/message\(/);
+});
