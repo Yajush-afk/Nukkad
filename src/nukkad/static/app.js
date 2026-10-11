@@ -87,7 +87,7 @@ function renderPanel(id) {
   const active =
     id === "quest-form-panel"
       ? "setup"
-      : ["preview", "outcome"].includes(id)
+      : ["preview", "outcome", "place-folder"].includes(id)
         ? "history"
         : id;
   document.querySelectorAll("nav [data-panel]").forEach((button) => {
@@ -1373,6 +1373,13 @@ navigation = NukkadNavigation.createNavigation({
       areaNeedsRefresh = false;
       if (!current()) return route;
     }
+    if (route.view === "folder") {
+      try {
+        if (!route.place) throw Error("Choose a place folder first.");
+        const folder = await api("/collection/" + encodeURIComponent(route.place));
+        return {...route, place: folder.id, folder};
+      } catch(error) {return {view:"history",walk:null,notice:"That place folder could not be opened. Choose a reported place from My walks."};}
+    }
     if (route.view === "plan" && !area?.area?.public_start_confirmed)
       return { view: "neighbourhood", walk: null };
     if (["preview", "note"].includes(route.view)) {
@@ -1410,7 +1417,8 @@ navigation = NukkadNavigation.createNavigation({
     if (route.view === "preview") renderQuest(route.quest, false);
     if (route.view === "note")
       await renderOutcome(route.quest, route.outcome, current);
-    if (route.view === "history") await loadHistory(current);
+    if (route.view === "history") {await loadHistory(current);if(current()) await collectionUI.load(current);}
+    if (route.view === "folder") await collectionUI.renderFolder(route.folder, current);
     if (route.view === "settings") {
       const air = await api("/air-quality");
       if (current()) renderAir(air);
@@ -1419,6 +1427,7 @@ navigation = NukkadNavigation.createNavigation({
   },
   onError: report,
 });
+const collectionUI = NukkadCollection.create({api,node,$,navigation,runJob,report,message});
 initialized.then(() => navigation.start()).catch(report);
 
 
