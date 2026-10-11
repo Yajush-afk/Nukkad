@@ -315,3 +315,37 @@ test("an original note is never presented as an AI-written longer story", async 
     nodes.some((x) => /No AI journal has been created/.test(x.textContent)),
   );
 });
+
+test("direct visits edit their own record instead of navigating to a nonexistent walk", async () => {
+  const edited = [];
+  const f = fixture({ renderVisitEditor: (...args) => edited.push(args) });
+  await f.ui.renderFolder(
+    {
+      id: "place",
+      name: "Sample park",
+      current_card: null,
+      card_versions: [],
+      visits: [
+        {
+          id: "direct",
+          source_kind: "place",
+          outcome_id: null,
+          revision: "r1",
+          visit_date: "2026-10-11",
+          note: "I enjoyed outlines.",
+          photos: [],
+        },
+      ],
+    },
+    () => true,
+  );
+  assert.equal(edited.length, 1);
+  assert.equal(edited[0][4].id, "direct");
+  assert.equal(edited[0][4].revision, "r1");
+  assert.deepEqual(f.navigated, []);
+  assert.ok(
+    f
+      .all(f.get("folder-content"))
+      .some((x) => x.textContent === "Edit experience and add photos"),
+  );
+});

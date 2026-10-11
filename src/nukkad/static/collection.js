@@ -1,7 +1,17 @@
 /* Place memories: the card is rendered by the server, and private drafts stay in the tab. */
 (function (root) {
   "use strict";
-  function create({ api, node, $, navigation, runJob, report, message }) {
+  function create({
+    api,
+    node,
+    $,
+    navigation,
+    runJob,
+    report,
+    message,
+    prepareVisit,
+    renderVisitEditor,
+  }) {
     const drafts = new Map(),
       journalDrafts = new Map();
     let folderRevision = 0;
@@ -365,10 +375,92 @@
           grid.append(link);
         }
         group.append(grid);
-        const edit = action("Edit visit note or photos", () =>
-          navigation.go("outcome", visit.outcome_id),
-        );
-        group.append(edit);
+        const generationStatus = node("p", undefined, "hint");
+        const states = {
+          queued: "AI preparation is queued…",
+          running: "Local AI is preparing this visit…",
+          failed:
+            "AI preparation failed. Your experience and photos are saved.",
+          cancelled: "AI preparation was cancelled. Your experience is saved.",
+          interrupted:
+            "AI preparation was interrupted. Your experience is saved.",
+          stale: "This visit changed. Its card and story need updating.",
+        };
+        const job = visit.generation;
+        generationStatus.textContent =
+          states[job?.status] ||
+          (job?.status === "complete"
+            ? job.result?.card_mode === "Manual template"
+              ? "Manual template saved. AI writing was not requested."
+              : job.result?.card_error
+                ? `The card could not be created (${job.result.card_error}). ${job.result.journal_mode === "local AI journal" ? "Your AI story is saved." : "Your original experience is saved."}`
+                : job.result?.journal_mode === "extractive fallback"
+                  ? "AI could not produce a validated story. Your original experience and earlier writing are retained."
+                  : "Local AI preparation complete."
+            : "This visit has not been prepared with local AI yet.");
+        group.append(generationStatus);
+        if (prepareVisit) {
+          const prepare = action(
+            job ? "Retry / update with local AI" : "Prepare with local AI",
+            async () => {
+              if (prepare.disabled) return;
+              prepare.disabled = true;
+              const navigationCurrent = navigation.checkpoint();
+              const live = () => current() && navigationCurrent();
+              try {
+                await prepareVisit(visit, live, true);
+                if (live()) await reload(folder.id, live);
+              } catch (error) {
+                if (live()) report(error);
+              } finally {
+                prepare.disabled = false;
+              }
+            },
+          );
+          prepare.disabled = ["queued", "running"].includes(job?.status);
+          group.append(prepare);
+        }
+        if (["queued", "running"].includes(job?.status)) {
+          const check = async () => {
+            if (!current()) return;
+            try {
+              const state = await api(`/jobs/${job.id}`);
+              if (!current()) return;
+              if (!["queued", "running"].includes(state.status))
+                await reload(folder.id, current);
+              else {
+                generationStatus.textContent = state.message;
+                setTimeout(check, 1000);
+              }
+            } catch {
+              if (current())
+                generationStatus.textContent =
+                  "Could not check preparation. Your saved visit remains available.";
+            }
+          };
+          setTimeout(check, 1000);
+        }
+        if (visit.source_kind === "place" && renderVisitEditor) {
+          const editor = node("div");
+          const today = new Date().toLocaleDateString("en-CA", {
+            timeZone: visit.timezone || "UTC",
+          });
+          renderVisitEditor(
+            editor,
+            { id: folder.id, name: folder.name },
+            current,
+            today,
+            visit,
+            () => reload(folder.id, current),
+          );
+          group.append(details("Edit experience and add photos", editor));
+        } else if (visit.outcome_id) {
+          group.append(
+            action("Edit visit note or photos", () =>
+              navigation.go("outcome", visit.outcome_id),
+            ),
+          );
+        }
         photosArea.append(group);
         if (visit.note) {
           const source = node("pre", visit.note, "journal-text");

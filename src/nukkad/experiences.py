@@ -32,17 +32,33 @@ def record_place_visit(
 
     store = request.app.state.store
     root = canonical_id(store, source)
-    registry = maps(request)
-    snapshot = registry.snapshot()
-    place = next((item for item in registry.places(snapshot) if item.id == root), None)
-    if place is None:
-        raise HTTPException(404, "Choose a place on your saved map")
+    previous = store.get("experience", key)
+    if previous:
+        if (
+            previous.get("source_kind") != "place"
+            or canonical_id(store, previous["place_id"]) != root
+        ):
+            raise SourceChanged("This visit belongs to a different place")
+        snapshot = store.get("snapshot", previous["snapshot_id"])
+        if not snapshot:
+            raise HTTPException(404, "This saved visit's map is missing; restore its backup")
+        place_name, stop_id = previous["place_name"], previous["stop_id"]
+    else:
+        registry = maps(request)
+        snapshot = registry.snapshot()
+        place = next((item for item in registry.places(snapshot) if item.id == root), None)
+        if place is None:
+            raise HTTPException(404, "Choose a place on your saved map")
+        place_name, stop_id = place.name, place.id
     note = value.note.strip()
     if len(note) < 3:
         raise ValueError("Write a short experience before saving")
-    timezone = snapshot["area"]["timezone"]
+    timezone = (
+        previous.get("timezone", snapshot["area"]["timezone"])
+        if previous
+        else snapshot["area"]["timezone"]
+    )
     today = datetime.now(ZoneInfo(timezone)).date()
-    previous = store.get("experience", key)
     day = value.visit_date or (
         datetime.fromisoformat(previous["visit_date"]).astimezone(ZoneInfo(timezone)).date()
         if previous
@@ -71,9 +87,9 @@ def record_place_visit(
         "source_kind": "place",
         "outcome_id": None,
         "snapshot_id": snapshot["id"],
-        "stop_id": place.id,
+        "stop_id": stop_id,
         "place_id": root,
-        "place_name": place.name,
+        "place_name": place_name,
         "provenance": "self-reported visit from saved map",
         "note": note,
         "original_note": previous["original_note"] if previous else note,
@@ -113,7 +129,11 @@ def record_place_visit(
         records,
         [
             ("experience", key, previous),
-            ("area", "active", {**snapshot["area"], "snapshot_id": snapshot["id"]}),
+            *(
+                []
+                if previous
+                else [("area", "active", {**snapshot["area"], "snapshot_id": snapshot["id"]})]
+            ),
         ],
     )
     return item
