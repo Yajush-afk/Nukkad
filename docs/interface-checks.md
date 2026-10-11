@@ -78,3 +78,16 @@ succeeded in a temporary data directory, importing 162 destinations and writing 
 walking graph. It took 47.6 seconds including graph processing. This proves that
 acquisition worked at that time, not that public Overpass availability is guaranteed
 or that the revised query is always faster. The personal snapshot was not replaced.
+
+## Original notes and visit writing (12 October 2026)
+
+Reproduced the reported direct-visit gap with read-only inspection: the personal visit
+and photo were stored, but no card, journal or inference job existed. Dashboard displayed
+one reported place alongside a misleading empty planned-walk history. The original note
+appeared under “The longer story.” Regression coverage now separates original experiences
+from generated writing and names extractive fallbacks accurately.
+
+An isolated Gemma 4 E2B run on the supplied visit text reproduced a two-attempt journal
+fallback in 10.22 seconds, including cold model loading. Controlled regressions cover
+positive discovery, supported paraphrases, independent interest validation, and editorial
+placeholders. These are software checks; outdoor and phone trials remain pending.
