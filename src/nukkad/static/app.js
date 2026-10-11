@@ -950,6 +950,60 @@ async function refreshReadiness() {
   }
 }
 const initialized = init();
+let photoRenderRevision = 0;
+async function renderPlacePhotos(outcomeId, screenCurrent = navigation.checkpoint()) {
+  const revision = ++photoRenderRevision;
+  const current = ()=>screenCurrent() && revision === photoRenderRevision;
+  const experiences = await api(`/outcomes/${outcomeId}/experiences`);
+  if (!current()) return;
+  const target = $("place-photos");
+  target.replaceChildren();
+  for (const experience of experiences.filter(item=>item.active)) {
+    const photos = await api(`/experiences/${experience.id}/photos`);
+    if (!current()) return;
+    const section = node("section", undefined, "place-upload entry");
+    section.append(node("h2", experience.place_name), node("p", `${photos.length}/5 photos for this reported visit. Save changed place notes before adding photos.`, "hint"));
+    const grid = node("div", undefined, "photo-grid");
+    for (const photo of photos) {
+      const figure = node("figure");
+      const image = node("img");
+      image.src = `/api/photos/${photo.id}/thumbnail`;
+      image.alt = `Your photo from ${experience.place_name}`;
+      image.loading = "lazy";
+      const remove = node("button", "Remove photo");
+      remove.type = "button";
+      remove.onclick = async()=>{try {await api(`/photos/${photo.id}`, {method:"DELETE"});if(screenCurrent()) await renderPlacePhotos(outcomeId, screenCurrent);}catch(error){if(screenCurrent()) report(error);}};
+      figure.append(image, remove);
+      grid.append(figure);
+    }
+    section.append(grid);
+    const label = node("label", "Add photos (JPEG, PNG or WebP)");
+    const input = node("input");
+    input.type = "file";
+    input.accept = "image/jpeg,image/png,image/webp";
+    input.multiple = true;
+    input.disabled = photos.length>=5;
+    label.append(input);
+    const upload = node("button", "Save selected photos");
+    upload.type = "button";
+    upload.disabled = photos.length>=5;
+    upload.onclick = async()=>{
+      let failure;
+      try {
+        const files = [...input.files];
+        if(!files.length) throw Error("Choose a photo first.");
+        if(files.length+photos.length>5) throw Error("Choose at most five photos in total for this visit.");
+        if(files.some(file=>file.size>20*1024*1024)) throw Error("Each photo must be at most 20 MiB.");
+        upload.disabled=true;
+        for(const file of files){const data = new FormData();data.append("photo", file);await api(`/experiences/${experience.id}/photos`, {method:"POST",body:data});}
+      } catch(error){failure=error;} finally {
+        if(screenCurrent()) {await renderPlacePhotos(outcomeId,screenCurrent);if(failure) report(failure);else message("Photos saved locally.");}
+      }
+    };
+    section.append(label, upload);
+    target.append(section);
+  }
+}
 const outcomeDrafts = new Map();
 let outcomeQuest;
 function retainOutcomeDraft() {
@@ -958,17 +1012,23 @@ function retainOutcomeDraft() {
 async function renderOutcome(value, existing, current) {
   if (!current()) return;
   if (outcomeQuest === value.id) {
-    if (existing) await window.showJournal(existing, current);
+    if (existing) {
+      await window.showJournal(existing, current);
+      if (current()) await renderPlacePhotos(existing.id, current);
+    }
     return;
   }
+  const experiences = existing ? await api(`/outcomes/${value.id}/experiences`) : [];
+  if (!current()) return;
   retainOutcomeDraft();
   outcomeQuest = value.id;
   quest = value;
   $("outcome-stops").replaceChildren();
   for (const [index, place] of quest.stops.entries()) {
-    const label = node("label", `${index + 1}. ${place.name}`);
+    const label = node("div", `${index + 1}. ${place.name}`);
     const select = node("select");
     select.name = "stop-" + place.id;
+    select.setAttribute("aria-label", `${place.name}: reached status`);
     for (const status of ["unresolved", "reached", "skipped"]) {
       const option = node(
         "option",
@@ -986,6 +1046,14 @@ async function renderOutcome(value, existing, current) {
       existing?.stops.find((item) => item.id === place.id)?.status ||
       "unresolved";
     label.append(select);
+    const noteLabel = node("label", "Your experience at this place (optional)");
+    const note = node("textarea");
+    note.name = "experience-" + place.id;
+    note.maxLength = 8000;
+    note.rows = 3;
+    note.value = outcomeDrafts.get(value.id)?.[note.name] ?? experiences.find(item=>item.stop_id===place.id)?.note ?? "";
+    noteLabel.append(note);
+    label.append(noteLabel);
     $("outcome-stops").append(label);
   }
   for (const name of [
@@ -1001,8 +1069,10 @@ async function renderOutcome(value, existing, current) {
       (name === "status" ? "completed" : "");
   updateOutcomeReason();
   $("journal-review").replaceChildren();
-  if (existing && window.showJournal)
+  if (existing && window.showJournal) {
     await window.showJournal(existing, current);
+    if (current()) await renderPlacePhotos(existing.id, current);
+  } else $("place-photos").replaceChildren();
 }
 $("return").onclick = () => show("outcome");
 
@@ -1027,6 +1097,7 @@ $("outcome-form").onsubmit = async (event) => {
           v.actual_minutes === "" ? null : Number(v.actual_minutes),
         screen_minutes:
           v.screen_minutes === "" ? null : Number(v.screen_minutes),
+        place_experiences: savingQuest.stops.map(place=>({stop_id:place.id,note:v["experience-"+place.id] || ""})),
         stops: savingQuest.stops.map((place) => ({
           id: place.id,
           status: v["stop-" + place.id],
@@ -1042,6 +1113,7 @@ $("outcome-form").onsubmit = async (event) => {
       "Note and visits saved. Only the stops you marked as reached count as visited.",
     );
     if (window.showJournal) await window.showJournal(outcome, current);
+    if (current()) await renderPlacePhotos(outcome.id, current);
   } catch (e) {
     if (current()) report(e);
   }

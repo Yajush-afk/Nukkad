@@ -7,6 +7,17 @@ def outing_context(store, request, interests, candidates=()):
     candidate_ids = {canonical_id(store, place.id) for place in candidates}
     outcomes = store.list("outcome")
     relevant, recent = [], []
+    for item in store.list("experience"):
+        place_id = canonical_id(store, item["place_id"])
+        if item["active"] and item.get("note", "").strip() and place_id in candidate_ids:
+            relevant.append(
+                {
+                    "id": item["id"],
+                    "text": item["note"][:600],
+                    "place_ids": [place_id],
+                    "reporting": "self-reported place experience",
+                }
+            )
     for item in outcomes:
         reached = [canonical_id(store, key) for key in item.get("reached_ids", [])]
         if item.get("note", "").strip():

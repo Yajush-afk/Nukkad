@@ -21,8 +21,11 @@ def main() -> None:
     parser.add_argument("--archive", type=Path)
     parser.add_argument("--destination", type=Path)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--max-archive-mib", type=int, default=4096)
     args = parser.parse_args()
-    config = Config()
+    if args.max_archive_mib <= 0:
+        parser.error("--max-archive-mib must be positive")
+    config = Config(backup_limit_bytes=args.max_archive_mib * 1024**2)
     if args.model:
         config = replace(config, model=args.model)
     if args.command == "demo":
@@ -50,6 +53,6 @@ def main() -> None:
 
         if not args.archive or not args.destination:
             parser.error("restore requires --archive and --destination (a new directory)")
-        print(restore(args.archive, args.destination))
+        print(restore(args.archive, args.destination, config.backup_limit_bytes))
     else:
         uvicorn.run(create_app(config), host="127.0.0.1", port=args.port, access_log=False)

@@ -13,6 +13,7 @@ from nukkad.geocoding import router as geocoding_router
 from nukkad.jobs import Busy, Jobs
 from nukkad.memory import router as memory_router
 from nukkad.outcomes import router as outcomes_router
+from nukkad.photos import install_media
 from nukkad.planning_api import router as planning_router
 from nukkad.quests_api import router as quests_router
 from nukkad.runtime_lock import RuntimeLock
@@ -47,6 +48,7 @@ def create_app(config: Config | None = None) -> FastAPI:
     app.include_router(outcomes_router)
     app.include_router(memory_router)
     app.include_router(air_router)
+    install_media(app)
     install_security(app)
     static = Path(__file__).parent / "static"
     app.mount("/static", StaticFiles(directory=static), name="static")
