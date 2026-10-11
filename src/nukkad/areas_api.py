@@ -73,8 +73,42 @@ async def import_area(
         raise
 
 
+def map_revision(request, *, duplicates=False):
+    store = request.app.state.store
+    kinds = ["area", "snapshot", "place", "place_alias", "outcome"]
+    if duplicates:
+        kinds.append("place_duplicate")
+    area = store.get("area", "active")
+    path = (
+        request.app.state.config.data_dir
+        / "snapshots"
+        / (area["snapshot_id"] if area else "missing")
+        / "walking.graphml"
+    )
+    stat = path.stat() if path.is_file() else None
+    stamp = (stat.st_mtime_ns, stat.st_ctime_ns, stat.st_size) if stat else None
+    return store.revision_key(kinds), stamp
+
+
+@router.get("/area/status")
+def area_status(request: Request):
+    area = request.app.state.store.get("area", "active")
+    return {
+        "area": {key: value for key, value in area.items() if key != "snapshot_id"}
+        if area
+        else None,
+        "snapshot_id": area["snapshot_id"] if area else None,
+    }
+
+
 @router.get("/area")
 def active_area(request: Request):
+    return request.app.state.store.cache.get(
+        "area", map_revision(request), lambda: build_active_area(request)
+    )
+
+
+def build_active_area(request: Request):
     registry = maps(request)
     try:
         snapshot = registry.snapshot()
@@ -86,6 +120,8 @@ def active_area(request: Request):
         }
     places = registry.places(snapshot)
     eligible = set(snapshot["eligible_mapped_ids"])
+    aliases = request.app.state.store.keyed("place_alias")
+    visited = {place.id for place in places if place.visited}
     return {
         "area": snapshot["area"],
         "snapshot_id": snapshot["id"],
@@ -95,9 +131,7 @@ def active_area(request: Request):
         "places": [place.model_dump() for place in places],
         "progress": {
             "mapped_visited": sum(
-                canonical_id(request.app.state.store, key)
-                in {place.id for place in places if place.visited}
-                for key in eligible
+                canonical_id(request.app.state.store, key, aliases) in visited for key in eligible
             ),
             "mapped_total": len(eligible),
             "custom_visited": sum(place.visited and place.source == "user" for place in places),
@@ -235,7 +269,11 @@ class DuplicateReview(Record):
 @router.get("/places/duplicates")
 def duplicates(request: Request):
     registry = maps(request)
-    return duplicate_candidates(request.app.state.store, registry.places(), distance)
+    return request.app.state.store.cache.get(
+        "duplicates",
+        map_revision(request, duplicates=True),
+        lambda: duplicate_candidates(request.app.state.store, registry.places(), distance),
+    )
 
 
 @router.patch("/places/duplicates/{key}")

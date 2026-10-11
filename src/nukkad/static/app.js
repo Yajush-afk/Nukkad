@@ -2,6 +2,7 @@
 const $ = (id) => document.getElementById(id);
 let navigation,
   areaNeedsRefresh = false,
+  mapLoaded = false,
   area,
   quest,
   activeJob,
@@ -63,6 +64,10 @@ function message(text, error = false) {
   $("message").setAttribute("role", error ? "alert" : "status");
 }
 async function api(path, options = {}) {
+  if (
+    ["POST", "PUT", "PATCH", "DELETE"].includes(options.method?.toUpperCase())
+  )
+    await initialized;
   const headers = { ...(options.headers || {}) };
   if (sessionToken) headers["X-Nukkad-Token"] = sessionToken;
   if (options.body && !(options.body instanceof FormData)) {
@@ -98,8 +103,9 @@ function renderPanel(id) {
   message("");
   if (id === "setup") setTimeout(() => map?.invalidateSize(), 30);
   if (id === "quest-form-panel")
-    $("walk-context").textContent =
-      `${area.area.name} · ${area.area.timezone} · returning to your start`;
+    $("walk-context").textContent = area?.area
+      ? `${area.area.name} · ${area.area.timezone} · returning to your start`
+      : "Preparing your walking start…";
 }
 function show(id) {
   return navigation.go(id, quest?.id);
@@ -173,8 +179,12 @@ async function runJob(value, finished, current = navigation.checkpoint()) {
     });
   }
 }
-async function loadArea() {
-  area = await api("/area");
+async function loadArea(current = () => true) {
+  createMap();
+  const loaded = await api("/area");
+  if (!current()) return;
+  area = loaded;
+  mapLoaded = true;
   areaNeedsRefresh = false;
   geometryLayer.clearLayers();
   placesLayer.clearLayers();
@@ -193,7 +203,7 @@ async function loadArea() {
       : "Confirm start";
   $("duplicate-review").replaceChildren();
   if (!saved) return;
-  await renderDuplicateReview();
+
   $("area-name").textContent = area.area.name;
   $("progress").textContent = area.area.public_start_confirmed
     ? `${area.progress.mapped_visited} of ${area.progress.mapped_total} mapped places visited · ${area.progress.custom_visited} added places visited`
@@ -247,6 +257,7 @@ async function loadArea() {
   }
   $("area-form").elements.lat.value = area.area.start.lat;
   $("area-form").elements.lon.value = area.area.start.lon;
+  startDuplicateReview(current);
 }
 function inspectPlace(place) {
   const target = $("place-detail");
@@ -382,7 +393,10 @@ function selectMapPoint(point) {
         form.elements.confirmed.checked = false;
         $("add-place-details").open = true;
       }
-      await show("setup");
+      const showing = show("setup");
+      const stillHere = navigation.checkpoint();
+      await showing;
+      if (!stillHere()) return;
       form.scrollIntoView({ block: "start" });
       form.elements[
         formId === "area-form" ? "public_start_confirmed" : "name"
@@ -618,11 +632,24 @@ document
       else show(button.dataset.panel);
     };
   });
-$("open-quest").onclick = () =>
-  show(area?.area?.public_start_confirmed ? "quest-form-panel" : "setup");
+$("open-quest").onclick = async () => {
+  const current = navigation.checkpoint();
+  try {
+    await loadAreaSummary();
+    if (current())
+      await show(
+        area?.area?.public_start_confirmed ? "quest-form-panel" : "setup",
+      );
+  } catch (error) {
+    if (current()) report(error);
+  }
+};
 $("plan-walk").onclick = () => show("quest-form-panel");
 $("choose-start").onclick = async () => {
-  await show("setup");
+  const showing = show("setup");
+  const stillHere = navigation.checkpoint();
+  await showing;
+  if (!stillHere()) return;
   message(
     "Select your public starting point on the map, then choose ‘Use as my start’. Save it in Neighbourhood.",
   );
@@ -864,6 +891,7 @@ window.addEventListener("afterprint", () => {
 });
 $("settings-form").onsubmit = async (event) => {
   event.preventDefault();
+  const current = navigation.checkpoint();
   try {
     const v = formValues("settings-form");
     const data = {};
@@ -876,14 +904,20 @@ $("settings-form").onsubmit = async (event) => {
     data.air_quality_threshold =
       v.air_quality_threshold === "" ? null : Number(v.air_quality_threshold);
     await api("/settings", { method: "PUT", body: data });
+    if (!current()) return;
     message("Walking settings saved.");
-    refreshReadiness().catch(report);
+    void refreshReadiness(current).catch((error) => {
+      if (current()) report(error);
+    });
   } catch (e) {
-    report(e);
+    if (current()) report(e);
   }
 };
 async function init() {
   sessionToken = (await api("/session")).token;
+}
+function createMap() {
+  if (map) return;
   map = L.map("map", { attributionControl: false }).setView(
     [28.6394, 77.3606],
     15,
@@ -908,39 +942,85 @@ async function init() {
   map.on("click", (event) => {
     if (area?.area) selectMapPoint(event.latlng);
   });
-  await loadArea();
-  const profile = await api("/profile");
-  $("interests").value = profile.interests.join(", ");
-  const settings = await api("/settings");
-  for (const [name, value] of Object.entries(settings)) {
-    const input = $("settings-form").elements[name];
-    if (!input) continue;
-    if (input.type === "checkbox") input.checked = value;
-    else input.value = value ?? "";
-  }
-  await refreshReadiness();
 }
-async function refreshReadiness() {
+let summaryTask, profileTask, settingsTask;
+let profileLoaded = false,
+  settingsLoaded = false;
+async function loadAreaSummary() {
+  if (!summaryTask)
+    summaryTask = api("/area/status")
+      .then((summary) => {
+        if (summary.snapshot_id !== area?.snapshot_id) {
+          mapLoaded = false;
+          areaNeedsRefresh = true;
+        }
+        area = { ...area, ...summary };
+      })
+      .finally(() => {
+        summaryTask = null;
+      });
+  return summaryTask;
+}
+async function loadProfile() {
+  if (profileLoaded) return;
+  if (!profileTask)
+    profileTask = api("/profile")
+      .then((profile) => {
+        $("interests").value = profile.interests.join(", ");
+        profileLoaded = true;
+      })
+      .finally(() => {
+        profileTask = null;
+      });
+  return profileTask;
+}
+async function loadSettings() {
+  if (settingsLoaded) return;
+  if (!settingsTask)
+    settingsTask = api("/settings")
+      .then((settings) => {
+        for (const [name, value] of Object.entries(settings)) {
+          const input = $("settings-form").elements[name];
+          if (!input) continue;
+          if (input.type === "checkbox") input.checked = value;
+          else input.value = value ?? "";
+        }
+        settingsLoaded = true;
+      })
+      .finally(() => {
+        settingsTask = null;
+      });
+  return settingsTask;
+}
+let readinessRevision = 0;
+async function refreshReadiness(current = navigation.checkpoint()) {
+  const revision = ++readinessRevision;
   const ready = await api("/readiness");
+  if (!current() || revision !== readinessRevision) return;
   $("model-status").textContent =
     ready.model_status === "ready"
       ? "Ready"
       : ready.model_status === "unsupported"
         ? "Unsupported model"
-      : ready.model_status === "missing"
-        ? "Model missing"
-        : "Ollama unavailable";
+        : ready.model_status === "missing"
+          ? "Model missing"
+          : "Ollama unavailable";
   $("readiness").textContent =
     ready.model_status === "ready"
       ? `${ready.selected_model} is available on this laptop.`
       : ready.model_status === "unsupported"
         ? "Choose an installed local model. Cloud-backed inference is disabled."
-      : ready.model_status === "missing"
-        ? `Download ${ready.selected_model} in Ollama or choose an installed model. Basic suggestions can still be used when local AI fails.`
-        : "Start Ollama on this laptop to use local AI. Basic suggestions can still be used when local AI fails.";
+        : ready.model_status === "missing"
+          ? `Download ${ready.selected_model} in Ollama or choose an installed model. Basic suggestions can still be used when local AI fails.`
+          : "Start Ollama on this laptop to use local AI. Basic suggestions can still be used when local AI fails.";
   if (ready.checks) {
-    const issues = Object.entries(ready.checks).filter(([name, check]) => name !== "model" && check.status !== "ready");
-    if (issues.length) $("readiness").append(node("p", issues.map(([,check])=>check.reason).join(". "), "hint"));
+    const issues = Object.entries(ready.checks).filter(
+      ([name, check]) => name !== "model" && check.status !== "ready",
+    );
+    if (issues.length)
+      $("readiness").append(
+        node("p", issues.map(([, check]) => check.reason).join(". "), "hint"),
+      );
   }
   $("models").replaceChildren();
   for (const model of ready.models) {
@@ -1106,9 +1186,6 @@ $("outcome-form").onsubmit = async (event) => {
     });
     areaNeedsRefresh = true;
     if (!current()) return;
-    await loadArea();
-    if (!current()) return;
-    areaNeedsRefresh = false;
     message(
       "Note and visits saved. Only the stops you marked as reached count as visited.",
     );
@@ -1365,20 +1442,49 @@ async function renderRouteMap(value) {
 // Resolve routes from persistent records; navigation itself never performs writes.
 navigation = NukkadNavigation.createNavigation({
   browser: window,
+  prepare(route) {
+    document.querySelectorAll(".panel").forEach((panel) => {
+      panel.inert = false;
+      panel.removeAttribute("aria-busy");
+    });
+    const id = NukkadNavigation.panels[route.view];
+    renderPanel(id);
+    const loading = route.view !== "home";
+    $(id).inert = loading;
+    $(id).setAttribute("aria-busy", String(loading));
+    $("navigation-loading").hidden = !loading;
+    $("navigation-loading").textContent = loading
+      ? `Loading ${route.view === "neighbourhood" ? "your neighbourhood" : "this page"}… You can still use the navigation above.`
+      : "";
+  },
+  settled() {
+    document.querySelectorAll(".panel").forEach((panel) => {
+      panel.inert = false;
+      panel.removeAttribute("aria-busy");
+    });
+    $("navigation-loading").hidden = true;
+  },
   async resolve(route, current, supplied) {
-    await initialized;
     if (!current()) return route;
-    if (areaNeedsRefresh) {
-      await loadArea();
-      areaNeedsRefresh = false;
+    if (route.view === "plan") {
+      await loadAreaSummary();
       if (!current()) return route;
     }
     if (route.view === "folder") {
       try {
         if (!route.place) throw Error("Choose a place folder first.");
-        const folder = await api("/collection/" + encodeURIComponent(route.place));
-        return {...route, place: folder.id, folder};
-      } catch(error) {return {view:"history",walk:null,notice:"That place folder could not be opened. Choose a reported place from My walks."};}
+        const folder = await api(
+          "/collection/" + encodeURIComponent(route.place),
+        );
+        return { ...route, place: folder.id, folder };
+      } catch (error) {
+        return {
+          view: "history",
+          walk: null,
+          notice:
+            "That place folder could not be opened. Choose a reported place from My walks.",
+        };
+      }
     }
     if (route.view === "plan" && !area?.area?.public_start_confirmed)
       return { view: "neighbourhood", walk: null };
@@ -1410,6 +1516,14 @@ navigation = NukkadNavigation.createNavigation({
   async render(route, current) {
     const id = NukkadNavigation.panels[route.view];
     renderPanel(id);
+    if (route.view === "neighbourhood") {
+      if (!mapLoaded || areaNeedsRefresh) await loadArea(current);
+      else startDuplicateReview(current);
+    }
+    if (route.view === "plan") await loadProfile();
+    if (route.view === "settings") await loadSettings();
+    if (!current()) return;
+    $(id).inert = false;
     const heading = $(id).querySelector("h1");
     heading.tabIndex = -1;
     heading.focus({ preventScroll: true });
@@ -1417,39 +1531,97 @@ navigation = NukkadNavigation.createNavigation({
     if (route.view === "preview") renderQuest(route.quest, false);
     if (route.view === "note")
       await renderOutcome(route.quest, route.outcome, current);
-    if (route.view === "history") {await loadHistory(current);if(current()) await collectionUI.load(current);}
-    if (route.view === "folder") await collectionUI.renderFolder(route.folder, current);
+    if (route.view === "history") {
+      await loadHistory(current);
+      if (current()) await collectionUI.load(current);
+    }
+    if (route.view === "folder")
+      await collectionUI.renderFolder(route.folder, current);
     if (route.view === "settings") {
-      const air = await api("/air-quality");
-      if (current()) renderAir(air);
+      $("readiness").textContent = "Checking local components…";
+      void refreshReadiness(current).catch((error) => {
+        if (current()) $("readiness").textContent = error.message;
+      });
+      void api("/air-quality")
+        .then((air) => {
+          if (current()) renderAir(air);
+        })
+        .catch((error) => {
+          if (current()) report(error);
+        });
     }
     if (route.notice && current()) message(route.notice);
   },
   onError: report,
 });
-const collectionUI = NukkadCollection.create({api,node,$,navigation,runJob,report,message});
-initialized.then(() => navigation.start()).catch(report);
+const collectionUI = NukkadCollection.create({
+  api,
+  node,
+  $,
+  navigation,
+  runJob,
+  report,
+  message,
+});
+void navigation.start();
+initialized.catch((error) =>
+  message(`Local session unavailable: ${error.message}`, true),
+);
 
-
-async function renderDuplicateReview() {
+function startDuplicateReview(current) {
+  $("duplicate-review").replaceChildren(
+    node("p", "Checking for similar places…", "hint"),
+  );
+  void renderDuplicateReview(current).catch((error) => {
+    if (current())
+      $("duplicate-review").replaceChildren(
+        node(
+          "p",
+          `Similar-place review unavailable: ${error.message}. Reopen Neighbourhood to retry.`,
+          "hint",
+        ),
+      );
+  });
+}
+async function renderDuplicateReview(current = () => true) {
   const pairs = await api("/places/duplicates");
+  if (!current()) return;
   const target = $("duplicate-review");
   target.replaceChildren();
   if (!pairs.length) return;
   const details = disclosure("Possible duplicate places");
-  details.append(node("p", "Nearby places with similar names remain separate until you review them.", "hint"));
+  details.append(
+    node(
+      "p",
+      "Nearby places with similar names remain separate until you review them.",
+      "hint",
+    ),
+  );
   for (const pair of pairs) {
     const section = node("div", undefined, "entry");
-    section.append(node("p", `${pair.names.join(" / ")} · ${pair.distance_meters} metres apart`));
-    for (const [decision, label] of [["merge", "These are the same place"], ["separate", "Keep them separate"]]) {
+    section.append(
+      node(
+        "p",
+        `${pair.names.join(" / ")} · ${pair.distance_meters} metres apart`,
+      ),
+    );
+    for (const [decision, label] of [
+      ["merge", "These are the same place"],
+      ["separate", "Keep them separate"],
+    ]) {
       const button = node("button", label);
       button.onclick = async () => {
         const current = navigation.checkpoint();
         try {
-          await api(`/places/duplicates/${pair.id}`, {method:"PATCH", body:{decision, target_id:pair.place_ids[0]}});
+          await api(`/places/duplicates/${pair.id}`, {
+            method: "PATCH",
+            body: { decision, target_id: pair.place_ids[0] },
+          });
           areaNeedsRefresh = true;
           if (current()) await loadArea();
-        } catch(error) { if (current()) report(error); }
+        } catch (error) {
+          if (current()) report(error);
+        }
       };
       section.append(button);
     }

@@ -1,7 +1,7 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { createNavigation } = require("../src/nukkad/static/navigation.js");
-function fixture(resolve = async (route) => route) {
+function fixture(resolve = async (route) => route, hooks = {}) {
   const listeners = new Map(),
     entries = [{ url: "http://localhost:8001/", state: null }];
   let index = 0;
@@ -36,6 +36,7 @@ function fixture(resolve = async (route) => route) {
     errors = [];
   const navigation = createNavigation({
     browser,
+    ...hooks,
     resolve,
     render: (route) => rendered.push(route.view),
     onError: (e) => errors.push(e),
@@ -147,14 +148,50 @@ test("operation checkpoints expire when navigation leaves their screen", async (
   assert.equal(current(), false);
 });
 
-test('place folders restore with Back and Forward while history excludes private media',async()=>{
-  const f=fixture(async(route,current,supplied)=>({...route,...supplied}));
-  await f.navigation.start();await f.navigation.go('history');
-  await f.navigation.go('place-folder','osm-node-2',{folder:{note:'private experience',photos:['private photo']}});
-  assert.match(f.browser.location.href,/view=folder&place=osm-node-2/);
-  assert.equal(f.browser.history.state.place,'osm-node-2');
-  assert.equal(JSON.stringify(f.entries).includes('private experience'),false);
-  await f.travel(-1);assert.equal(f.rendered.at(-1),'history');
-  await f.travel(1);assert.equal(f.rendered.at(-1),'folder');
-  assert.ok(f.navigation.isCurrent('folder','osm-node-2'));
+test("place folders restore with Back and Forward while history excludes private media", async () => {
+  const f = fixture(async (route, current, supplied) => ({
+    ...route,
+    ...supplied,
+  }));
+  await f.navigation.start();
+  await f.navigation.go("history");
+  await f.navigation.go("place-folder", "osm-node-2", {
+    folder: { note: "private experience", photos: ["private photo"] },
+  });
+  assert.match(f.browser.location.href, /view=folder&place=osm-node-2/);
+  assert.equal(f.browser.history.state.place, "osm-node-2");
+  assert.equal(JSON.stringify(f.entries).includes("private experience"), false);
+  await f.travel(-1);
+  assert.equal(f.rendered.at(-1), "history");
+  await f.travel(1);
+  assert.equal(f.rendered.at(-1), "folder");
+  assert.ok(f.navigation.isCurrent("folder", "osm-node-2"));
+});
+
+test("a slow page reveals its loading shell and never blocks switching Home", async () => {
+  const prepared = [],
+    settled = [];
+  let release;
+  const f = fixture(
+    (route) =>
+      route.view === "neighbourhood"
+        ? new Promise((r) => {
+            release = () => r(route);
+          })
+        : Promise.resolve(route),
+    {
+      prepare: (route) => prepared.push(route.view),
+      settled: () => settled.push(true),
+    },
+  );
+  await f.navigation.start();
+  const slow = f.navigation.go("setup");
+  assert.equal(prepared.at(-1), "neighbourhood");
+  await f.navigation.go("home");
+  assert.equal(f.rendered.at(-1), "home");
+  assert.equal(settled.length, 2);
+  release();
+  await slow;
+  assert.equal(f.rendered.at(-1), "home");
+  assert.equal(settled.length, 2);
 });

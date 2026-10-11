@@ -954,3 +954,6 @@ pre {
 .download-link { display: inline-block; margin: 12px 0; color: #42624f; text-underline-offset: 4px; }
 @media (max-width: 600px) { .folder-grid { grid-template-columns: 1fr; gap: 20px; } .folder-cover { height: 220px; } .visit-group .photo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .journal-entry { padding: 16px; } }
 @media (prefers-reduced-motion: reduce) { .place-folder-tile { transition: none; } .place-folder-tile:hover { transform: none; } }
+
+.navigation-loading { max-width: 800px; margin: 1rem auto; padding: 16px 24px; border: 1px solid #d7dfd2; border-radius: 18px; background: #f6f2e8; color: #42624f; }
+.navigation-loading[hidden] { display: none; }

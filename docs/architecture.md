@@ -104,3 +104,20 @@ Version-2 backup manifests enumerate the frozen database, immutable map snapshot
 Application code renders a fixed 1080 × 1350 PNG, applies the user's crop, uses the recorded quest timezone for the visit date and exports no image metadata. Immutable `location_card_version` records retain file hashes, sources, generation metrics and edits. A `location_card` pointer selects the current version. Publication compares the source experience, supplied photos, existing journal, place alias and current pointer; cancellation or changes reject late results. Conflicted files remain detectable by media recovery rather than deleting another request's files.
 
 My walks keeps walk history and adds one folder per persistent place. Card count counts distinct places with a current card from an active reached report; versions and repeat visits do not increase it. A source edit or removed cover marks the card stale. Older cards and edited journals remain readable. Folder routes contain only place IDs; notes, drafts, summaries and image data remain outside browser history. The short summary appears within the Location Card and its editor, not in collection tiles or the journal reading area.
+
+## UI startup and revision cache
+
+The browser starts navigation independently of `/api/session`. Read-only panel requests
+can proceed immediately; mutations await the session token. `/api/area/status` returns
+saved area metadata without parsing graphs, computing places or claiming readiness.
+The working map is created only for Neighbourhood. Panel loading has a visible status,
+keeps the header usable and guards late results with navigation revisions.
+
+`cache.py` provides an eight-entry LRU shared by a Store's map computations. A lock
+coalesces concurrent builds; failed builds are not published. Values are copied at the
+boundary, so temporary routing junctions and caller edits cannot mutate cached graphs
+or responses. Graph keys use path/fingerprint; graph integrity is checked on every open.
+Area/duplicate keys use relevant SQLite record IDs/update revisions and active graph
+file size/modification/change timestamps. The cache is process-local and contains no
+new persistent records. New writes invalidate derived responses rather than delaying
+correctness until a TTL expires. It does not cache acceptance, export or route decisions.

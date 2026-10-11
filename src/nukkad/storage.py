@@ -24,6 +24,9 @@ class Store:
     """Transactional local documents with a versioned schema and stable identities."""
 
     def __init__(self, root: Path):
+        from nukkad.cache import RevisionCache
+
+        self.cache = RevisionCache()
         self.root = root
         self.path = root / "nukkad.sqlite3"
         with self.connect() as connection:
@@ -65,6 +68,13 @@ class Store:
             ).fetchall()
         return [json.loads(row[0]) for row in rows]
 
+    def keyed(self, kind):
+        with self.connect() as connection:
+            rows = connection.execute(
+                "SELECT id,data FROM records WHERE kind=?", (kind,)
+            ).fetchall()
+        return {key: json.loads(value) for key, value in rows}
+
     def put(self, kind: str, key: str, value: dict) -> dict:
         self.atomic([(kind, key, value)])
         return value
@@ -87,6 +97,16 @@ class Store:
                     for kind, key, value in records
                 ],
             )
+
+    def revision_key(self, kinds):
+        with self.connect() as connection:
+            rows = connection.execute(
+                "SELECT kind,id,updated FROM records WHERE kind IN ("
+                + ",".join("?" for _ in kinds)
+                + ") ORDER BY kind,id",
+                tuple(kinds),
+            ).fetchall()
+        return tuple(rows)
 
     def check_record_versions(self):
         """Legacy unversioned records remain readable; future versions need newer code."""
