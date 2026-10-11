@@ -12,8 +12,9 @@ class Config:
     )
     ollama_url: str = "http://127.0.0.1:11434"
     model: str = "gemma4:e2b"
+    backup_limit_bytes: int = 4 * 1024**3
 
     def prepare(self) -> None:
         self.data_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
-        for name in ("snapshots", "cards", "benchmarks", "backups"):
+        for name in ("snapshots", "cards", "benchmarks", "backups", "media", "staging"):
             (self.data_dir / name).mkdir(exist_ok=True, mode=0o700)
