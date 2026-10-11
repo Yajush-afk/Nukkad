@@ -111,6 +111,14 @@ const { chromium } = require("playwright");
   await page.evaluate(() => initialized);
   await page.waitForTimeout(150);
   assert.equal(await page.evaluate(() => document.body.dataset.panel), "setup");
+  await page.goto(base + "/#how-it-works");
+  await page.evaluate(() => initialized);
+  await page.waitForTimeout(100);
+  assert.ok(await page.evaluate(() => scrollY > 300));
+  const entries = await page.evaluate(() => history.length);
+  await page.locator('nav button[data-panel="home"]').click();
+  assert.equal(await page.evaluate(() => scrollY), 0);
+  assert.equal(await page.evaluate(() => history.length), entries);
   await page.goto(base + "/?view=settings");
   await page.waitForFunction(() => document.body.dataset.panel === "settings");
   await page.reload();
@@ -166,6 +174,46 @@ const { chromium } = require("playwright");
     });
     assert.deepEqual(interactive, { zoom: true, stable: true });
   }
+  // An actual job callback must stay quiet if the user leaves its screen.
+  await page.goto(base);
+  await page.evaluate(() => initialized);
+  let release, seen;
+  const observed = new Promise((resolve) => {
+    seen = resolve;
+  });
+  const held = new Promise((resolve) => {
+    release = resolve;
+  });
+  await page.route("**/api/jobs/browser-smoke", async (route) => {
+    seen();
+    await held;
+    await route.fulfill({
+      json: {
+        status: "complete",
+        result: { quest_id: "example" },
+        message: "Ready",
+      },
+    });
+  });
+  await page.evaluate(() => {
+    window.smokeJump = false;
+    window.smokeJob = runJob(
+      { id: "browser-smoke", title: "Create walking quest" },
+      () => {
+        window.smokeJump = true;
+      },
+    );
+  });
+  await observed;
+  await page.evaluate(() => show("settings"));
+  release();
+  await page.evaluate(() => window.smokeJob);
+  assert.equal(await page.evaluate(() => window.smokeJump), false);
+  assert.equal(
+    await page.evaluate(() => document.body.dataset.panel),
+    "settings",
+  );
+  await page.unroute("**/api/jobs/browser-smoke");
   assert.deepEqual(errors, []);
   await browser.close();
   console.log(

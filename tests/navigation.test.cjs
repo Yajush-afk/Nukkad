@@ -118,3 +118,31 @@ test("history contains only navigation metadata, never supplied records or notes
   ]);
   assert.equal(JSON.stringify(f.entries).includes("private words"), false);
 });
+
+test("an initial homepage anchor is revealed after asynchronous content is ready", async () => {
+  const f = fixture();
+  let revealed = false;
+  f.browser.location.href = "http://localhost:8001/#how-it-works";
+  f.browser.location.hash = "#how-it-works";
+  f.browser.document = {
+    getElementById: (id) =>
+      id === "how-it-works"
+        ? {
+            scrollIntoView: () => {
+              revealed = true;
+            },
+          }
+        : null,
+  };
+  await f.navigation.start();
+  assert.equal(revealed, true);
+});
+
+test("operation checkpoints expire when navigation leaves their screen", async () => {
+  const f = fixture();
+  await f.navigation.start();
+  const current = f.navigation.checkpoint();
+  assert.equal(current(), true);
+  await f.navigation.go("settings");
+  assert.equal(current(), false);
+});
