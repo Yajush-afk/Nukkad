@@ -1049,18 +1049,19 @@ $("outcome-form").onsubmit = async (event) => {
 window.showJournal = async (outcome, current = navigation.checkpoint()) => {
   if (!current()) return;
   const target = $("journal-review");
-  target.replaceChildren(node("h2", "Your original note"));
-  const original = node("pre", outcome.original_note);
+  target.replaceChildren(node("h2", "Your saved note"));
+  const original = node("pre", outcome.note);
   original.style.whiteSpace = "pre-wrap";
   target.append(original);
+  if (outcome.original_note !== outcome.note) target.append(disclosure("First saved version", node("pre", outcome.original_note)));
   target.append(
     node(
       "p",
-      "Optional: local AI can select a short passage from your note and suggest interests for you to review. Your original words stay saved.",
+      "Optional: local AI can draft a third-person journal and suggest interests for separate review. Your own words stay saved.",
       "hint",
     ),
   );
-  const generate = node("button", "Create a reflection draft");
+  const generate = node("button", "Draft a journal");
   generate.onclick = async () => {
     const current = navigation.checkpoint();
     try {
@@ -1081,10 +1082,10 @@ window.showJournal = async (outcome, current = navigation.checkpoint()) => {
   if (!current()) return;
   if (journal) {
     target.append(
-      node("h2", "Review your reflection"),
+      node("h2", "Review your journal"),
       node(
         "p",
-        `${labelFor(journal.status)} · ${journal.mode === "local AI extract" ? "Passage selected with local AI" : "Passage copied without AI"}`,
+        `${labelFor(journal.status)} · ${journal.mode === "local AI journal" ? "Third-person draft written with local AI" : journal.mode === "local AI extract" ? "Earlier passage selected with local AI" : "Exact extract without AI wording"}`,
         "hint",
       ),
     );
@@ -1093,11 +1094,18 @@ window.showJournal = async (outcome, current = navigation.checkpoint()) => {
     draft.maxLength = 2000;
     draft.setAttribute("aria-label", "Review journal draft");
     target.append(draft);
+    if (journal.passages?.length) target.append(disclosure("Source passages", ...journal.passages.map(item=>node("p", item.quote, "hint"))));
+    if (journal.version_id) {
+      const versions = await api(`/outcomes/${outcome.id}/journal/versions`);
+      if (!current()) return;
+      const earlier = versions.filter(item=>item.version_id!==journal.version_id);
+      if (earlier.length) target.append(disclosure("Earlier journal versions", ...earlier.map(item=>node("p", item.text))));
+    }
     const actions = node("div", undefined, "buttonrow");
     for (const status of ["accepted", "rejected"]) {
       const button = node(
         "button",
-        status === "accepted" ? "Save this reflection" : "Discard draft",
+        status === "accepted" ? "Save this journal" : "Discard draft",
       );
       button.onclick = async () => {
         try {
