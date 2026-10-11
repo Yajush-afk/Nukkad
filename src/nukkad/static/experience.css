@@ -1,5 +1,6 @@
 /* Nukkad's pixel sky and quiet, centred workspace. All assets are local. */
 :root {
+  --header-height: 88px;
   --paper: #ffffff;
   --surface: #fbfcfa;
   --ink: #182b25;
@@ -224,10 +225,11 @@ button,
 .hero {
   position: relative;
   isolation: isolate;
-  min-height: 700px;
-  height: min(820px, 95svh);
-  margin-top: -88px;
-  border-radius: 0 0 32px 32px;
+  min-height: 100vh;
+  min-height: 100svh;
+  height: auto;
+  margin-top: calc(-1 * var(--header-height));
+  border-radius: 0;
   overflow: clip;
   background: #3978b7 url("/static/illustrations/pixel-sky.svg") center / cover;
   color: #fffdf3;
@@ -414,19 +416,6 @@ button,
 .hero-bottom a span {
   margin-left: 8px;
   font-size: 18px;
-}
-.hero-bottom button {
-  color: #fff;
-  font-size: 10px;
-  padding: 10px 15px;
-  min-height: 40px;
-  background: #173d6252;
-  border: 1px solid #ffffff54;
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-}
-.hero-bottom button:hover {
-  background: #173d6299;
 }
 .hero :focus-visible {
   outline-color: #fff;
@@ -685,11 +674,7 @@ h1[tabindex="-1"]:focus {
     letter-spacing: 0.35px;
   }
   .hero {
-    min-height: 640px;
-    height: 88svh;
-    margin-top: -82px;
-    padding: 125px 19px 105px;
-    border-radius: 0 0 25px 25px;
+    padding: 165px 19px 90px;
   }
   .hero-label {
     font-size: 8px;
@@ -726,10 +711,6 @@ h1[tabindex="-1"]:focus {
   .hero-bottom a {
     font-size: 7px;
     letter-spacing: 0.7px;
-  }
-  .hero-bottom button {
-    font-size: 9px;
-    padding: 9px 11px;
   }
   .home-story {
     padding: 65px 6px 30px;
@@ -874,4 +855,24 @@ h1[tabindex="-1"]:focus {
 .neighbourhood-next {
   justify-content: center;
   margin: 24px auto 40px;
+}
+
+/* Let the sky occupy the viewport independently of the centred workspace. */
+body[data-panel="home"] main {
+  max-width: none;
+  padding: 0;
+}
+#home > :is(.home-story, .open-story, .imagined-map) {
+  width: calc(100% - 48px);
+  max-width: 1040px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.hero-content {
+  max-width: 1040px;
+}
+@media (max-width: 760px) {
+  #home > :is(.home-story, .open-story, .imagined-map) {
+    width: calc(100% - 32px);
+  }
 }
