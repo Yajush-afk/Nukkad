@@ -849,3 +849,29 @@ h1[tabindex="-1"]:focus {
     padding: 0;
   }
 }
+
+/* The homepage map is an illustration; operational maps live in Neighbourhood. */
+.imagined-map {
+  max-width: 1040px;
+  margin: 80px auto 0;
+}
+.imagined-map > img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+}
+.imagined-map figcaption {
+  margin-top: 16px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+#setup .map-section {
+  margin: 40px auto 24px;
+}
+.neighbourhood-next {
+  justify-content: center;
+  margin: 24px auto 40px;
+}
