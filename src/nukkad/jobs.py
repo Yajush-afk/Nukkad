@@ -3,6 +3,7 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
+from nukkad.ollama import ModelFailure
 from nukkad.storage import Store, identity, now
 
 
@@ -98,10 +99,23 @@ class Jobs:
                         if isinstance(error, (ValueError, Busy, Cancelled))
                         else f"Local task failed ({type(error).__name__}); your saved data is unchanged"
                     )
+                    failure = (
+                        {"failure_category": error.category, "diagnostics": error.diagnostics}
+                        if isinstance(error, ModelFailure)
+                        else {}
+                    )
+                    if isinstance(error, ModelFailure):
+                        message = f"Local AI could not finish ({error.category}); existing saved work is unchanged. Review the model or use the manual option."
                     self.store.put(
                         "job",
                         key,
-                        {**job, "status": "failed", "message": message, "finished_at": now()},
+                        {
+                            **job,
+                            "status": "failed",
+                            "message": message,
+                            "finished_at": now(),
+                            **failure,
+                        },
                     )
         finally:
             with self.lock:
