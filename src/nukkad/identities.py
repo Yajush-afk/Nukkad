@@ -7,11 +7,11 @@ import re
 from nukkad.storage import now
 
 
-def canonical_id(store, source_id):
+def canonical_id(store, source_id, aliases=None):
     seen = set()
     while source_id not in seen:
         seen.add(source_id)
-        alias = store.get("place_alias", source_id)
+        alias = store.get("place_alias", source_id) if aliases is None else aliases.get(source_id)
         if not alias or alias["canonical_id"] == source_id:
             return source_id
         source_id = alias["canonical_id"]

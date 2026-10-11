@@ -408,7 +408,14 @@ class Maps:
             raise ValueError("Saved walking graph is missing; refresh or restore your snapshot")
         if hashlib.sha256(path.read_bytes()).hexdigest() != snapshot["graph_fingerprint"]:
             raise ValueError("Saved walking graph failed its integrity check")
-        return ox.load_graphml(path)
+
+        def load():
+            graph = ox.load_graphml(path)
+            if hashlib.sha256(path.read_bytes()).hexdigest() != snapshot["graph_fingerprint"]:
+                raise ValueError("Saved walking graph changed while loading")
+            return graph
+
+        return self.store.cache.get("graph", (str(path), snapshot["graph_fingerprint"]), load)
 
     def places(self, snapshot: dict | None = None) -> list[Place]:
         snapshot = snapshot or self.snapshot()
@@ -461,14 +468,15 @@ class Maps:
                 result[index] = place.model_copy(
                     update={"entrance_node": node, "entrance": entrance, "snap": snap}
                 )
+        aliases = self.store.keyed("place_alias")
         visited = {
-            canonical_id(self.store, key)
+            canonical_id(self.store, key, aliases)
             for outcome in self.store.list("outcome")
             for key in outcome.get("reached_ids", [])
         }
         grouped = {}
         for place in result:
-            root = canonical_id(self.store, place.id)
+            root = canonical_id(self.store, place.id, aliases)
             correction = corrections.get(root)
             if correction and root != place.id:
                 place = place.model_copy(
