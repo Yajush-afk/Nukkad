@@ -50,3 +50,17 @@ child positioning. Browser geometry now places progress at the rail's right edge
 24 px from the usable desktop viewport. Existing notification timers, persistent
 errors and cancellation remain unchanged. The stylesheet regression and notification
 suite pass; no personal records were written for this check.
+
+### Selected-place experience and report panel
+
+Confirmed the original panel had no experience action and only offered access
+corrections. The isolated browser now opens a place-only note/date/photo form;
+Report this place switches to a report form inside the same panel, with no nested
+report disclosure or separate card. The neighbourhood setup disclosure closes on
+place selection. Experience drafts survive reselection, duplicate submissions are
+blocked, and departed selections suppress feedback. An isolated saved visit joined
+the existing folder as a second visit without changing its one-card count.
+
+HTTP regressions cover direct visits without quests, idempotency, stale edits,
+future dates, source aliases, dependent journal/interest/card invalidation, photo
+upload and backup/restore. Personal data was not used for test writes.

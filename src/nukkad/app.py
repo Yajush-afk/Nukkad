@@ -9,6 +9,7 @@ from nukkad.air_quality import router as air_router
 from nukkad.areas_api import router as areas_router
 from nukkad.cards import router as cards_router
 from nukkad.config import Config
+from nukkad.experiences import router as experiences_router
 from nukkad.geocoding import router as geocoding_router
 from nukkad.jobs import Busy, Jobs
 from nukkad.location_cards import router as location_router
@@ -49,6 +50,7 @@ def create_app(config: Config | None = None) -> FastAPI:
     app.include_router(quests_router)
     app.include_router(cards_router)
     app.include_router(outcomes_router)
+    app.include_router(experiences_router)
     app.include_router(memory_router)
     app.include_router(location_router)
     app.include_router(air_router)

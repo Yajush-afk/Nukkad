@@ -1,12 +1,122 @@
 """Reported place visits retain stable identity independently of map snapshots."""
 
 import hashlib
+from datetime import UTC, date, datetime
+from zoneinfo import ZoneInfo
 
+from fastapi import APIRouter, HTTPException, Path, Request
 from pydantic import Field
 
 from nukkad.domain import Record
 from nukkad.identities import canonical_id
-from nukkad.storage import identity, now
+from nukkad.storage import SourceChanged, identity, now
+
+router = APIRouter(prefix="/api")
+
+
+class PlaceVisit(Record):
+    note: str = Field(min_length=3, max_length=8000)
+    visit_date: date | None = None
+    source_revision: str | None = None
+
+
+@router.put("/places/{source}/experiences/{key}")
+def record_place_visit(
+    source: str,
+    value: PlaceVisit,
+    request: Request,
+    key: str = Path(pattern=r"^[a-f0-9]{32}$"),
+):
+    """A map selection is not a quest, an access check or proof of attendance."""
+    from nukkad.areas_api import maps
+
+    store = request.app.state.store
+    root = canonical_id(store, source)
+    registry = maps(request)
+    snapshot = registry.snapshot()
+    place = next((item for item in registry.places(snapshot) if item.id == root), None)
+    if place is None:
+        raise HTTPException(404, "Choose a place on your saved map")
+    note = value.note.strip()
+    if len(note) < 3:
+        raise ValueError("Write a short experience before saving")
+    timezone = snapshot["area"]["timezone"]
+    today = datetime.now(ZoneInfo(timezone)).date()
+    previous = store.get("experience", key)
+    day = value.visit_date or (
+        datetime.fromisoformat(previous["visit_date"]).astimezone(ZoneInfo(timezone)).date()
+        if previous
+        else today
+    )
+    if day > today:
+        raise ValueError("Choose today or an earlier visit date")
+    visited_at = (
+        datetime.combine(day, datetime.min.time().replace(hour=12), ZoneInfo(timezone))
+        .astimezone(UTC)
+        .isoformat()
+    )
+    if previous:
+        if (
+            previous.get("source_kind") != "place"
+            or canonical_id(store, previous["place_id"]) != root
+        ):
+            raise SourceChanged("This visit belongs to a different place")
+        if previous["note"] == note and previous["visit_date"] == visited_at:
+            return previous
+        if value.source_revision != previous["revision"]:
+            raise SourceChanged("This experience changed. Reopen it before saving")
+    item = {
+        "id": key,
+        "record_version": 1,
+        "source_kind": "place",
+        "outcome_id": None,
+        "snapshot_id": snapshot["id"],
+        "stop_id": place.id,
+        "place_id": root,
+        "place_name": place.name,
+        "provenance": "self-reported visit from saved map",
+        "note": note,
+        "original_note": previous["original_note"] if previous else note,
+        "active": True,
+        "status": "completed",
+        "revision": identity(),
+        "visit_date": visited_at,
+        "timezone": timezone,
+        "created_at": previous["created_at"] if previous else now(),
+        "updated_at": now(),
+        "revisions": [
+            *previous.get("revisions", []),
+            {
+                "note": previous["note"],
+                "revision": previous["revision"],
+                "visit_date": previous["visit_date"],
+            },
+        ]
+        if previous
+        else [],
+    }
+    records = [("experience", key, item)]
+    if previous:
+        from nukkad.photos import invalidation_records
+
+        records.extend(invalidation_records(store, key))
+        records.extend(
+            ("interest", proposal["id"], {**proposal, "status": "invalidated"})
+            for proposal in store.list("interest")
+            if proposal.get("source_note_id") == key
+            and proposal.get("status") not in {"removed", "rejected"}
+        )
+        journal = store.get("journal", key)
+        if journal:
+            records.append(("journal", key, {**journal, "status": "invalidated"}))
+    store.atomic(
+        records,
+        [
+            ("experience", key, previous),
+            ("area", "active", {**snapshot["area"], "snapshot_id": snapshot["id"]}),
+        ],
+    )
+    return item
 
 
 class ExperienceInput(Record):

@@ -39,6 +39,15 @@ def validate_references(store):
     experiences = {item["id"]: item for item in store.list("experience")}
     photos = {item["id"]: item for item in store.list("photo")}
     for item in experiences.values():
+        if item.get("source_kind") == "place":
+            snapshot = store.get("snapshot", item.get("snapshot_id", ""))
+            if (
+                item.get("outcome_id") is not None
+                or not snapshot
+                or not store.get("place_identity", item["place_id"])
+            ):
+                raise ValueError("Backup place visit has an invalid map or place reference")
+            continue
         outcome = store.get("outcome", item["outcome_id"])
         if not outcome or item["stop_id"] not in {stop["id"] for stop in outcome["stops"]}:
             raise ValueError("Backup place experience has an invalid outcome reference")
