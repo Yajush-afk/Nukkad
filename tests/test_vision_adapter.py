@@ -12,7 +12,8 @@ class PhotoChoice(Record):
     reason: str
 
 
-def test_vision_adapter_checks_capability_before_sending_images(monkeypatch):
+@pytest.mark.parametrize("identified", [False, True])
+def test_vision_adapter_checks_capability_before_sending_images(monkeypatch, identified):
     import base64
 
     import httpx
@@ -38,6 +39,10 @@ def test_vision_adapter_checks_capability_before_sending_images(monkeypatch):
         assert request.url.path == "/api/chat"
         payload = json.loads(request.content)
         assert base64.b64decode(payload["messages"][0]["images"][0]) == b"synthetic-image"
+        if identified:
+            assert "photo" in payload["messages"][0]["content"]
+            assert len(payload["messages"]) == 2
+            assert payload["messages"][1]["content"] == "Select supplied photo"
         return httpx.Response(
             200,
             json={
@@ -56,11 +61,19 @@ def test_vision_adapter_checks_capability_before_sending_images(monkeypatch):
     model = Ollama(Config(model="local"))
     with pytest.raises(ModelFailure) as error:
         model.generate(
-            PhotoChoice, "Select supplied photo", time.monotonic() + 10, images=[b"synthetic-image"]
+            PhotoChoice,
+            "Select supplied photo",
+            time.monotonic() + 10,
+            images=[b"synthetic-image"],
+            image_ids=["photo"] if identified else None,
         )
     assert error.value.category == "unsupported_capability" and "/api/chat" not in requests
     capable = True
     result, metrics = model.generate(
-        PhotoChoice, "Select supplied photo", time.monotonic() + 10, images=[b"synthetic-image"]
+        PhotoChoice,
+        "Select supplied photo",
+        time.monotonic() + 10,
+        images=[b"synthetic-image"],
+        image_ids=["photo"] if identified else None,
     )
     assert result.photo_id == "photo" and metrics["digest"] == "hash"

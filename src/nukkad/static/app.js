@@ -1183,7 +1183,7 @@ window.showJournal = async (outcome, current = navigation.checkpoint()) => {
         try {
           await api("/outcomes/" + outcome.id + "/journal", {
             method: "PATCH",
-            body: { status, text: draft.value },
+            body: { status, text: draft.value, version_id: journal.version_id },
           });
           if (current()) await window.showJournal(outcome, current);
         } catch (e) {

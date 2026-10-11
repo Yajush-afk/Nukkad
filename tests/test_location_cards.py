@@ -213,7 +213,7 @@ def test_photo_membership_removal_and_reached_counts(registry):
 
 
 def test_summary_requires_third_person_and_bounded_grounding():
-    for summary in ("I enjoyed the trees.", "They enjoyed it. " * 20):
+    for summary in ("I enjoyed the trees.", "You enjoyed the trees.", "They enjoyed it. " * 20):
         with pytest.raises(ValueError):
             validate_summary(summary)
     with pytest.raises(ValueError):
@@ -269,3 +269,99 @@ def test_collection_merges_aliases_without_inflating_card_count(registry):
         folder = client.get("/api/collection/merged-place").json()
         assert {item["id"] for item in folder["visits"]} == {first["id"], second["id"]}
         assert folder["current_card"]
+
+
+def test_model_cannot_publish_an_unknown_cover_photo(registry, monkeypatch):
+    prepared(registry)
+    monkeypatch.setattr(
+        "nukkad.ollama.Ollama.generate",
+        lambda *args, **kwargs: (
+            CoverChoice(photo_id="not-supplied", reason="Selection: A clear scene."),
+            {},
+        ),
+    )
+    with TestClient(create_app(registry[0].config), base_url="http://127.0.0.1") as client:
+        token(client)
+        state = wait(client, client.post("/api/collection/osm-way-20/generate", json={}).json())
+        assert state["status"] == "failed"
+        assert state["diagnostics"]["task"] == "location_cover"
+        assert len(state["diagnostics"]["attempts"]) == 2
+        assert client.get("/api/collection").json()["card_count"] == 0
+
+
+def test_place_merge_during_generation_cannot_publish_to_stale_identity(registry, monkeypatch):
+    _, photo, _, _ = prepared(registry)
+    response = ai_response(photo)
+
+    def merging(*args, **kwargs):
+        registry[1].put("place_alias", "osm-way-20", {"canonical_id": "reviewed-place"})
+        return response(*args, **kwargs)
+
+    monkeypatch.setattr("nukkad.ollama.Ollama.generate", merging)
+    with TestClient(create_app(registry[0].config), base_url="http://127.0.0.1") as client:
+        token(client)
+        state = wait(client, client.post("/api/collection/osm-way-20/generate", json={}).json())
+        assert state["status"] == "failed" and "changed" in state["message"].lower()
+        assert not registry[1].list("location_card_version")
+
+
+def test_place_journal_edits_survive_card_regeneration(registry, monkeypatch):
+    experience, photo, _, _ = prepared(registry)
+    monkeypatch.setattr("nukkad.ollama.Ollama.generate", ai_response(photo))
+    with TestClient(create_app(registry[0].config), base_url="http://127.0.0.1") as client:
+        token(client)
+        first = wait(client, client.post("/api/collection/osm-way-20/generate", json={}).json())
+        assert first["status"] == "complete"
+        journal = client.get("/api/collection/osm-way-20").json()["visits"][0]["journal"]
+        assert (
+            client.patch(
+                "/api/outcomes/" + experience["id"] + "/journal",
+                json={
+                    "status": "accepted",
+                    "text": "They kept their edited memory.",
+                    "version_id": journal["version_id"],
+                },
+            ).status_code
+            == 200
+        )
+        assert (
+            wait(client, client.post("/api/collection/osm-way-20/generate", json={}).json())[
+                "status"
+            ]
+            == "complete"
+        )
+        folder = client.get("/api/collection/osm-way-20").json()
+        assert len(folder["card_versions"]) == 2
+        assert any(
+            item["text"] == "They kept their edited memory." and item["status"] == "accepted"
+            for item in folder["visits"][0]["journal_versions"]
+        )
+        assert client.get("/api/collection").json()["card_count"] == 1
+
+
+def test_card_visit_date_uses_reported_timezone(registry, monkeypatch):
+    from PIL import ImageDraw
+
+    from nukkad.location_cards import render_card
+
+    _, photo, _, _ = prepared(registry)
+    drawn = []
+    original = ImageDraw.ImageDraw.text
+
+    def record(draw, xy, text, *args, **kwargs):
+        drawn.append(text)
+        return original(draw, xy, text, *args, **kwargs)
+
+    monkeypatch.setattr(ImageDraw.ImageDraw, "text", record)
+    render_card(
+        registry[0].config,
+        {
+            "place_name": "Sample park",
+            "visit_date": "2026-10-11T20:00:00+00:00",
+            "timezone": "Asia/Kolkata",
+            "summary": "They reported this visit.",
+            "mode": "Manual template",
+        },
+        photo,
+    )
+    assert "REPORTED VISIT / 12 Oct 2026" in drawn

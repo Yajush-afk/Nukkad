@@ -177,3 +177,16 @@ def test_repeated_visits_and_aliases_preserve_place_identity(registry):
     assert {
         canonical_id(registry[1], item["place_id"]) for item in registry[1].list("experience")
     } == {"reviewed-place"}
+
+
+def test_saved_media_hash_is_checked_before_serving(registry):
+    experience, _, _ = visit(registry)
+    config, store = registry[0].config, registry[1]
+    photo = save_photo(config, store, experience["id"], png())
+    path = config.data_dir / photo["files"]["display"]["path"]
+    damaged = bytearray(path.read_bytes())
+    damaged[-1] ^= 1  # Same size; only the hash exposes this corruption.
+    path.write_bytes(damaged)
+    with TestClient(create_app(config), base_url="http://127.0.0.1") as client:
+        response = client.get(f"/api/photos/{photo['id']}/display")
+        assert response.status_code == 422 and "damaged" in response.text

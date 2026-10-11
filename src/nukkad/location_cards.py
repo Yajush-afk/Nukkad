@@ -6,6 +6,7 @@ import re
 import time
 from dataclasses import replace
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse
@@ -18,9 +19,9 @@ from nukkad.identities import canonical_id
 from nukkad.jobs import Result
 from nukkad.journals import WrittenJournal, generate_journal
 from nukkad.ollama import Ollama
-from nukkad.photos import file_info, safe_media_path
+from nukkad.photos import file_info, verified_media_path
 from nukkad.planning_api import settings
-from nukkad.storage import identity, now
+from nukkad.storage import SourceChanged, identity, now
 from nukkad.tasks import run_task
 
 router = APIRouter(prefix="/api")
@@ -60,7 +61,7 @@ class CardEdit(Record):
 def validate_summary(text, note="", place_name="", *, generated=False):
     if len(text.split()) > 40 or len(re.findall(r"[.!?](?:\s|$)", text)) > 2:
         raise ValueError("Location Card summary must be one or two sentences and at most 40 words")
-    if re.search(r"\b(I|me|my|mine|we|our|ours)\b", text, re.I):
+    if re.search(r"\b(I|me|my|mine|we|our|ours|you|your|yours)\b", text, re.I):
         raise ValueError("Write the Location Card summary in third person")
     if not generated:
         return
@@ -263,7 +264,7 @@ def render_card(config, version, photo):
     }
     draw.text((64, 45), "NUKKAD / PLACE MEMORIES", font=fonts["label"], fill="#42624f")
     draw.text((64, 92), "Location CARD", font=fonts["label"], fill="#42624f")
-    path = safe_media_path(config.data_dir, photo["files"]["display"]["path"])
+    path = verified_media_path(config.data_dir, photo["files"]["display"])
     with Image.open(path) as source:
         cover = ImageOps.fit(
             source,
@@ -284,7 +285,9 @@ def render_card(config, version, photo):
     for line in titles:
         draw.text((64, y), line, font=fonts["title"], fill="#243a31")
         y += 54
-    date = datetime.fromisoformat(version["visit_date"])
+    date = datetime.fromisoformat(version["visit_date"]).astimezone(
+        ZoneInfo(version.get("timezone", "UTC"))
+    )
     draw.text(
         (64, y + 8), date.strftime("REPORTED VISIT / %d %b %Y"), font=fonts["label"], fill="#697969"
     )
@@ -313,6 +316,8 @@ def card_records(config, store, root, experience, photo, summary, mode, **extras
         "photo_id": photo["id"],
         "place_name": experience["place_name"],
         "visit_date": experience["visit_date"],
+        "timezone": experience.get("timezone")
+        or (store.get("quest", experience["outcome_id"]) or {}).get("timezone", "UTC"),
         "source_revision": experience["revision"],
         "summary": summary,
         "mode": mode,
@@ -354,12 +359,16 @@ def generate_card(source: str, value: CardRequest, request: Request):
     photos = active_photos(store, experience["id"])
     if not photos:
         raise ValueError("Add a photo to this selected visit before creating a Location Card")
+    place_alias = store.get("place_alias", root)
+    if place_alias and place_alias["canonical_id"] != root:
+        raise SourceChanged("Place identity changed; reopen its folder")
     pointer = store.get("location_card", root)
     previous_journal = store.get("journal", experience["id"])
     expected = [
         ("experience", experience["id"], experience),
         ("location_card", root, pointer),
         ("journal", experience["id"], previous_journal),
+        ("place_alias", root, place_alias),
         *[("photo", item["id"], item) for item in photos],
     ]
 
@@ -375,7 +384,7 @@ def generate_card(source: str, value: CardRequest, request: Request):
             model = Ollama(replace(config, model=settings(request).model))
             deadline = time.monotonic() + 180
             images = [
-                safe_media_path(config.data_dir, item["files"]["inference"]["path"]).read_bytes()
+                verified_media_path(config.data_dir, item["files"]["inference"]).read_bytes()
                 for item in photos
             ]
             chosen, writing, metrics = generate_visit(
@@ -442,17 +451,23 @@ def generate_card(source: str, value: CardRequest, request: Request):
 def edit_card(source: str, value: CardEdit, request: Request):
     store = request.app.state.store
     root = canonical_id(store, source)
+    place_alias = store.get("place_alias", root)
+    if place_alias and place_alias["canonical_id"] != root:
+        raise SourceChanged("Place identity changed; reopen its folder")
+    pointer = store.get("location_card", root)
+    other_pointers = [
+        item
+        for item in store.list("location_card")
+        if item["id"] != root and canonical_id(store, item["place_id"]) == root
+    ]
     current = current_card(store, root)
     if not current or current["id"] != value.version_id:
-        from nukkad.storage import SourceChanged
-
         raise SourceChanged("Current card changed; reopen the folder before editing")
     experience = store.get("experience", current["experience_id"])
     photos = active_photos(store, experience["id"])
     photo = next((item for item in photos if item["id"] == value.photo_id), None)
     if not photo:
         raise ValueError("Select an active photo from this card's reported visit")
-    pointer = store.get("location_card", root)
     version, records = card_records(
         request.app.state.config,
         store,
@@ -476,6 +491,8 @@ def edit_card(source: str, value: CardEdit, request: Request):
             ("location_card", root, pointer),
             ("photo", photo["id"], photo),
             ("location_card_version", current["id"], current),
+            ("place_alias", root, place_alias),
+            *[("location_card", item["id"], item) for item in other_pointers],
         ],
     )
     return version
@@ -523,6 +540,12 @@ def folder(source: str, request: Request):
     for visit in visits:
         visit["photos"] = active_photos(store, visit["id"])
         visit["journal"] = store.get("journal", visit["id"])
+        visit["journal_versions"] = [
+            item for item in store.list("journal_version") if item["id"] == visit["id"]
+        ]
+        visit["timezone"] = visit.get("timezone") or (
+            store.get("quest", visit["outcome_id"]) or {}
+        ).get("timezone", "UTC")
     versions = [
         item
         for item in store.list("location_card_version")
@@ -542,7 +565,7 @@ def export_card(key: str, request: Request):
     item = request.app.state.store.get("location_card_version", key)
     if not item:
         raise HTTPException(404, "Unknown Location Card version")
-    path = safe_media_path(request.app.state.config.data_dir, item["file"]["path"])
+    path = verified_media_path(request.app.state.config.data_dir, item["file"])
     if not path.is_file():
         raise HTTPException(404, "Saved card is missing; restore a backup")
     return FileResponse(path, media_type="image/png", filename=f"nukkad-location-{key}.png")

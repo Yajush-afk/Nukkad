@@ -38,6 +38,19 @@ def safe_media_path(root, relative):
     return path
 
 
+def verified_media_path(root, metadata):
+    path = safe_media_path(root, metadata["path"])
+    if not path.is_file() or path.stat().st_size != metadata["size"]:
+        raise ValueError("Saved media is missing or damaged; restore its backup")
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    if digest.hexdigest() != metadata["sha256"]:
+        raise ValueError("Saved media is damaged; restore its backup")
+    return path
+
+
 def decode_photo(content):
     if not content or len(content) > MAX_BYTES:
         raise ValueError("Each photo must be at most 20 MiB")
@@ -219,7 +232,7 @@ def photo_file(key: str, variant: str, request: Request):
     # Originals are deliberately excluded from the web interface.
     if not item or variant not in {"display", "thumbnail", "inference"}:
         raise HTTPException(404, "Unknown display photo")
-    path = safe_media_path(request.app.state.config.data_dir, item["files"][variant]["path"])
+    path = verified_media_path(request.app.state.config.data_dir, item["files"][variant])
     if not path.is_file():
         raise HTTPException(404, "Saved image is missing; restore its backup")
     return FileResponse(path, media_type="image/jpeg")

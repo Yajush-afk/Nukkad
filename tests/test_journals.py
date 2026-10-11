@@ -137,3 +137,29 @@ def test_journal_does_not_drop_negative_or_uncertain_source_passages():
         validate_written(
             draft("They turned back before the market.", "I turned back before the market."), source
         )
+
+
+def test_journal_review_rejects_client_edit_for_an_earlier_version(registry):
+    store = registry[1]
+    source = {"id": "visit", "note": "I noticed tree outlines.", "status": "completed"}
+    store.put("outcome", "visit", source)
+    journal = {
+        "id": "visit",
+        "version_id": "new-version",
+        "source_note": source["note"],
+        "text": "They noticed tree outlines.",
+        "status": "pending",
+    }
+    store.put("journal", "visit", journal)
+    with TestClient(create_app(registry[0].config), base_url="http://127.0.0.1") as client:
+        client.headers["X-Nukkad-Token"] = client.get("/api/session").json()["token"]
+        result = client.patch(
+            "/api/outcomes/visit/journal",
+            json={
+                "status": "accepted",
+                "text": "Their older client edit.",
+                "version_id": "old-version",
+            },
+        )
+        assert result.status_code == 409
+        assert store.get("journal", "visit") == journal

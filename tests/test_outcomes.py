@@ -41,3 +41,24 @@ def test_unknown_outcome_stops_rejected(registry):
             quest,
             Outcome(status="completed", stops=[{"id": "invented", "status": "reached"}]),
         )
+
+
+def test_changed_report_status_invalidates_its_written_journal(registry):
+    quest = {
+        "id": "walk",
+        "snapshot_id": registry[2]["id"],
+        "status": "accepted",
+        "stops": [{"id": "osm-way-20"}],
+    }
+    value = Outcome(
+        status="completed",
+        note="I enjoyed trees.",
+        stops=[{"id": "osm-way-20", "status": "reached"}],
+    )
+    save_outcome(registry[1], quest, value)
+    registry[1].put(
+        "journal", "walk", {"id": "walk", "text": "They visited the park.", "status": "accepted"}
+    )
+    value.status = "turned_back"
+    save_outcome(registry[1], quest, value)
+    assert registry[1].get("journal", "walk")["status"] == "invalidated"
