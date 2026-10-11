@@ -15,8 +15,9 @@ def test_upsert_preserves_exact_original_notes_and_progress(registry):
     value = Outcome(
         status="completed", note=note, stops=[{"id": "osm-way-20", "status": "reached"}]
     )
-    save_outcome(store, quest, value)
-    save_outcome(store, quest, value)
+    first = save_outcome(store, quest, value)
+    assert save_outcome(store, quest, value) == first
+    assert first["revisions"] == []
     assert len(store.list("outcome")) == 1
     assert store.get("outcome", "outing")["note"] == note
     assert maps.places()[0].visited

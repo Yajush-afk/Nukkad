@@ -2,13 +2,16 @@ import json
 import math
 import random
 import socket
+import time
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 
 from nukkad.cards import svg_card
 from nukkad.config import Config
+from nukkad.journals import generate_journal
 from nukkad.maps import Maps
+from nukkad.ollama import Ollama
 from nukkad.places import AreaInput
 from nukkad.planning import INTEREST_KINDS, NoQuest, Planner, QuestInput, Settings, baseline
 from nukkad.quests import TEMPLATES, active_interests, generate
@@ -24,6 +27,14 @@ CASES = [
     ("sparse-notes", 30, ["art"], "", False),
     ("long-variety", 60, ["sports", "markets"], "A change of scene", False),
     ("purposeful-revisit", 40, ["nature"], "Revisit a familiar place", True),
+    (
+        "conflicting-preferences",
+        30,
+        ["nature", "markets"],
+        "A quiet look at shapes rather than a busy market",
+        True,
+    ),
+    ("older-relevant-note", 30, ["nature"], "Compare outlines with my earlier visit", True),
     ("no-feasible-route", 20, ["trees"], "", False),
 ]
 
@@ -147,6 +158,17 @@ def evaluate(config: Config, output: Path):
                         "status": "accepted",
                     },
                 )
+            if name == "older-relevant-note":
+                for number in range(6):
+                    store.put(
+                        "outcome",
+                        f"unrelated-{number}",
+                        {
+                            "id": f"unrelated-{number}",
+                            "note": "I passed a doorway.",
+                            "reached_ids": ["elsewhere"],
+                        },
+                    )
             settings = Settings(
                 model=config.model, max_distance_meters=200 if name == "no-feasible-route" else 4000
             )
@@ -208,7 +230,41 @@ def evaluate(config: Config, output: Path):
             report["cases"].append(row)
             report["blocked_non_loopback_attempts"] = list(blocked)
             (output / "diagnostics.json").write_text(json.dumps(report, indent=2))
-            print(f"{index}/10: {name}", flush=True)
+            print(f"{index}/{len(CASES)}: {name}", flush=True)
+    journal_cases = [
+        {"status": "completed", "note": "I enjoyed noticing tree outlines."},
+        {
+            "status": "turned_back",
+            "note": "I turned back before reaching the market because the gate was closed. I did not enjoy the noise.",
+        },
+        {"status": "not_taken", "note": "I did not leave home today."},
+    ]
+    report["journals"] = []
+    with loopback_only():
+        for source_note in journal_cases:
+            began = time.monotonic()
+            generated = generate_journal(source_note, Ollama(isolated), began + 120)
+            report["journals"].append(
+                {
+                    "source": source_note,
+                    "text": generated["text"],
+                    "mode": generated["mode"],
+                    "metrics": generated["metrics"],
+                    "seconds": round(time.monotonic() - began, 3),
+                }
+            )
+    ai_results = [
+        row["results"]["ai"] for row in report["cases"] if "no_quest" not in row["results"]["ai"]
+    ]
+    report["summary"] = {
+        "feasible_cases": len(ai_results),
+        "ranking_ai": sum(row["ranking_mode"] == "local AI" for row in ai_results),
+        "activities_ai": sum(row["prose_mode"] == "local AI" for row in ai_results),
+        "journal_ai": sum(row["mode"] == "local AI journal" for row in report["journals"]),
+        "timing_scope": "First case includes measured model load; subsequent cases are warm when Ollama retains weights. Token/load timings are in each stage metrics.",
+        "unsupported_claim_review": "Review outputs manually; validation alone is not proof of grounding.",
+    }
+    (output / "diagnostics.json").write_text(json.dumps(report, indent=2))
     (output / "blinding-key.json").write_text(json.dumps(key, indent=2))
     ratings = {
         "instructions": "Review cards before opening the blinding key. Rate each 1–5 for interest fit, willingness to go, variety and prompt usefulness. Record ties, losses and comments. These are descriptive ratings, not statistical evidence.",

@@ -21,7 +21,7 @@ OBJECTS = {
     "flowers",
 }
 FORBIDDEN = re.compile(
-    r"\b(safe|safest|guaranteed|ancient|built|founded|historic|historical|cure|treat|therapy|permission|enter|cross|turn left|turn right)\b",
+    r"\b(safe|safest|guaranteed|ancient|built|founded|historic|historical|cur(?:e|es|ed|ing)|treat(?:s|ed|ing|ment)?|therapy|anxiety|depression|permission|enter|cross|turn left|turn right)\b",
     re.I,
 )
 

@@ -56,3 +56,31 @@ def test_failed_attempt_diagnostics_do_not_include_prompt_or_error_content():
     assert len(diagnostics["attempts"]) == 2
     assert all(attempt["category"] == "timeout" for attempt in diagnostics["attempts"])
     assert "Sensitive" not in str(diagnostics) and "Private" not in str(diagnostics)
+
+
+def test_readiness_reports_database_failure_before_cache_queries(registry, monkeypatch):
+    import sqlite3
+
+    from nukkad.readiness import check_readiness
+
+    app = create_app(registry[0].config)
+
+    def broken(*args):
+        raise sqlite3.DatabaseError("unreadable database")
+
+    monkeypatch.setattr(app.state.store, "get", broken)
+    result = check_readiness(app)
+    assert result["database"] == "damaged"
+    assert not result["deterministic_ready"]
+
+
+def test_missing_text_capability_is_not_ai_ready(registry, monkeypatch):
+    monkeypatch.setattr("nukkad.ollama.Ollama.models", lambda self: [{"name": self.config.model}])
+    monkeypatch.setattr(
+        "nukkad.ollama.Ollama.information", lambda self: {"capabilities": ["embedding"]}
+    )
+    with TestClient(create_app(registry[0].config), base_url="http://127.0.0.1") as client:
+        result = client.get("/api/readiness").json()
+    assert result["model_status"] == "unsupported"
+    assert not result["local_ai_ready"]
+    assert result["deterministic_ready"]

@@ -12,7 +12,7 @@ from nukkad.ollama import ModelFailure, Ollama
 from nukkad.planning import Planner, QuestInput, Settings
 
 
-def check_readiness(app):
+def _check_readiness(app):
     store, config = app.state.store, app.state.config
     selected = Settings.model_validate(store.get("settings", "active") or {"model": config.model})
     area = store.get("area", "active")
@@ -53,10 +53,16 @@ def check_readiness(app):
         model_names = [item["name"] for item in inventory]
         installed = next((item for item in inventory if item["name"] == selected.model), None)
         model_status = "missing" if not installed else "ready"
-        if installed and (installed.get("remote_host") or installed.get("remote_model")):
+        if (
+            "cloud" in selected.model.lower()
+            or installed
+            and (installed.get("remote_host") or installed.get("remote_model"))
+        ):
             model_status = "unsupported"
         if model_status == "ready":
             capabilities = model.information()["capabilities"]
+        if model_status == "ready" and "completion" not in capabilities:
+            model_status = "unsupported"
         put(
             "model",
             model_status,
@@ -74,6 +80,13 @@ def check_readiness(app):
             "Local runtime metadata unavailable; history and fallbacks remain usable",
         )
         model_status = "unavailable"
+    put(
+        "capabilities",
+        "ready" if "completion" in capabilities else "unavailable",
+        "Text inference supported; vision requires its own capability"
+        if "completion" in capabilities
+        else "Selected runtime does not report text completion support",
+    )
     if not area:
         put("map", "setup_incomplete", "Save a neighbourhood map")
         put("start", "setup_incomplete", "Choose and confirm a public walking start")
@@ -130,3 +143,32 @@ def check_readiness(app):
     }
     app.state.readiness_cache = (key, time.monotonic(), result)
     return result
+
+
+def check_readiness(app):
+    try:
+        return _check_readiness(app)
+    except (sqlite3.Error, ValueError, KeyError, TypeError):
+        checks = {
+            name: {
+                "status": "unavailable",
+                "reason": "Repair saved data or restore a backup before checking this component",
+            }
+            for name in ("map", "start", "destinations", "renderer", "model")
+        }
+        checks["database"] = {
+            "status": "damaged",
+            "reason": "Saved records or database could not be read; restore a backup",
+        }
+        return {
+            "application": "saved_data_damaged",
+            "database": "damaged",
+            "area_ready": False,
+            "model_status": "unavailable",
+            "models": [],
+            "selected_model": app.state.config.model,
+            "model_capabilities": [],
+            "deterministic_ready": False,
+            "local_ai_ready": False,
+            "checks": checks,
+        }

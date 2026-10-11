@@ -32,6 +32,8 @@ def save_outcome(store, quest, value: Outcome):
     if value.status == "not_taken" and reached:
         raise ValueError("A not-taken outing cannot report reached stops")
     previous = store.get("outcome", quest["id"])
+    if previous and all(previous.get(key) == item for key, item in value.model_dump().items()):
+        return previous
     revisions = previous.get("revisions", []) if previous else []
     if previous:
         revisions = [*revisions, {"note": previous["note"], "saved_at": previous["updated_at"]}]

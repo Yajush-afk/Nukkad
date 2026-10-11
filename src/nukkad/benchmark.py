@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 
 from nukkad.config import Config
 from nukkad.domain import Observations, Ranking, validate_ids
+from nukkad.grounding import validate_evidence, validate_invitation, validate_rationale
 from nukkad.ollama import ModelFailure, Ollama, bounded_schema, observation_prompt, ranking_prompt
 
 CASES = [
@@ -58,7 +59,14 @@ def benchmark(config: Config) -> dict:
     }
     path = config.data_dir / "benchmarks" / f"{config.model.replace(':', '-')}.json"
     candidates = fixture_candidates()
-    for index, context in enumerate(CASES):
+    for index, raw_context in enumerate(CASES):
+        context = {**raw_context, "mode": "observe", "notes": [], "reported_visits": []}
+        catalogue = {
+            "request": str(raw_context),
+            **{f"interest:{number}": theme for number, theme in enumerate(context["interests"])},
+            **{f"place:{place['id']}": str(place) for place in candidates},
+        }
+        context["evidence_catalog"] = catalogue
         started = time.monotonic()
         deadline = started + 120
         result = {"case": index + 1, "context": context, "validated": False, "attempts": 0}
@@ -75,6 +83,11 @@ def benchmark(config: Config) -> dict:
                     validate_ids(
                         [place.id for place in ranked.places], [place["id"] for place in candidates]
                     )
+                    for item in ranked.places:
+                        evidence = validate_evidence(item.evidence_ids, catalogue)
+                        if f"place:{item.id}" not in item.evidence_ids:
+                            raise ValueError("Ranking requires this candidate evidence")
+                        validate_rationale(item.reason, evidence)
                     break
                 except (ModelFailure, ValueError):
                     if attempt:
@@ -93,6 +106,11 @@ def benchmark(config: Config) -> dict:
                     validate_ids(
                         [stop.id for stop in prompts.stops], [stop["id"] for stop in stops]
                     )
+                    for item in prompts.stops:
+                        evidence = validate_evidence(item.evidence_ids, catalogue)
+                        if f"place:{item.id}" not in item.evidence_ids:
+                            raise ValueError("Activity requires this stop evidence")
+                        validate_invitation(item.text, evidence)
                     break
                 except (ModelFailure, ValueError):
                     if attempt:

@@ -67,7 +67,7 @@ def test_network_guard_rejects_non_loopback_without_changing_machine_network():
     assert socket.socket.connect is original
 
 
-def test_core_api_loop_from_fresh_app_under_egress_denial(registry, monkeypatch):
+def test_core_api_loop_from_fresh_app_under_egress_denial(registry, monkeypatch, tmp_path):
     import time
 
     import nukkad.quests as quests
@@ -149,3 +149,16 @@ def test_core_api_loop_from_fresh_app_under_egress_denial(registry, monkeypatch)
     with TestClient(create_app(registry[0].config), base_url="http://127.0.0.1") as client:
         assert client.get("/api/outcomes").json()[0]["original_note"] == "I enjoyed tree shapes."
         assert client.get("/api/interests").json()[0]["status"] == "accepted"
+
+    from nukkad.backups import backup, restore
+    from nukkad.config import Config
+
+    destination = tmp_path / "recovered"
+    restore(backup(registry[0].config), destination)
+    with TestClient(
+        create_app(Config(data_dir=destination)), base_url="http://127.0.0.1"
+    ) as client:
+        assert client.get("/api/outcomes").json()[0]["original_note"] == "I enjoyed tree shapes."
+        assert client.get("/api/interests").json()[0]["status"] == "accepted"
+        assert client.get("/api/quests/" + key).json()["status"] == "accepted"
+        assert client.get("/api/quests/" + key + "/card.png").content[:8] == b"\x89PNG\r\n\x1a\n"

@@ -126,3 +126,14 @@ def test_journal_generation_cannot_overwrite_review_during_inference(registry, m
             time.sleep(0.01)
         assert state["status"] == "failed"
         assert store.get("journal", "visit")["text"] == "Their edited account."
+
+
+def test_journal_does_not_drop_negative_or_uncertain_source_passages():
+    source = {
+        "note": "I turned back before the market. I did not enjoy the noise. Maybe I will revisit.",
+        "status": "turned_back",
+    }
+    with pytest.raises(ValueError, match="every negative"):
+        validate_written(
+            draft("They turned back before the market.", "I turned back before the market."), source
+        )
