@@ -19,6 +19,7 @@
     <script defer src="/static/map-controls.js"></script>
     <script defer src="/static/app.js"></script>
     <script defer src="/static/experience.js"></script>
+    <script defer src="/static/grass.js"></script>
   </head>
   <body data-panel="home">
     <a class="skip-link" href="#main">Skip to content</a>
@@ -983,6 +984,10 @@
       <div id="notifications"></div>
     </div>
     <footer class="site-footer">
+      <div class="footer-grass" aria-hidden="true">
+        <div id="grass-fallback"></div>
+        <canvas id="pixel-grass" hidden></canvas>
+      </div>
       <div class="footer-wordmark" aria-hidden="true">NUKKAD</div>
       <div class="footer-meta">
         <div class="footer-credit">

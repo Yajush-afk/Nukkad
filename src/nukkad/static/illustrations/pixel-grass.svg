@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 32 32" shape-rendering="crispEdges">
+  <rect width="32" height="32" fill="#e3edc9"/>
+  <defs>
+    <pattern id="grass" width="16" height="16" patternUnits="userSpaceOnUse">
+      <path fill="#b9d298" d="M3 8h1V6h1V3h1v5h1V5h1v3h1v1H3zM11 15h1v-2h1v-3h1v5h1v1h-4z"/>
+      <path fill="#a8c584" d="M0 3h1V0h1v4H0zM10 7h1V4h1v-2h1v5h1v1h-4zM3 15h1v-4h1v-1h1v5h1v1H3z"/>
+      <path fill="#c8ddaa" d="M6 16h1v-4h1v-2h1v6zM14 3h1V0h1v4h-2zM8 10h1V8h1v3H8z"/>
+    </pattern>
+  </defs>
+  <rect width="32" height="32" fill="url(#grass)"/>
+</svg>
