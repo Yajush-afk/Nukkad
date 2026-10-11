@@ -31,6 +31,10 @@ class Place(Record):
     entrance: Point | None = None
     entrance_node: int | None = None
     snap: dict | None = None
+    canonical_id: str | None = None
+    source_ids: list[str] = Field(default_factory=list)
+    member_ids: list[str] = Field(default_factory=list)
+    geometry: dict | None = None
     tags: dict[str, str] = Field(default_factory=dict)
     descriptors: list[Annotated[str, Field(min_length=1, max_length=180)]] = Field(
         default_factory=list, max_length=8

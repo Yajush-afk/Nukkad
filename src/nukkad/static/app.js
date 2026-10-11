@@ -191,7 +191,9 @@ async function loadArea() {
     : area.area.public_start_confirmed
       ? "Map saved"
       : "Confirm start";
+  $("duplicate-review").replaceChildren();
   if (!saved) return;
+  await renderDuplicateReview();
   $("area-name").textContent = area.area.name;
   $("progress").textContent = area.area.public_start_confirmed
     ? `${area.progress.mapped_visited} of ${area.progress.mapped_total} mapped places visited · ${area.progress.custom_visited} added places visited`
@@ -1330,3 +1332,31 @@ navigation = NukkadNavigation.createNavigation({
   onError: report,
 });
 initialized.then(() => navigation.start()).catch(report);
+
+
+async function renderDuplicateReview() {
+  const pairs = await api("/places/duplicates");
+  const target = $("duplicate-review");
+  target.replaceChildren();
+  if (!pairs.length) return;
+  const details = disclosure("Possible duplicate places");
+  details.append(node("p", "Nearby places with similar names remain separate until you review them.", "hint"));
+  for (const pair of pairs) {
+    const section = node("div", undefined, "entry");
+    section.append(node("p", `${pair.names.join(" / ")} · ${pair.distance_meters} metres apart`));
+    for (const [decision, label] of [["merge", "These are the same place"], ["separate", "Keep them separate"]]) {
+      const button = node("button", label);
+      button.onclick = async () => {
+        const current = navigation.checkpoint();
+        try {
+          await api(`/places/duplicates/${pair.id}`, {method:"PATCH", body:{decision, target_id:pair.place_ids[0]}});
+          areaNeedsRefresh = true;
+          if (current()) await loadArea();
+        } catch(error) { if (current()) report(error); }
+      };
+      section.append(button);
+    }
+    details.append(section);
+  }
+  target.append(details);
+}
