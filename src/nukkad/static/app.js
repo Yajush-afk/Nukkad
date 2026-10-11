@@ -209,6 +209,7 @@ async function loadArea() {
   for (const place of area.places) {
     const marker = L.circleMarker([place.point.lat, place.point.lon], {
       radius: place.visited ? 7 : 5,
+      bubblingMouseEvents: false,
       color: place.valid ? "#243a31" : "#979c92",
       fillColor: place.visited ? "#b36c12" : "#f5f1e7",
       fillOpacity: 1,
