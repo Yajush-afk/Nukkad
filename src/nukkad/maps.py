@@ -478,6 +478,8 @@ class Maps:
                         if key in correction
                     }
                 )
+            if prohibited(place.tags):
+                place = place.model_copy(update={"valid": False, "access": "prohibited"})
             old = grouped.get(root)
             sources = sorted(
                 set([*(old.source_ids if old else []), *(place.source_ids or [place.id])])

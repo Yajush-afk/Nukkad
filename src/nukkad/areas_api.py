@@ -1,12 +1,14 @@
 import json
 import tempfile
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 
+from nukkad.domain import Record
+from nukkad.identities import canonical_id, duplicate_candidates, identity_records
 from nukkad.jobs import Result
-from nukkad.maps import MAX_EXTRACT_BYTES, Maps
+from nukkad.maps import MAX_EXTRACT_BYTES, Maps, distance
 from nukkad.places import AreaInput, Correction, CustomPlace, Place, prohibited
 from nukkad.snapping import snap_point
 from nukkad.storage import identity, now
@@ -27,6 +29,10 @@ def start_acquisition(request: Request, area: AreaInput, source: Path | None = N
             records = [
                 ("snapshot", snapshot["id"], snapshot),
                 ("area", "active", {**area.model_dump(), "snapshot_id": snapshot["id"]}),
+                *identity_records(
+                    request.app.state.store,
+                    [Place.model_validate(place) for place in snapshot["places"]],
+                ),
             ]
             return Result({"snapshot_id": snapshot["id"]}, records)
         finally:
@@ -88,7 +94,11 @@ def active_area(request: Request):
         "geometry": snapshot["geometry"],
         "places": [place.model_dump() for place in places],
         "progress": {
-            "mapped_visited": sum(place.visited and place.id in eligible for place in places),
+            "mapped_visited": sum(
+                canonical_id(request.app.state.store, key)
+                in {place.id for place in places if place.visited}
+                for key in eligible
+            ),
             "mapped_total": len(eligible),
             "custom_visited": sum(place.visited and place.source == "user" for place in places),
         },
@@ -199,6 +209,10 @@ def reuse_extract(area: AreaInput, request: Request):
             [
                 ("snapshot", snapshot["id"], snapshot),
                 ("area", "active", {**area.model_dump(), "snapshot_id": snapshot["id"]}),
+                *identity_records(
+                    request.app.state.store,
+                    [Place.model_validate(place) for place in snapshot["places"]],
+                ),
             ],
         )
 
@@ -211,3 +225,51 @@ def snapshot_map(key: str, request: Request):
     if snapshot is None:
         raise HTTPException(404, "Unknown map snapshot")
     return {"snapshot_id": key, "area": snapshot["area"], "geometry": snapshot["geometry"]}
+
+
+class DuplicateReview(Record):
+    decision: Literal["merge", "separate"]
+    target_id: str | None = None
+
+
+@router.get("/places/duplicates")
+def duplicates(request: Request):
+    registry = maps(request)
+    return duplicate_candidates(request.app.state.store, registry.places(), distance)
+
+
+@router.patch("/places/duplicates/{key}")
+def review_duplicate(key: str, value: DuplicateReview, request: Request):
+    store = request.app.state.store
+    pair = next((item for item in duplicates(request) if item["id"] == key), None)
+    if pair is None:
+        raise HTTPException(404, "Unknown or already resolved duplicate")
+    records = [("place_duplicate", key, {**pair, **value.model_dump(), "reviewed_at": now()})]
+    if value.decision == "merge":
+        if value.target_id not in pair["place_ids"]:
+            raise ValueError("Choose one of these places as the retained identity")
+        for source in pair["place_ids"]:
+            records.append(
+                (
+                    "place_alias",
+                    source,
+                    {"id": source, "canonical_id": value.target_id, "record_version": 1},
+                )
+            )
+        sources = set(pair["place_ids"])
+        for root in pair["place_ids"]:
+            sources.update((store.get("place_identity", root) or {}).get("source_ids", []))
+        records.append(
+            (
+                "place_identity",
+                value.target_id,
+                {
+                    "id": value.target_id,
+                    "record_version": 1,
+                    "source_ids": sorted(sources),
+                    "created_at": now(),
+                },
+            )
+        )
+    store.atomic(records)
+    return records[0][2]
