@@ -150,3 +150,20 @@ before parsing/publication. Existing active snapshots remain intact on failure.
 A public provider can still be unavailable: retry later or use the existing extract
 import. The notification gives a short explanation; Download details preserves
 provider statuses without showing them by default.
+
+### Saving and preparing a place memory
+
+Save an experience in the selected place dialogue or its folder. After optional
+photo uploads finish, local AI preparation starts automatically. A photo-backed
+visit creates a predefined Location Card and a third-person journal; without a
+photo, it creates a journal only. The original note is retained separately.
+
+Progress and failures appear beside the saved visit. **Retry local AI** retries
+preparation without duplicating the visit or uploading its photos again. Repeated
+saves reuse the same revision's job. Opening a folder or Dashboard does not run AI.
+A card failure can leave a successful journal available. An extractive fallback is
+labelled as original text, and does not replace an earlier useful story from the
+same unchanged note. Earlier card and journal versions remain available.
+
+After restarting the server, reload an open tab before mutations: the local session
+token changes per process. Notes and photos remain saved if generation fails.

@@ -43,8 +43,23 @@ class Jobs:
                     },
                 )
 
-    def submit(self, title: str, action: Callable[[Callable[[str], None]], Result]) -> dict:
+    def submit(
+        self,
+        title: str,
+        action: Callable[[Callable[[str], None]], Result],
+        *,
+        context=None,
+        coalesce_key=None,
+        force=False,
+    ) -> dict:
         with self.lock:
+            if coalesce_key:
+                matching = [
+                    job for job in self.store.list("job") if job.get("coalesce_key") == coalesce_key
+                ]
+                previous = max(matching, key=lambda job: job["created_at"], default=None)
+                if previous and (not force or previous["status"] in {"queued", "running"}):
+                    return previous
             if self.active:
                 raise Busy("Another local task is running; wait or cancel it first")
             job = {
@@ -53,6 +68,8 @@ class Jobs:
                 "status": "queued",
                 "message": "Waiting for local worker",
                 "created_at": now(),
+                **(context or {}),
+                **({"coalesce_key": coalesce_key} if coalesce_key else {}),
             }
             self.store.put("job", job["id"], job)
             self.active = job["id"]
@@ -141,3 +158,37 @@ class Jobs:
             if self.active:
                 self.cancel(self.active)
         self.executor.shutdown(wait=True, cancel_futures=True)
+
+
+def visit_job_context(experience, place_id):
+    return {
+        "task": "visit_memory",
+        "experience_id": experience["id"],
+        "place_id": place_id,
+        "source_revision": experience["revision"],
+    }
+
+
+def visit_generation(store, experience):
+    jobs = [
+        job
+        for job in store.list("job")
+        if job.get("task") == "visit_memory" and job.get("experience_id") == experience["id"]
+    ]
+    job = max(jobs, key=lambda job: job["created_at"], default=None)
+    if not job:
+        return None
+    return {
+        key: value
+        for key, value in {
+            "id": job["id"],
+            "status": job["status"]
+            if job.get("source_revision") == experience["revision"]
+            else "stale",
+            "message": job["message"],
+            "source_revision": job.get("source_revision"),
+            "failure_category": job.get("failure_category"),
+            "result": job.get("result"),
+        }.items()
+        if value is not None
+    }

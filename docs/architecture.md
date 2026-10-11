@@ -99,7 +99,7 @@ Version-2 backup manifests enumerate the frozen database, immutable map snapshot
 
 ## Location Cards and place folders
 
-`location_cards.py` groups reached experiences through persistent aliases. Each explicit job selects one reported visit and at most five of its photos. The Ollama adapter checks local vision capability and pairs image data with supplied photo IDs. Cover choice and the short summary use separate structured vision calls; the summary sees only the selected cover. A text-only journal call uses the existing quote-backed journal contract. All stages share 180 seconds, with at most one corrective retry per stage. A journal fallback does not discard a valid cover/summary.
+`location_cards.py` groups reached experiences through persistent aliases. Each explicit job selects one reported visit and at most five of its photos. The Ollama adapter checks local vision capability and pairs image data with supplied photo IDs. With multiple photos, cover choice and the short summary use separate structured vision calls; a single supplied photo is selected by code without a redundant model call; the summary sees only the selected cover. A text-only journal call uses the existing quote-backed journal contract. All stages share 180 seconds, with at most one corrective retry per stage. A journal fallback does not discard a valid cover/summary.
 
 Application code renders a fixed 1080 × 1350 PNG, applies the user's crop, uses the recorded quest timezone for the visit date and exports no image metadata. Immutable `location_card_version` records retain file hashes, sources, generation metrics and edits. A `location_card` pointer selects the current version. Publication compares the source experience, supplied photos, existing journal, place alias and current pointer; cancellation or changes reject late results. Conflicted files remain detectable by media recovery rather than deleting another request's files.
 
@@ -134,3 +134,20 @@ Journal validation and inferred-interest validation are independent: an invalid 
 is excluded and counted, without discarding valid prose. Card journals request prose only.
 Original notes have a separate reading section; missing AI drafts and extractive fallbacks
 are labelled explicitly rather than presented as a generated story.
+
+### Automatic visit preparation
+
+Saving an experience and finishing its selected photo uploads explicitly submits
+`POST /api/experiences/{id}/prepare` with the final source revision. Photo-backed
+visits prepare a Location Card and third-person journal; note-only visits prepare
+only a journal. Reading, navigation and startup never submit inference. Existing
+visit editing retains its identity even when its historical map is no longer active.
+
+The single-worker job queue coalesces preparation by experience ID and revision,
+including repeated retry clicks while a job is pending. An explicit retry after a
+terminal result creates a new attempt without resaving notes or photos. Jobs expose
+record/revision metadata and stage diagnostics, without putting personal text in
+ordinary logs. Automatic preparation writes the journal before vision processing;
+a card-stage failure may publish a valid journal while retaining the prior card.
+Fallbacks preserve an earlier useful journal when its original source is unchanged.
+Source, journal, alias and card-pointer guards still reject stale publication.

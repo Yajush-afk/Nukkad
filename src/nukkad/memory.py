@@ -7,7 +7,7 @@ from pydantic import Field
 
 from nukkad.domain import Record
 from nukkad.jobs import Result
-from nukkad.journals import generate_journal, validate_preferences
+from nukkad.journals import generate_journal, validate_preferences, versioned_journal
 from nukkad.ollama import Ollama
 from nukkad.planning_api import settings
 from nukkad.storage import SourceChanged, identity, now
@@ -39,6 +39,10 @@ def validate_reflection(value: Reflection, note: str):
 
 @router.post("/outcomes/{key}/reflect")
 def reflect(key: str, request: Request):
+    return submit_reflection(key, request)
+
+
+def submit_reflection(key, request, *, context=None, coalesce_key=None, force=False):
     store = request.app.state.store
     outcome = store.get("outcome", key) or store.get("experience", key)
     if not outcome:
@@ -52,26 +56,7 @@ def reflect(key: str, request: Request):
         stage("Writing a grounded journal and tentative interests locally")
         model = Ollama(replace(request.app.state.config, model=settings(request).model))
         generated = generate_journal(outcome, model, time.monotonic() + 120)
-        journal = {
-            "id": key,
-            "source_note_id": key,
-            "source_note": outcome["note"],
-            "text": generated["text"],
-            "passages": generated["passages"],
-            "record_version": 2,
-            "version_id": identity(),
-            "source_revision": outcome.get("revision") or outcome.get("updated_at"),
-            "status": "pending",
-            "mode": generated["mode"],
-            "metrics": generated["metrics"],
-            "created_at": now(),
-        }
-        records = [("journal", key, journal), ("journal_version", journal["version_id"], journal)]
-        if previous:
-            previous_id = previous.get("version_id") or identity()
-            records.append(
-                ("journal_version", previous_id, {**previous, "version_id": previous_id})
-            )
+        journal, records = versioned_journal(outcome, generated, previous)
         # Replace pending proposals from earlier generations, without erasing reviewed history.
         for old in store.list("interest"):
             if old.get("source_note_id") == key and old.get("status") == "pending":
@@ -95,7 +80,7 @@ def reflect(key: str, request: Request):
             records.append(("interest", item["id"], item))
         stage("Saving reviewable drafts")
         return Result(
-            {"outcome_id": key},
+            {"outcome_id": key, "journal_mode": generated["mode"]},
             records,
             [
                 ("outcome" if store.get("outcome", key) else "experience", key, outcome),
@@ -103,7 +88,9 @@ def reflect(key: str, request: Request):
             ],
         )
 
-    return request.app.state.jobs.submit("Reflect on return note", action)
+    return request.app.state.jobs.submit(
+        "Reflect on return note", action, context=context, coalesce_key=coalesce_key, force=force
+    )
 
 
 @router.get("/interests")

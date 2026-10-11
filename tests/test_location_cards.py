@@ -265,7 +265,10 @@ def test_collection_merges_aliases_without_inflating_card_count(registry):
 
 
 def test_model_cannot_publish_an_unknown_cover_photo(registry, monkeypatch):
-    prepared(registry)
+    experience, _, _, _ = prepared(registry)
+    output = io.BytesIO()
+    Image.new("RGB", (80, 80), "blue").save(output, "PNG")
+    save_photo(registry[0].config, registry[1], experience["id"], output.getvalue())
     monkeypatch.setattr(
         "nukkad.ollama.Ollama.generate",
         lambda *args, **kwargs: (

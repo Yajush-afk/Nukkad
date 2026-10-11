@@ -188,7 +188,11 @@ def media_recovery(config, store):
 def upload_photo(key: str, request: Request, photo: UploadFile):
     content = photo.file.read(MAX_BYTES + 1)
     with request.app.state.media_lock:
-        return save_photo(request.app.state.config, request.app.state.store, key, content)
+        photo = save_photo(request.app.state.config, request.app.state.store, key, content)
+        return {
+            **photo,
+            "experience_revision": request.app.state.store.get("experience", key)["revision"],
+        }
 
 
 @router.get("/experiences/{key}/photos")

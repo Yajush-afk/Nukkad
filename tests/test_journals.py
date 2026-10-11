@@ -233,3 +233,50 @@ def test_visit_story_retains_reported_appreciation_and_person():
         validate_written(draft("They saw people doing yoga.", source["note"]), source)
     with pytest.raises(ValueError, match="generic scene"):
         validate_written(draft("People were doing yoga in the place.", source["note"]), source)
+
+
+def test_corrective_retry_repairs_the_rejected_narrative_instead_of_blind_regeneration():
+    class Response:
+        def __init__(self):
+            self.calls = 0
+
+        def generate(self, response_type, prompt, deadline, schema):
+            self.calls += 1
+            if self.calls == 1:
+                return JournalNarrative(text="They noticed tree shapes."), {}
+            assert "Previous structured response to repair" in prompt
+            assert "They noticed tree shapes." in prompt
+            assert "Retain the reported positive experience" in prompt
+            return JournalNarrative(text="They enjoyed noticing tree shapes."), {}
+
+    model = Response()
+    result = generate_journal(
+        {"note": "I enjoyed noticing tree shapes."}, model, time.monotonic() + 1
+    )
+    assert result["mode"] == "local AI journal" and model.calls == 2
+
+
+def test_failed_generation_keeps_the_current_reviewed_story():
+    from nukkad.journals import versioned_journal
+
+    source = {"id": "visit", "note": "I enjoyed tree shapes.", "revision": "r1"}
+    previous = {
+        "id": "visit",
+        "version_id": "edited",
+        "source_note": source["note"],
+        "mode": "local AI journal",
+        "status": "accepted",
+        "text": "They kept their own carefully edited account.",
+    }
+    generated = {
+        "mode": "extractive fallback",
+        "text": source["note"],
+        "passages": [],
+        "metrics": {},
+    }
+    _, records = versioned_journal(source, generated, previous)
+    assert not any(kind == "journal" for kind, _, _ in records)
+    assert any(value["text"] == previous["text"] for _, _, value in records)
+    source["note"] = "I did not enjoy tree shapes."
+    _, changed = versioned_journal(source, generated, previous)
+    assert any(kind == "journal" for kind, _, _ in changed)
