@@ -972,7 +972,7 @@ async function renderPlacePhotos(outcomeId, screenCurrent = navigation.checkpoin
       image.loading = "lazy";
       const remove = node("button", "Remove photo");
       remove.type = "button";
-      remove.onclick = async()=>{try {await api(`/photos/${photo.id}`, {method:"DELETE"});if(current()) await renderPlacePhotos(outcomeId, current);}catch(error){if(current()) report(error);}};
+      remove.onclick = async()=>{try {await api(`/photos/${photo.id}`, {method:"DELETE"});if(screenCurrent()) await renderPlacePhotos(outcomeId, screenCurrent);}catch(error){if(screenCurrent()) report(error);}};
       figure.append(image, remove);
       grid.append(figure);
     }
@@ -997,7 +997,7 @@ async function renderPlacePhotos(outcomeId, screenCurrent = navigation.checkpoin
         upload.disabled=true;
         for(const file of files){const data = new FormData();data.append("photo", file);await api(`/experiences/${experience.id}/photos`, {method:"POST",body:data});}
       } catch(error){failure=error;} finally {
-        if(current()) {await renderPlacePhotos(outcomeId,current);if(failure) report(failure);else message("Photos saved locally.");}
+        if(screenCurrent()) {await renderPlacePhotos(outcomeId,screenCurrent);if(failure) report(failure);else message("Photos saved locally.");}
       }
     };
     section.append(label, upload);
