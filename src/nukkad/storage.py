@@ -8,6 +8,10 @@ from pathlib import Path
 from uuid import uuid4
 
 
+class SourceChanged(ValueError):
+    """An optimistic write no longer matches its source revision."""
+
+
 def now() -> str:
     return datetime.now(UTC).isoformat()
 
@@ -73,7 +77,9 @@ class Store:
                     "SELECT data FROM records WHERE kind=? AND id=?", (kind, key)
                 ).fetchone()
                 if (json.loads(row[0]) if row else None) != expected_value:
-                    raise ValueError("Source data changed during generation; start a fresh request")
+                    raise SourceChanged(
+                        "Source data changed during generation; start a fresh request"
+                    )
             connection.executemany(
                 "INSERT INTO records(kind,id,data,updated) VALUES(?,?,?,?) ON CONFLICT(kind,id) DO UPDATE SET data=excluded.data, updated=excluded.updated",
                 [

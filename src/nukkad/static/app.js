@@ -925,15 +925,23 @@ async function refreshReadiness() {
   $("model-status").textContent =
     ready.model_status === "ready"
       ? "Ready"
+      : ready.model_status === "unsupported"
+        ? "Unsupported model"
       : ready.model_status === "missing"
         ? "Model missing"
         : "Ollama unavailable";
   $("readiness").textContent =
     ready.model_status === "ready"
       ? `${ready.selected_model} is available on this laptop.`
+      : ready.model_status === "unsupported"
+        ? "Choose an installed local model. Cloud-backed inference is disabled."
       : ready.model_status === "missing"
         ? `Download ${ready.selected_model} in Ollama or choose an installed model. Basic suggestions can still be used when local AI fails.`
         : "Start Ollama on this laptop to use local AI. Basic suggestions can still be used when local AI fails.";
+  if (ready.checks) {
+    const issues = Object.entries(ready.checks).filter(([name, check]) => name !== "model" && check.status !== "ready");
+    if (issues.length) $("readiness").append(node("p", issues.map(([,check])=>check.reason).join(". "), "hint"));
+  }
   $("models").replaceChildren();
   for (const model of ready.models) {
     const item = node("option");

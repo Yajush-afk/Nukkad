@@ -12,6 +12,7 @@ from nukkad.jobs import Result
 from nukkad.ollama import ModelFailure, Ollama
 from nukkad.planning_api import settings
 from nukkad.storage import identity, now
+from nukkad.tasks import run_task
 
 router = APIRouter(prefix="/api")
 
@@ -66,16 +67,17 @@ def reflect(key: str, request: Request):
         )
         model = Ollama(replace(request.app.state.config, model=settings(request).model))
         deadline = time.monotonic() + 120
-        failure = ""
-        value = None
-        for _ in range(2):
-            try:
-                value, _ = model.generate(Reflection, prompt + failure, deadline)
-                validate_reflection(value, outcome["note"])
-                break
-            except (ModelFailure, ValueError) as error:
-                value = None
-                failure = "\nValidation failed: " + str(error) + ". Correct it."
+        try:
+            value, metrics = run_task(
+                model,
+                Reflection,
+                prompt,
+                deadline,
+                lambda value: validate_reflection(value, outcome["note"]),
+                task="reflection",
+            )
+        except ModelFailure as error:
+            value, metrics = None, error.diagnostics
         if value is None:
             # An exact extract is a truthful, labelled fallback; no invented journal facts.
             value = Reflection(excerpt=outcome["note"][:1000], interests=[])
@@ -89,6 +91,7 @@ def reflect(key: str, request: Request):
             "text": value.excerpt,
             "status": "pending",
             "mode": mode,
+            "metrics": metrics,
             "created_at": now(),
         }
         records = [("journal", key, journal)]

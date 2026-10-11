@@ -52,3 +52,14 @@ Data is separate from installed code. This release uses database schema version 
 
 For bugs, report application commit, Python/Ollama/model versions, ranking/prose modes and a minimal **synthetic** reproducer. Keep raw notes, exact personal starts, cards, database, extracts and diagnostic exports private. `.gitignore` covers standard artifact/data paths; custom folders outside those paths still require care.
 
+
+## Readiness and generation diagnostics
+
+`/api/readiness` reports map integrity, public start, eligible round trips, database,
+renderer and local model capabilities independently. `deterministic_ready` describes
+prepared components; generation still checks current daylight and optional AQI.
+Checks are cached for ten seconds and invalidated by relevant record/file revisions.
+Readiness never downloads maps or runs inference. Failed AI stages record their
+attempt count, timing, category and fallback, without copying prompts or source notes
+into ordinary metrics. Successful attempts also record the model digest, Ollama version
+and generation options. Detailed comparison artifacts remain private local files.
