@@ -51,3 +51,8 @@ leaked into prose and prompts exceeded card limits. Explicit JSON examples,
 separate evidence arrays and schema length limits corrected that probe. This is
 one development check, not an improvement rating or a field outing. Expanded
 comparisons remain separately measured.
+
+A short synthetic turned-back note produced a third-person journal with three
+exact supporting passages in 1.166 seconds with warm Gemma 4 E2B weights. It
+retained the unreached market and closed-gate report, proposed no interests and
+did not pad the sparse note to the suggested longer-journal length.
