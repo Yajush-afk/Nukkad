@@ -24,12 +24,24 @@ def run_task(model, response_type, prompt, deadline, validator, schema=None, *, 
             return value, {**metrics, "task": task, "prompt_version": version, "attempts": attempts}
         except (ModelFailure, ValueError) as error:
             category = error.category if isinstance(error, ModelFailure) else "domain_validation"
+            rule = (
+                "layout"
+                if "lines" in str(error)
+                else "membership"
+                if "IDs" in str(error) or "evidence" in str(error)
+                else "explanation_style"
+                if "explanation" in str(error)
+                else "unsupported_claim"
+                if "claim" in str(error) or "feature" in str(error)
+                else "validation"
+            )
             attempts.append(
                 {
                     "attempt": attempt + 1,
                     "elapsed_seconds": round(time.monotonic() - began, 3),
                     "status": "rejected",
                     "category": category,
+                    "validation_rule": rule,
                     "metrics": error.diagnostics if isinstance(error, ModelFailure) else metrics,
                 }
             )

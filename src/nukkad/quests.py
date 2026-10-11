@@ -108,6 +108,9 @@ def generate(
         minItems=1, items={"type": "string", "enum": list(catalogue)}
     )
     rank_schema["$defs"]["RankedPlace"]["required"].append("evidence_ids")
+    rank_schema["$defs"]["RankedPlace"]["properties"]["reason"].update(
+        maxLength=90, pattern="^(Suggestion:|Idea:) "
+    )
     try:
         value, metrics["ranking"] = validated_task(
             model,
@@ -148,6 +151,7 @@ def generate(
         minItems=1, items={"type": "string", "enum": list(catalogue)}
     )
     prose_schema["$defs"]["Observation"]["required"].append("evidence_ids")
+    prose_schema["$defs"]["Observation"]["properties"]["text"].update(maxLength=85)
     stage("Writing observation prompts for the fixed route")
     try:
 
