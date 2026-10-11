@@ -16,7 +16,7 @@ from pydantic import Field
 from nukkad.domain import Record
 from nukkad.grounding import FORBIDDEN, validate_evidence
 from nukkad.identities import canonical_id
-from nukkad.jobs import Result
+from nukkad.jobs import Result, visit_generation, visit_job_context
 from nukkad.journals import WrittenJournal, generate_journal, validate_feelings
 from nukkad.ollama import Ollama
 from nukkad.photos import file_info, verified_media_path
@@ -48,6 +48,9 @@ class VisitWriting(Record):
 class CardRequest(Record):
     experience_id: str | None = None
     mode: str = Field(default="ai", pattern="^(ai|manual)$")
+    automatic: bool = False
+    source_revision: str | None = None
+    retry: bool = False
 
 
 class CardEdit(Record):
@@ -342,6 +345,8 @@ def generate_card(source: str, value: CardRequest, request: Request):
     )
     if not experience:
         raise ValueError("Choose a reported reached visit in this place folder")
+    if value.source_revision and value.source_revision != experience["revision"]:
+        raise SourceChanged("This experience changed. Reopen it before generating")
     photos = active_photos(store, experience["id"])
     if not photos:
         raise ValueError("Add a photo to this selected visit before creating a Location Card")
@@ -428,9 +433,62 @@ def generate_card(source: str, value: CardRequest, request: Request):
                     ("journal_version", old_id, {**previous_journal, "version_id": old_id})
                 )
         stage("Publishing the reviewed-source card version")
-        return Result({"place_id": root, "card_id": version["id"]}, records, expected)
+        return Result(
+            {
+                "place_id": root,
+                "card_id": version["id"],
+                "journal_mode": writing.journal_mode if writing else None,
+            },
+            records,
+            expected,
+        )
 
-    return request.app.state.jobs.submit("Create a Location Card", action)
+    return request.app.state.jobs.submit(
+        "Create a Location Card and visit journal",
+        action,
+        context=visit_job_context(experience, root),
+        coalesce_key=f"visit:{experience['id']}:{experience['revision']}"
+        if value.automatic
+        else None,
+        force=value.retry,
+    )
+
+
+class PrepareVisit(Record):
+    source_revision: str
+    retry: bool = False
+
+
+@router.post("/experiences/{key}/prepare", status_code=202)
+def prepare_visit(key: str, value: PrepareVisit, request: Request):
+    """Explicit save completion: one local task after all supplied photos are stored."""
+    store = request.app.state.store
+    experience = store.get("experience", key)
+    if not experience or not experience["active"]:
+        raise HTTPException(404, "Choose a saved reached visit")
+    if experience["revision"] != value.source_revision:
+        raise SourceChanged("This experience changed. Reopen it before generating")
+    root = canonical_id(store, experience["place_id"])
+    if active_photos(store, key):
+        return generate_card(
+            root,
+            CardRequest(
+                experience_id=key,
+                automatic=True,
+                source_revision=value.source_revision,
+                retry=value.retry,
+            ),
+            request,
+        )
+    from nukkad.memory import submit_reflection
+
+    return submit_reflection(
+        key,
+        request,
+        context=visit_job_context(experience, root),
+        coalesce_key=f"visit:{key}:{experience['revision']}",
+        force=value.retry,
+    )
 
 
 @router.patch("/collection/{source}/card")
@@ -526,6 +584,7 @@ def folder(source: str, request: Request):
     for visit in visits:
         visit["photos"] = active_photos(store, visit["id"])
         visit["journal"] = store.get("journal", visit["id"])
+        visit["generation"] = visit_generation(store, visit)
         visit["journal_versions"] = [
             item for item in store.list("journal_version") if item["id"] == visit["id"]
         ]

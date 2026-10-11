@@ -123,3 +123,93 @@ def test_alias_visits_stay_in_one_folder_and_note_edits_invalidate_dependents(re
         collection = client.get("/api/collection").json()
         assert len(collection["folders"]) == 1 and collection["folders"][0]["visits"] == 2
         assert collection["card_count"] == 0
+
+
+def test_saved_visit_preparation_is_revision_bound_and_idempotent(registry, monkeypatch):
+    from nukkad.journals import JournalNarrative
+    from nukkad.location_cards import CardSummary, CoverChoice
+
+    maps, store, snapshot, _, _ = registry
+    source, key = snapshot["places"][0]["id"], "e" * 32
+    calls = []
+
+    def response(self, response_type, *args, **kwargs):
+        calls.append(response_type)
+        if response_type is CoverChoice:
+            return CoverChoice(
+                photo_id=store.list("photo")[0]["id"], reason="A clear supplied view."
+            ), {}
+        if response_type is CardSummary:
+            return CardSummary(summary="They enjoyed the green shapes.", evidence_ids=["note"]), {}
+        return JournalNarrative(text="They enjoyed the green shapes."), {}
+
+    monkeypatch.setattr("nukkad.ollama.Ollama.generate", response)
+    with TestClient(create_app(maps.config), base_url="http://127.0.0.1") as client:
+        client.headers["X-Nukkad-Token"] = client.get("/api/session").json()["token"]
+        visit = client.put(
+            f"/api/places/{source}/experiences/{key}", json={"note": "I enjoyed the green shapes."}
+        ).json()
+        output = io.BytesIO()
+        Image.new("RGB", (48, 48), "green").save(output, "PNG")
+        photo = client.post(
+            f"/api/experiences/{key}/photos",
+            files={"photo": ("sample.png", output.getvalue(), "image/png")},
+        ).json()
+        assert "experience_revision" in photo
+        request = {"source_revision": photo["experience_revision"]}
+        job = client.post(f"/api/experiences/{key}/prepare", json=request)
+        assert job.status_code == 202, job.text
+        assert wait(client, job.json())["status"] == "complete"
+        again = client.post(f"/api/experiences/{key}/prepare", json=request).json()
+        assert again["id"] == job.json()["id"]
+        assert len(calls) == 3 and len(store.list("location_card_version")) == 1
+        assert not store.list("quest")
+        folder = client.get(f"/api/collection/{source}").json()
+        assert folder["visits"][0]["generation"]["status"] == "complete"
+        assert folder["visits"][0]["journal"]["mode"] == "local AI journal"
+        assert (
+            client.post(
+                f"/api/experiences/{key}/prepare", json={"source_revision": visit["revision"]}
+            ).status_code
+            == 409
+        )
+
+
+def test_note_only_preparation_is_visible_and_explicit_retry_preserves_sources(
+    registry, monkeypatch
+):
+    from nukkad.journals import JournalNarrative
+    from nukkad.ollama import ModelFailure
+
+    store = registry[1]
+    source = registry[2]["places"][0]["id"]
+    key = "f" * 32
+
+    def missing(*args, **kwargs):
+        raise ModelFailure("Unavailable", "missing_model")
+
+    monkeypatch.setattr("nukkad.ollama.Ollama.generate", missing)
+    with TestClient(create_app(registry[0].config), base_url="http://127.0.0.1") as client:
+        client.headers["X-Nukkad-Token"] = client.get("/api/session").json()["token"]
+        visit = client.put(
+            f"/api/places/{source}/experiences/{key}", json={"note": "I enjoyed tree shapes."}
+        ).json()
+        request = {"source_revision": visit["revision"]}
+        first = client.post(f"/api/experiences/{key}/prepare", json=request).json()
+        state = wait(client, first)
+        assert state["result"]["journal_mode"] == "extractive fallback"
+        assert (
+            client.post(f"/api/experiences/{key}/prepare", json=request).json()["id"] == first["id"]
+        )
+        monkeypatch.setattr(
+            "nukkad.ollama.Ollama.generate",
+            lambda *a, **k: (JournalNarrative(text="They enjoyed tree shapes."), {}),
+        )
+        second = client.post(
+            f"/api/experiences/{key}/prepare", json={**request, "retry": True}
+        ).json()
+        assert second["id"] != first["id"]
+        assert wait(client, second)["result"]["journal_mode"] == "local AI journal"
+        assert store.get("experience", key) == visit
+        assert len(store.list("journal_version")) == 2
+        assert not store.list("quest") and not store.list("location_card_version")

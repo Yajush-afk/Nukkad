@@ -39,6 +39,10 @@ def validate_reflection(value: Reflection, note: str):
 
 @router.post("/outcomes/{key}/reflect")
 def reflect(key: str, request: Request):
+    return submit_reflection(key, request)
+
+
+def submit_reflection(key, request, *, context=None, coalesce_key=None, force=False):
     store = request.app.state.store
     outcome = store.get("outcome", key) or store.get("experience", key)
     if not outcome:
@@ -95,7 +99,7 @@ def reflect(key: str, request: Request):
             records.append(("interest", item["id"], item))
         stage("Saving reviewable drafts")
         return Result(
-            {"outcome_id": key},
+            {"outcome_id": key, "journal_mode": generated["mode"]},
             records,
             [
                 ("outcome" if store.get("outcome", key) else "experience", key, outcome),
@@ -103,7 +107,9 @@ def reflect(key: str, request: Request):
             ],
         )
 
-    return request.app.state.jobs.submit("Reflect on return note", action)
+    return request.app.state.jobs.submit(
+        "Reflect on return note", action, context=context, coalesce_key=coalesce_key, force=force
+    )
 
 
 @router.get("/interests")
