@@ -154,10 +154,19 @@ def suggest(value: SuggestInput, request: Request):
     state = request.app.state
     matches = local_matches(state.store, state.suggestion_index, value)
     online = {"status": "not_requested", "cooldown_seconds": 0}
+    if value.online:
+        remote, online = state.photon.search(state.store, value)
+        existing = {item["place_id"] for item in matches if item["place_id"]}
+        matches.extend(
+            item for item in remote if not item["place_id"] or item["place_id"] not in existing
+        )
     return {"matches": matches, "online": online}
 
 
 def install(app):
     # Separate from the small walking graph/map cache.
+    from nukkad.photon import Photon
+
+    app.state.photon = Photon()
     app.state.suggestion_index = RevisionCache(capacity=2)
     app.include_router(router)
