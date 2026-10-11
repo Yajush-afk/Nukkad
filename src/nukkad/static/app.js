@@ -59,7 +59,7 @@ function accessNote(place) {
   if(!place.entrance) return "Entrance not confirmed";
   return place.access === "confirmed" ? "Public access checked — check again on arrival" : "Mapped entrance — check public access";
 }
-const notifications = NukkadNotifications.create({ target: $("notifications"), node });
+const notifications = NukkadNotifications.create({ target: $("notifications"), node, onChange: () => queueMicrotask(positionFeedback) });
 function message(text, error = false) {
   notifications.notify(text, error);
 }
@@ -101,6 +101,7 @@ function renderPanel(id) {
     else button.removeAttribute("aria-current");
   });
   message("");
+  if (id !== "setup") { neighbourhoodSuggestions.cancel(); placeSuggestions.cancel(); }
   if (id === "setup") setTimeout(() => map?.invalidateSize(), 30);
   if (id === "quest-form-panel")
     $("walk-context").textContent = area?.area
@@ -180,6 +181,8 @@ async function loadArea(current = () => true) {
   createMap();
   const loaded = await api("/area");
   if (!current()) return;
+  neighbourhoodSuggestions.cancel();
+  placeSuggestions.cancel();
   area = loaded;
   mapLoaded = true;
   areaNeedsRefresh = false;
@@ -325,7 +328,7 @@ function inspectPlace(place) {
 
 }
 const placeEditorState = NukkadPlaceEditor.create();
-let placeEntranceReady = false, reportEntrance = null;
+let placeEntranceReady = false, placeLocationSource = null, reportEntrance = null;
 function pointMarker(point) {
   selectedPointLayer.clearLayers();
   L.circleMarker([point.lat, point.lng ?? point.lon], {radius:9,color:"#b36c12",fillColor:"#f5f1e7",fillOpacity:1}).addTo(selectedPointLayer);
@@ -337,6 +340,7 @@ function setPlaceEntrance(point, reviewed = true) {
   form.elements.lon.value = point.lng ?? point.lon;
   form.elements.confirmed.checked = false;
   placeEntranceReady = reviewed;
+  placeLocationSource = reviewed ? "map" : "suggestion";
   $("place-entrance").textContent = reviewed
     ? "Entrance chosen on your saved map. Check public access before saving."
     : "Suggested map point. Check the actual entrance on the map before confirming.";
@@ -351,12 +355,14 @@ function beginPlaceEditor(point) {
   $("add-place-details").scrollIntoView({block:"nearest"});
   $("place-query").focus({preventScroll:true});
 }
+$("pin-form").addEventListener("input", () => placeEditorState.changed());
 $("add-place").onclick = () => beginPlaceEditor();
 $("cancel-place").onclick = () => {
   placeEditorState.changed();
   placeSuggestions.cancel();
   $("pin-form").reset();
   placeEntranceReady = false;
+  placeLocationSource = null;
   $("place-entrance").textContent = "Choose an entrance on the map or search for a place.";
   $("check-place-entrance").hidden = true;
   $("add-place-details").hidden = true;
@@ -369,8 +375,10 @@ $("check-place-entrance").onclick = () => {
 const placeSuggestions = NukkadSuggestions.create({
   input:$("place-query"),target:$("place-suggestions"),status:$("place-search-status"),scope:"place",api,node,
   current:()=>document.body.dataset.panel === "setup" && !$("add-place-details").hidden,
+  checkpoint:()=>navigation.checkpoint(),
   invalidate:()=>{
     placeEditorState.changed();
+    if(placeLocationSource === "map") return; // Editing a name does not move a manually chosen entrance.
     const form=$("pin-form");form.elements.lat.value=form.elements.lon.value="";form.elements.confirmed.checked=false;
     placeEntranceReady=false;$("check-place-entrance").hidden=true;
     $("place-entrance").textContent="Choose an entrance on the map or choose a suggestion.";
@@ -457,12 +465,6 @@ function renderQuest(value, navigate = true) {
       "badge",
     ),
   );
-  routeLayer.clearLayers();
-  for (const leg of value.legs)
-    L.polyline(
-      leg.coordinates.map((p) => [p[1], p[0]]),
-      { color: "#b36c12", weight: 4 },
-    ).addTo(routeLayer);
   value.stops.forEach((place, index) => {
     const section = node("div", undefined, "stop");
     const heading = node("div", undefined, "stop-heading");
@@ -520,17 +522,20 @@ function renderQuest(value, navigate = true) {
   $("download").href = "/api/quests/" + value.id + "/card.png";
   $("download").onclick = async (event) => {
     event.preventDefault();
+    const current = navigation.checkpoint();
     try {
       const response = await fetch($("download").href);
       if (!response.ok) throw Error((await response.json()).detail);
-      const url = URL.createObjectURL(await response.blob());
+      const blob = await response.blob();
+      if (!current()) return;
+      const url = URL.createObjectURL(blob);
       const link = node("a");
       link.href = url;
       link.download = `nukkad-${value.id}.png`;
       link.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (error) {
-      report(error);
+      if(current()) report(error);
     }
   };
   $("print").hidden = !accepted;
@@ -706,6 +711,7 @@ function selectLocation(match) {
 const neighbourhoodSuggestions = NukkadSuggestions.create({
   input: $("location-query"), target: $("location-results"), status: $("location-status"),
   scope: "neighbourhood", api, node, select: selectLocation, invalidate: clearLocationSelection,
+  checkpoint: () => navigation.checkpoint(),
   current: () => document.body.dataset.panel === "setup",
 });
 $("location-form").onsubmit = async (event) => {
@@ -1066,7 +1072,7 @@ async function renderPlacePhotos(outcomeId, screenCurrent = navigation.checkpoin
         if(screenCurrent()) {await renderPlacePhotos(outcomeId,screenCurrent);if(failure) report(failure);else message("Photos saved locally.");}
       }
     };
-    section.append(label, upload);
+    section.append(label, node("p","Up to five photos per visit · 20 MiB and 40 megapixels each · JPEG, PNG or WebP, without animation.","hint"), upload);
     target.append(section);
   }
 }
@@ -1091,7 +1097,8 @@ async function renderOutcome(value, existing, current) {
   quest = value;
   $("outcome-stops").replaceChildren();
   for (const [index, place] of quest.stops.entries()) {
-    const label = node("div", `${index + 1}. ${place.name}`);
+    const label = node("fieldset",undefined,"outcome-place");
+    label.append(node("legend",`${index+1}. ${place.name}`));
     const select = node("select");
     select.name = "stop-" + place.id;
     select.setAttribute("aria-label", `${place.name}: reached status`);
@@ -1477,7 +1484,7 @@ navigation = NukkadNavigation.createNavigation({
           view: "history",
           walk: null,
           notice:
-            "That place folder could not be opened. Choose a reported place from My walks.",
+            "That place folder could not be opened. Choose a reported place from Dashboard.",
         };
       }
     }
@@ -1502,7 +1509,7 @@ navigation = NukkadNavigation.createNavigation({
           view: "history",
           walk: null,
           notice:
-            "That walk could not be opened. Choose a saved walk from My walks.",
+            "That walk could not be opened. Choose a saved walk from Dashboard.",
         };
       }
     }

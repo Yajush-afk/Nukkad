@@ -10,12 +10,15 @@
     select,
     invalidate = () => {},
     current = () => true,
+    checkpoint = () => current,
     setTimer = setTimeout,
     clearTimer = clearTimeout,
   }) {
     let revision = 0,
       timer,
       controller,
+      localController,
+      queryCurrent = () => true,
       activeId = null,
       matches = [],
       local = [],
@@ -37,6 +40,7 @@
       revision++;
       clearTimer(timer);
       controller?.abort();
+      localController?.abort();
       pending = null;
       close();
     }
@@ -75,7 +79,7 @@
       input.setAttribute("aria-expanded", String(!!items.length));
     }
     function valid(r) {
-      return revision === r && current();
+      return revision === r && current() && queryCurrent();
     }
     async function online(job) {
       if (remoteBusy) {
@@ -92,9 +96,11 @@
         });
         if (!valid(job.r)) return;
         const merged = [...local];
-        const seen = new Set(merged.map((x) => x.place_id || x.id));
+        const seen = new Set(
+          merged.map((x) => x.place_id || x.source_id || x.id),
+        );
         for (const item of result.matches) {
-          const key = item.place_id || item.id;
+          const key = item.place_id || item.source_id || item.id;
           if (!seen.has(key)) {
             merged.push(item);
             seen.add(key);
@@ -131,21 +137,27 @@
       const query = input.value.trim();
       if (query.length < 3) return;
       const r = revision;
+      queryCurrent = checkpoint();
+      const localRequest = new AbortController();
+      localController = localRequest;
       timer = setTimer(() => online({ query, r }), 400);
       try {
         const result = await api("/locations/suggest", {
           method: "POST",
           body: { query, scope, online: false },
+          signal: localRequest.signal,
         });
         if (!valid(r)) return;
         local = result.matches; // Never replace already returned online matches with a slower local reply.
         const onlineItems = matches.filter((x) => x.group === "Online results");
         paint([...local, ...onlineItems]);
       } catch (error) {
-        if (valid(r)) {
+        if (valid(r) && error.name !== "AbortError") {
           status.textContent = error.message;
           status.hidden = false;
         }
+      } finally {
+        if (localController === localRequest) localController = null;
       }
     }
     input.addEventListener("input", changed);

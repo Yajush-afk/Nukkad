@@ -218,12 +218,22 @@ class Photon:
     @staticmethod
     def resolve(store, matches):
         aliases = store.keyed("place_alias")
-        return [
-            {
-                **item,
-                "place_id": canonical_id(store, item["source_id"], aliases)
+        result = []
+        for item in matches:
+            root = (
+                canonical_id(store, item["source_id"], aliases)
                 if item.get("source_id") in aliases
-                else None,
-            }
-            for item in matches
-        ]
+                else None
+            )
+            result.append(
+                suggestion(
+                    item["name"],
+                    item["label"],
+                    item["point"],
+                    item["source"],
+                    item["group"],
+                    place_id=root,
+                    source_id=item.get("source_id"),
+                )
+            )
+        return result

@@ -4,6 +4,7 @@
   function create({ api, node, $, navigation, runJob, report, message }) {
     const drafts = new Map(),
       journalDrafts = new Map();
+    let folderRevision = 0;
     const date = (value, timezone) =>
       new Date(value).toLocaleDateString("en", {
         day: "numeric",
@@ -110,22 +111,28 @@
             "span",
             folder.current_card_id
               ? folder.stale
-                ? "Card needs an update"
+                ? "Card needs updating"
                 : "Location Card kept"
               : "No card yet",
           ),
-          node("span", "↗", "folder-arrow"),
         );
-        tile.append(cover, tab, bottom);
+        const sheet = node("div", undefined, "folder-sheet");
+        sheet.append(tab, bottom);
+        const arrow = node("span", "↗", "folder-arrow");
+        arrow.setAttribute("aria-hidden", "true");
+        tile.append(cover, sheet, arrow);
         grid.append(tile);
       }
       target.append(grid);
     }
     async function renderFolder(folder, current) {
       if (!current()) return;
+      const parentCurrent = current,
+        revision = ++folderRevision;
+      current = () => parentCurrent() && revision === folderRevision;
       $("folder-title").textContent = folder.name;
       $("folder-caption").textContent =
-        `${folder.visits.length} reported ${folder.visits.length === 1 ? "visit" : "visits"}. Your memories stay on this laptop.`;
+        `${folder.visits.length} ${folder.visits.length === 1 ? "visit" : "visits"} · ${folder.visits.reduce((total, visit) => total + visit.photos.length, 0)} photos · saved on this laptop`;
       const target = $("folder-content");
       target.replaceChildren();
       const card = folder.current_card;
@@ -160,13 +167,13 @@
         const visit = folder.visits.find(
           (item) => item.id === card.experience_id,
         );
-        for (const [index, photo] of visit.photos.entries()) {
+        for (const [index, photo] of (visit?.photos || []).entries()) {
           const option = node("option", `Photo ${index + 1}`);
           option.value = photo.id;
           selector.append(option);
         }
         selector.value = saved.photo_id;
-        if (!selector.value && visit.photos.length)
+        if (!selector.value && visit?.photos.length)
           selector.value = visit.photos[0].id;
         photoLabel.append(selector);
         const sliders = [];
@@ -200,20 +207,33 @@
         editor.append(save);
         editor.onsubmit = async (event) => {
           event.preventDefault();
+          if (save.disabled) return;
           const checkpoint = navigation.checkpoint();
           try {
             retain();
-            await api(`/collection/${encodeURIComponent(folder.id)}/card`, {
-              method: "PATCH",
-              body: { version_id: card.id, ...drafts.get(card.id) },
-            });
+            const submitted = drafts.get(card.id);
+            save.disabled = true;
+            const updated = await api(
+              `/collection/${encodeURIComponent(folder.id)}/card`,
+              {
+                method: "PATCH",
+                body: { version_id: card.id, ...submitted },
+              },
+            );
+            const newer = drafts.get(card.id);
+            if (newer !== submitted && updated?.id)
+              drafts.set(updated.id, newer);
             drafts.delete(card.id);
-            if (checkpoint()) await reload(folder.id, checkpoint);
+            if (checkpoint() && current()) await reload(folder.id, checkpoint);
           } catch (error) {
-            if (checkpoint()) report(error);
+            if (checkpoint() && current()) report(error);
+          } finally {
+            save.disabled = false;
           }
         };
-        cardArea.append(details("Edit this Location Card", editor));
+        const editing = details("Edit this Location Card", editor);
+        if (drafts.has(card.id)) editing.open = true;
+        cardArea.append(editing);
       } else
         cardArea.append(
           node(
@@ -223,9 +243,9 @@
           ),
         );
       target.append(cardArea);
-      const generation = node("section", undefined, "card-generation");
+      const generation = details("Card actions");
+      generation.className = "quiet-details card-generation";
       generation.append(
-        node("h2", card ? "Make a new version." : "Keep this visit."),
         node(
           "p",
           "One card describes one visit. Earlier versions stay saved.",
@@ -244,20 +264,16 @@
       }
       visitLabel.append(visits);
       generation.append(visitLabel);
-      const readiness = await api("/readiness");
-      if (!current()) return;
-      const capable =
-        readiness.local_ai_ready &&
-        readiness.model_capabilities.includes("vision");
-      if (!capable)
-        generation.append(
-          node(
-            "p",
-            "Local vision is unavailable for the selected model. You can create a manual template and choose its cover yourself.",
-            "hint",
-          ),
-        );
+      let capable = false,
+        generating = false;
+      const visionStatus = node(
+        "p",
+        "Checking local vision. Reading, editing and manual templates remain available.",
+        "hint",
+      );
+      generation.append(visionStatus);
       const buttons = node("div", undefined, "buttonrow");
+      let aiButton, manualButton;
       for (const [mode, title] of [
         ["ai", card ? "Regenerate with local AI" : "Create with local AI"],
         ["manual", "Create manual template"],
@@ -265,7 +281,11 @@
         const button = action(
           title,
           async () => {
-            const checkpoint = navigation.checkpoint();
+            const navigationCurrent = navigation.checkpoint();
+            const checkpoint = () => navigationCurrent() && current();
+            if (button.disabled || generating) return;
+            generating = true;
+            updateGeneration();
             try {
               const job = await api(
                 `/collection/${encodeURIComponent(folder.id)}/generate`,
@@ -280,13 +300,28 @@
               );
             } catch (error) {
               if (checkpoint()) report(error);
+            } finally {
+              generating = false;
+              updateGeneration();
             }
           },
           mode === "ai" ? "primary" : "",
         );
-        button.disabled = mode === "ai" && !capable;
+        if (mode === "ai") aiButton = button;
+        else manualButton = button;
         buttons.append(button);
       }
+      const updateGeneration = () => {
+        const hasPhotos =
+          folder.visits.find((visit) => visit.id === visits.value)?.photos
+            .length > 0;
+        aiButton.disabled = generating || !capable || !hasPhotos;
+        manualButton.disabled = generating || !hasPhotos;
+      };
+      visits.onchange = updateGeneration;
+      // Plain DOM test fixtures do not automatically select the first option.
+      visits.value = folder.visits[0]?.id || "";
+      updateGeneration();
       generation.append(buttons);
       target.append(generation);
       const photosArea = node("section", undefined, "visits-gallery");
@@ -358,16 +393,25 @@
               action(text, async () => {
                 const checkpoint = navigation.checkpoint();
                 try {
-                  await api(`/outcomes/${visit.id}/journal`, {
+                  const submitted = draft.value;
+                  const updated = await api(`/outcomes/${visit.id}/journal`, {
                     method: "PATCH",
                     body: {
                       status,
-                      text: draft.value,
+                      text: submitted,
                       version_id: visit.journal.version_id,
                     },
                   });
+                  const newer = journalDrafts.get(visit.journal.version_id);
+                  if (
+                    newer !== undefined &&
+                    newer !== submitted &&
+                    updated?.version_id
+                  )
+                    journalDrafts.set(updated.version_id, newer);
                   journalDrafts.delete(visit.journal.version_id);
-                  if (checkpoint()) await reload(folder.id, checkpoint);
+                  if (checkpoint() && current())
+                    await reload(folder.id, checkpoint);
                 } catch (error) {
                   if (checkpoint()) report(error);
                 }
@@ -419,6 +463,24 @@
           ),
         );
       }
+      void api("/readiness")
+        .then((readiness) => {
+          if (!current()) return;
+          capable =
+            !!readiness.local_ai_ready &&
+            (readiness.model_capabilities || []).includes("vision");
+          visionStatus.textContent = capable
+            ? "Local vision is available for photo selection and writing."
+            : "Local vision is unavailable. Choose a manual template and its cover yourself.";
+          updateGeneration();
+        })
+        .catch(() => {
+          if (!current()) return;
+          capable = false;
+          visionStatus.textContent =
+            "Could not check local vision. Reading, editing and manual templates still work.";
+          updateGeneration();
+        });
     }
     return { load, renderFolder };
   }

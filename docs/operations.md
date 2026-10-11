@@ -111,3 +111,11 @@ Typing three characters shows saved-map and cached-search matches first. Photon 
 Autocomplete sends only the typed location and geographical context, never notes or photos. The dedicated hashed-key cache holds at most 256 queries: successful results last 24 hours and empty results ten minutes. Search metadata never loads the walking graph. Names/proximity do not merge places; known OSM aliases resolve to existing local identities. A result is a candidate, not evidence of a public entrance. Public Nominatim is used only by the deliberate Search action, never by typing. Photon failure leaves local suggestions and explicit search available.
 
 See [Photon documentation](https://github.com/komoot/photon) and [Nominatim policy](https://operations.osmfoundation.org/policies/nominatim/).
+
+### Working pages and notebook
+
+The Neighbourhood map opens first for saved areas. Change neighbourhood or start contains setup controls; incomplete confirmation opens it automatically. Add a place uses an inline map entrance editor. A search centre never confirms an entrance, and moving the entrance clears its public-access checkbox. Existing suggestions open their canonical place. Reports require an observation and preserve correction history.
+
+Wheel scrolling passes through real maps. Touch pinch remains enabled; supported Ctrl+wheel pinch affects only the map beneath it. Neighbourhood 100% is zoom 15; My start restores that view without requesting GPS. Preview 100% is the fitted route. Settings contains snapshot provenance and frozen progress explanations. Linked OpenStreetMap attribution remains beside each real map.
+
+Dashboard preserves the history URL and shows distinct Location Card/place counts. Folder reading and manual editing do not wait for local vision readiness. Summaries remain within Location Cards; longer journals have a separate reading area. Unsaved card/journal text stays in the open tab. Success notices expire after five seconds excluding hover/focus time; errors require dismissal. Footer email copying occurs only on activation.

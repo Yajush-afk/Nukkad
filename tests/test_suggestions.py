@@ -195,3 +195,35 @@ def test_photon_keeps_only_newest_pending_query(registry, monkeypatch):
     third.join(3)
     assert results["Second"] == "superseded"
     assert calls == ["First", "Third"]
+
+
+def test_reviewed_alias_names_remain_searchable_and_cached_results_expire_exactly(
+    registry, monkeypatch
+):
+    from nukkad import suggestions
+
+    maps, store, _, _, _ = registry
+    place = maps.snapshot()["places"][0]
+    store.put("place_alias", "custom-alias", {"canonical_id": place["id"]})
+    store.put(
+        "place",
+        "custom-alias",
+        {**place, "id": "custom-alias", "name": "Other remembered name", "source": "user"},
+    )
+    cache = RevisionCache()
+    result = local_matches(store, cache, SuggestInput(query="Other remembered"))
+    assert len(result) == 1 and result[0]["place_id"] == place["id"]
+    assert not any(key.startswith("_") for key in result[0])
+    moment = time.time()
+    store.put(
+        "location_search",
+        "expiry",
+        {
+            "expires_at": moment + 1,
+            "matches": [{"name": "Cached town", "label": "Sample city", "point": place["point"]}],
+        },
+    )
+    monkeypatch.setattr(suggestions.time, "time", lambda: moment)
+    assert local_matches(store, cache, SuggestInput(query="Cached town"))
+    monkeypatch.setattr(suggestions.time, "time", lambda: moment + 1.1)
+    assert not local_matches(store, cache, SuggestInput(query="Cached town"))

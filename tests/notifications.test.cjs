@@ -116,3 +116,18 @@ test("reporting has no scroll or focus side effect and jobs suppress departed-re
   );
   assert.doesNotMatch(jobs, /message\(/);
 });
+
+test("notice changes can reposition the rail around an already focused control", () => {
+  let changes = 0;
+  const target = { append() {} };
+  const node = () => ({ setAttribute() {}, append() {}, remove() {} });
+  const ui = create({
+    target,
+    node,
+    onChange: () => changes++,
+    setTimer: () => 1,
+    clearTimer() {},
+  });
+  ui.notify("Saved");
+  assert.equal(changes, 1);
+});
