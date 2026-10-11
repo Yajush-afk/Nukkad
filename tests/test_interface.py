@@ -111,3 +111,11 @@ def test_grouped_forms_keep_existing_api_fields():
         "note",
         "reason",
     }
+
+
+def test_navigation_controls_do_not_capture_body_clicks():
+    static = Path(__file__).parents[1] / "src" / "nukkad" / "static"
+    script = (static / "app.js").read_text()
+    assert 'querySelectorAll("a[data-panel], button[data-panel]")' in script
+    assert 'querySelectorAll("[data-panel]")' not in script
+    assert 'src="/static/navigation.js"' in (static / "index.html").read_text()
