@@ -573,84 +573,10 @@ function renderQuest(value, navigate = true) {
   $("card-preview").src = "/api/quests/" + value.id + "/card.svg";
 }
 async function loadHistory(current = () => true) {
-  const [values, outcomes] = await Promise.all([
-    api("/quests"),
-    api("/outcomes"),
-  ]);
-  if (!current()) return;
-  const byQuest = new Map(
-    outcomes.map((outcome) => [outcome.quest_id, outcome]),
-  );
-  const target = $("history-list");
-  target.replaceChildren();
-  if (!values.length) {
-    const empty = node("div", undefined, "entry");
-    empty.append(
-      node("h2", "Your first walk starts here."),
-      node(
-        "p",
-        "Plan a route, take it outside, and return to keep a note.",
-        "hint",
-      ),
-    );
-    const button = node(
-      "button",
-      area?.area?.public_start_confirmed
-        ? "Plan a walk"
-        : "Set up my neighbourhood",
-    );
-    button.onclick = () => $("open-quest").click();
-    empty.append(button);
-    target.append(empty);
-  }
-  for (const value of values) {
-    const outcome = byQuest.get(value.id);
-    const item = node("div", undefined, "entry");
-    item.append(
-      node(
-        "p",
-        `${dateFor(value.created_at, value.timezone)} · ${outcome ? labelFor(outcome.status) : value.status === "accepted" ? "Saved walk" : labelFor(value.status)}`,
-        "eyebrow",
-      ),
-      node("h2", value.stops.map((p) => p.name).join(" / ")),
-      node(
-        "p",
-        `${value.estimated_minutes} min planned · ${(value.meters / 1000).toFixed(2)} km${outcome ? ` · ${outcome.reached_ids.length} stops reported reached` : ""}`,
-        "hint",
-      ),
-    );
-    if (outcome?.note) {
-      item.append(
-        node(
-          "p",
-          outcome.note.length > 280
-            ? outcome.note.slice(0, 280) + "…"
-            : outcome.note,
-        ),
-      );
-      if (outcome.note.length > 280)
-        item.append(disclosure("Read the full note", node("p", outcome.note)));
-    }
-    const actions = node("div", undefined, "buttonrow");
-    const open = node("button", "View walk");
-    open.onclick = () => renderQuest(value);
-    actions.append(open);
-    if (value.status === "accepted") {
-      const note = node(
-        "button",
-        outcome ? "Edit note & visits" : "Add note & visits",
-      );
-      note.onclick = () => {
-        quest = value;
-        $("return").click();
-      };
-      actions.append(note);
-    }
-    item.append(actions);
-    target.append(item);
-  }
-  await interestControls($("interest-review"), undefined, current);
+  await activityUI.load(current);
+  if (current()) await interestControls($("interest-review"), undefined, current);
 }
+
 document
   .querySelectorAll("a[data-panel], button[data-panel]")
   .forEach((button) => {
@@ -1603,6 +1529,12 @@ const collectionUI = NukkadCollection.create({
   renderVisitEditor:(target,place,current,today,existing,onComplete)=>placeExperience.render(target,place,current,today,existing,onComplete),
   report,
   message,
+});
+const activityUI = NukkadActivity.create({
+  api, node, target: () => $("history-list"), dateFor, labelFor, navigation,
+  openWalk: (value) => renderQuest(value),
+  editWalk: (value) => { quest = value; $("return").click(); },
+  planWalk: () => $("open-quest").click(),
 });
 void navigation.start();
 initialized.catch((error) =>
