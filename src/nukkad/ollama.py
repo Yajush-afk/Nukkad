@@ -14,13 +14,20 @@ Response = TypeVar("Response", bound=BaseModel)
 class ModelFailure(RuntimeError):
     """A local model request did not produce a usable response."""
 
+    def __init__(self, message, category="runtime_unavailable", diagnostics=None):
+        super().__init__(message)
+        self.category = category
+        self.diagnostics = diagnostics or {}
+
 
 class Ollama:
     def __init__(self, config: Config):
         if config.ollama_url != "http://127.0.0.1:11434":
             raise ValueError("Only the local Ollama server is supported")
         if "cloud" in config.model.lower():
-            raise ModelFailure("Cloud models are disabled; choose a locally installed model")
+            raise ModelFailure(
+                "Cloud models are disabled; choose a locally installed model", "unsupported_model"
+            )
         self.config = config
 
     def models(self) -> list[dict]:
@@ -28,6 +35,20 @@ class Ollama:
             response = client.get(f"{self.config.ollama_url}/api/tags")
             response.raise_for_status()
             return response.json()["models"]
+
+    def information(self):
+        with httpx.Client(timeout=3, trust_env=False) as client:
+            version = client.get(f"{self.config.ollama_url}/api/version")
+            version.raise_for_status()
+            response = client.post(
+                f"{self.config.ollama_url}/api/show", json={"model": self.config.model}
+            )
+            response.raise_for_status()
+            body = response.json()
+        return {
+            "ollama_version": version.json().get("version"),
+            "capabilities": body.get("capabilities", []),
+        }
 
     def generate(
         self,
@@ -43,10 +64,17 @@ class Ollama:
         except (httpx.HTTPError, ValueError, KeyError) as error:
             raise ModelFailure("Local model inventory unavailable") from error
         if not installed or installed.get("remote_host") or installed.get("remote_model"):
-            raise ModelFailure("Selected model must be installed locally without a remote host")
+            raise ModelFailure(
+                "Selected model must be installed locally without a remote host",
+                "missing_model" if not installed else "unsupported_model",
+            )
+        try:
+            information = self.information()
+        except (httpx.HTTPError, ValueError, KeyError) as error:
+            raise ModelFailure("Local runtime metadata unavailable") from error
         remaining = deadline - time.monotonic()
         if remaining <= 0:
-            raise ModelFailure("Generation deadline exceeded")
+            raise ModelFailure("Generation deadline exceeded", "deadline")
         payload = {
             "model": self.config.model,
             "messages": [{"role": "user", "content": prompt}],
@@ -64,17 +92,35 @@ class Ollama:
                 body = response.json()
             value = response_type.model_validate_json(body["message"]["content"])
             return value, {
-                key: body.get(key)
-                for key in (
-                    "model",
-                    "total_duration",
-                    "load_duration",
-                    "prompt_eval_count",
-                    "eval_count",
-                )
+                "digest": installed.get("digest"),
+                **information,
+                "options": payload["options"],
+                **{
+                    key: body.get(key)
+                    for key in (
+                        "model",
+                        "total_duration",
+                        "load_duration",
+                        "prompt_eval_count",
+                        "eval_count",
+                    )
+                },
             }
         except (httpx.HTTPError, ValidationError, ValueError, KeyError) as error:
-            raise ModelFailure(f"Local model request failed ({type(error).__name__})") from error
+            category = (
+                "timeout"
+                if isinstance(error, httpx.TimeoutException)
+                else "schema"
+                if isinstance(error, ValidationError)
+                else "runtime_unavailable"
+                if isinstance(error, httpx.HTTPError)
+                else "malformed_response"
+            )
+            raise ModelFailure(
+                f"Local model request failed ({category})",
+                category,
+                {"model": self.config.model, "digest": installed.get("digest"), **information},
+            ) from error
 
 
 def ranking_prompt(candidates: list[dict], context: dict) -> str:

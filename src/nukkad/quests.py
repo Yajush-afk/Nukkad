@@ -11,6 +11,7 @@ from nukkad.ollama import ModelFailure, Ollama, bounded_schema, observation_prom
 from nukkad.places import seek_features
 from nukkad.planning import Planner, QuestInput, Settings, baseline
 from nukkad.storage import identity, now
+from nukkad.tasks import run_task
 from nukkad.typography import wrap_text
 
 TEMPLATES = {
@@ -83,21 +84,19 @@ def validate_reasons(value: Ranking, candidates, interests=()):
 
 
 def validated_task(model, response_type, collection, ids, prompt, deadline, validator, schema=None):
-    error = ""
-    for _ in range(2):
-        try:
-            value, metrics = model.generate(
-                response_type,
-                prompt + error,
-                deadline,
-                schema or bounded_schema(response_type, collection, ids),
-            )
-            validate_ids([item.id for item in getattr(value, collection)], ids)
-            validator(value)
-            return value, metrics
-        except (ModelFailure, ValueError) as failure:
-            error = "\nPrevious response was rejected: " + str(failure) + ". Correct it."
-    raise ModelFailure("Local model output failed validation after one corrective retry")
+    def check(value):
+        validate_ids([item.id for item in getattr(value, collection)], ids)
+        validator(value)
+
+    return run_task(
+        model,
+        response_type,
+        prompt,
+        deadline,
+        check,
+        schema or bounded_schema(response_type, collection, ids),
+        task=collection,
+    )
 
 
 def context(store, request: QuestInput, interests):
@@ -162,7 +161,8 @@ def generate(
         )
         ranked = [item.id for item in value.places]
         reasons = {item.id: item.reason for item in value.places}
-    except ModelFailure:
+    except ModelFailure as error:
+        metrics["ranking"] = {**error.diagnostics, "mode": "deterministic fallback"}
         ranking_mode = "deterministic fallback"
     stage("Checking full walking route and daylight")
     quest = planner.build(candidates, ranked, request)
@@ -213,7 +213,8 @@ def generate(
             schema=prose_schema,
         )
         prompts = {item.id: item.model_dump() for item in value.stops}
-    except ModelFailure:
+    except ModelFailure as error:
+        metrics["prose"] = {**error.diagnostics, "mode": "template fallback"}
         prose_mode = "template fallback"
         prompts = {
             key: {"id": key, "activity": "detail", "text": TEMPLATES["detail"]} for key in ids
