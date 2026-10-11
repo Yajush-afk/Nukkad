@@ -81,3 +81,12 @@ Implemented: saved map acquisition/import and provenance; corrected/custom entra
 Limits: no live GPS/navigation, automatic gate discovery, guaranteed public access, pace tracking, accessibility guarantee, weather policy, street-level air sensor, medical advice, fine-tuning, autonomous outdoor actions or cloud hosting. The map is only as current/complete as its saved source and corrections. Starts and corrected entrances project onto eligible street segments within 50 m. Routing junctions preserve direction and length without changing saved snapshot files. Carriageways tagged foot=use_sidepath are excluded; the sidepath must be mapped and connected. The current interests baseline/positive-language filter is English-oriented; Hindi or mixed-language notes need manual interest entry/review and separate evaluation.
 
 Deterministic API tests and actual local-model synthetic evaluations have run. Process-level egress denial is narrower than disabling the whole machine's network. Actual phone readability, disconnected-machine checks, 2–3 neighbourhood outings and blinded human ratings remain to be recorded. See [evaluation.md](evaluation.md), [model-runtime.md](model-runtime.md) and [release-checklist.md](release-checklist.md). Open local operation removes dependence on a paid inference API; it does not make compute resources free or prove better recommendations.
+
+## Place identity and relation geometry
+
+Supported multipolygon destinations retain member IDs, outer components and inner holes.
+Incomplete boundaries reject acquisition without replacing the active snapshot. Display
+points are never inferred entrances. Structurally identical relation/member destinations
+share aliases; nearby matching names require an explicit merge or keep-separate review.
+Canonical identities resolve reported visits across refreshes while historical source IDs,
+corrections and frozen denominators remain stored unchanged.
