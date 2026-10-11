@@ -968,3 +968,7 @@ pre {
 .notification-dismiss { margin-left: auto; min-width: 32px; min-height: 32px; padding: 2px 6px; border: none; background: transparent; }
 @media (max-width: 600px) { .notification-rail { right: 50%; transform: translateX(50%); bottom: max(12px, env(safe-area-inset-bottom)); } body:has(input:focus, textarea:focus, select:focus) .notification-rail { bottom: max(12px, env(safe-area-inset-bottom)); max-height: 28vh; overflow: auto; } }
 @media print { .notification-rail { display: none !important; } }
+
+.email-contact { position: relative; }
+#copy-email { border: 0; padding: 0; color: inherit; font: inherit; background: transparent; border-radius: 0; user-select: text; }
+#email-tooltip { position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); white-space: nowrap; background: #244f39; color: white; font-size: .75rem; padding: 7px 11px; border-radius: 8px; }

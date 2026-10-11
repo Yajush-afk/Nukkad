@@ -1642,3 +1642,9 @@ function positionFeedback() {
 document.addEventListener("focusin", positionFeedback);
 document.addEventListener("focusout", () => setTimeout(positionFeedback, 0));
 window.visualViewport?.addEventListener("resize", positionFeedback);
+
+$("copy-email").onclick = async () => {
+  $("copy-email").disabled = true;
+  await NukkadNotifications.copyEmail({ clipboard: navigator.clipboard, tooltip: $("email-tooltip"), notify: message });
+  $("copy-email").disabled = false;
+};
