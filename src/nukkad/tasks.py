@@ -7,6 +7,7 @@ from nukkad.ollama import ModelFailure
 
 def run_task(model, response_type, prompt, deadline, validator, schema=None, *, task, version=1):
     attempts, correction = [], ""
+    model_tag = getattr(getattr(model, "config", None), "model", None)
     for attempt in range(2):
         began = time.monotonic()
         metrics = {}
@@ -21,7 +22,13 @@ def run_task(model, response_type, prompt, deadline, validator, schema=None, *, 
                     "metrics": metrics,
                 }
             )
-            return value, {**metrics, "task": task, "prompt_version": version, "attempts": attempts}
+            return value, {
+                **metrics,
+                "model_tag": model_tag,
+                "task": task,
+                "prompt_version": version,
+                "attempts": attempts,
+            }
         except (ModelFailure, ValueError) as error:
             category = error.category if isinstance(error, ModelFailure) else "domain_validation"
             rule = (
@@ -55,5 +62,5 @@ def run_task(model, response_type, prompt, deadline, validator, schema=None, *, 
     raise ModelFailure(
         "Local model output failed validation after the bounded corrective retry",
         category,
-        {"task": task, "prompt_version": version, "attempts": attempts},
+        {"model_tag": model_tag, "task": task, "prompt_version": version, "attempts": attempts},
     )

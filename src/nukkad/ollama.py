@@ -71,7 +71,10 @@ class Ollama:
                 (item for item in self.models() if item["name"] == self.config.model), None
             )
         except (httpx.HTTPError, ValueError, KeyError) as error:
-            raise ModelFailure("Local model inventory unavailable") from error
+            raise ModelFailure(
+                "Local model inventory unavailable",
+                "timeout" if isinstance(error, httpx.TimeoutException) else "runtime_unavailable",
+            ) from error
         if not installed or installed.get("remote_host") or installed.get("remote_model"):
             raise ModelFailure(
                 "Selected model must be installed locally without a remote host",
@@ -80,7 +83,10 @@ class Ollama:
         try:
             information = self.information()
         except (httpx.HTTPError, ValueError, KeyError) as error:
-            raise ModelFailure("Local runtime metadata unavailable") from error
+            raise ModelFailure(
+                "Local runtime metadata unavailable",
+                "timeout" if isinstance(error, httpx.TimeoutException) else "runtime_unavailable",
+            ) from error
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise ModelFailure("Generation deadline exceeded", "deadline")

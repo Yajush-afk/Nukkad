@@ -61,6 +61,8 @@ def _check_readiness(app):
             model_status = "unsupported"
         if model_status == "ready":
             capabilities = model.information()["capabilities"]
+        if model_status == "ready" and "completion" not in capabilities:
+            model_status = "unsupported"
         put(
             "model",
             model_status,
@@ -78,6 +80,13 @@ def _check_readiness(app):
             "Local runtime metadata unavailable; history and fallbacks remain usable",
         )
         model_status = "unavailable"
+    put(
+        "capabilities",
+        "ready" if "completion" in capabilities else "unavailable",
+        "Text inference supported; vision requires its own capability"
+        if "completion" in capabilities
+        else "Selected runtime does not report text completion support",
+    )
     if not area:
         put("map", "setup_incomplete", "Save a neighbourhood map")
         put("start", "setup_incomplete", "Choose and confirm a public walking start")
