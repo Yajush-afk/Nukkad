@@ -126,15 +126,19 @@ def test_home_uses_a_static_fictional_map_and_one_entry_button():
     html = (static / "index.html").read_text()
     home = html.split('<section id="home"', 1)[1].split('<section id="setup"', 1)[0]
     setup = html.split('<section id="setup"', 1)[1].split('<section id="quest-form-panel"', 1)[0]
-    assert 'imagined-neighbourhood.svg' in home
-    assert 'An imagined neighbourhood — illustration only.' in home
+    assert "imagined-neighbourhood.svg" in home
+    assert "An imagined neighbourhood — illustration only." in home
     assert 'id="map"' not in home
     assert 'id="map"' in setup and 'id="map-details"' in setup
-    assert 'Get started' in home and 'id="edit-area"' not in html
+    assert "Get started" in home and 'id="edit-area"' not in html
     assert 'id="plan-walk"' in setup
     svg = (static / "illustrations" / "imagined-neighbourhood.svg").read_text()
-    assert '<script' not in svg and '<a ' not in svg and 'http://' not in svg.replace('http://www.w3.org/2000/svg', '')
-    assert 'Silver Brook' in svg and 'Sample walk' in svg
+    assert (
+        "<script" not in svg
+        and "<a " not in svg
+        and "http://" not in svg.replace("http://www.w3.org/2000/svg", "")
+    )
+    assert "Silver Brook" in svg and "Sample walk" in svg
     script = (static / "app.js").read_text()
-    assert 'bubblingMouseEvents: false' in script
+    assert "bubblingMouseEvents: false" in script
     assert 'if (id === "setup")' in script
