@@ -1477,7 +1477,7 @@ navigation = NukkadNavigation.createNavigation({
           view: "history",
           walk: null,
           notice:
-            "That place folder could not be opened. Choose a reported place from My walks.",
+            "That place folder could not be opened. Choose a reported place from Dashboard.",
         };
       }
     }
@@ -1502,7 +1502,7 @@ navigation = NukkadNavigation.createNavigation({
           view: "history",
           walk: null,
           notice:
-            "That walk could not be opened. Choose a saved walk from My walks.",
+            "That walk could not be opened. Choose a saved walk from Dashboard.",
         };
       }
     }

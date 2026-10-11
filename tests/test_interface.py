@@ -211,3 +211,13 @@ def test_map_controls_setup_disclosure_and_credits():
     assert "Map information" in settings and 'id="snapshot-info"' in settings
     assert 'href="https://github.com/openstreetmap"' in html
     assert "Special thanks:" in html
+
+
+def test_dashboard_naming_preserves_bookmarked_history_and_folder_routes():
+    static = Path(__file__).parents[1] / "src" / "nukkad" / "static"
+    html = (static / "index.html").read_text()
+    assert "My walks" not in html and "My Walks" not in html
+    assert "Your neighbourhood notebook" in html
+    assert '<button data-panel="history">Dashboard</button>' in html
+    navigation = (static / "navigation.js").read_text()
+    assert 'history: "history"' in navigation and 'folder: "place-folder"' in navigation
