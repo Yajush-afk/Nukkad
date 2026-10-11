@@ -122,3 +122,23 @@ An isolated browser rendered two direct visits and one planned walk with the rig
 labels and counts. Keyboard Enter opened a visit's folder; Back restored Dashboard
 and Forward reopened the folder. Desktop (1366 × 768) and mobile (390 × 844) had no
 horizontal overflow. Reading/navigation left the six existing jobs unchanged.
+
+### Place-folder alignment
+
+An isolated folder reproduced the supplied screenshot: floating the Back button
+shifted the rendered heading text about 116 px left, while the Location Card label
+started 180 px left of its centred preview and inherited 10 px heading text.
+`tests/folder-layout.browser.js`, evaluated in the collaborative preview, reproduces
+those geometry failures using the real DOM and styles.
+
+The header now uses normal grid flow with Back on a separate row. Current-card
+labels, status, download, editor and card actions share the preview's 440 px maximum
+width; earlier-version previews retain their existing sizing. The label uses 12 px
+body typography. The same geometry probe passes at 1920, 390 and 320 px widths,
+including a long wrapping place name and an expanded card editor. No horizontal
+overflow or button/title overlap was present. Checks used synthetic folder data;
+the personal database and media were not changed.
+
+To repeat: open an isolated folder with a current card, then evaluate the contents
+of `tests/folder-layout.browser.js` using the collaborative preview. Expect
+`pass: true`. This browser probe supplements CI; Node only checks its syntax.
