@@ -16,12 +16,14 @@
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="site-header">
       <a href="#home" data-panel="home" class="brand" aria-label="Nukkad home">
-        <img
-          src="/static/brand/nukkad-light.png"
-          alt="Nukkad — Your neighbourhood is a map you haven't finished."
-          width="1400"
-          height="452"
-        />
+        <span class="brand-symbol" aria-hidden="true"
+          ><img
+            src="/static/brand/nukkad-light.png"
+            alt="Nukkad symbol"
+            width="1400"
+            height="452"
+        /></span>
+        <span class="brand-text">Nukkad</span>
       </a>
       <nav class="glass-nav" aria-label="Main navigation">
         <button data-panel="home" aria-current="page">Home</button>
@@ -29,6 +31,19 @@
         <button data-panel="history">My walks</button>
         <button data-panel="settings">Settings</button>
       </nav>
+      <a
+        class="github-star"
+        href="https://github.com/Yajush-afk/Nukkad"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z"
+          />
+        </svg>
+        Star on GitHub <span class="sr-only">(opens in a new tab)</span>
+      </a>
     </header>
     <main id="main">
       <div id="message" role="status" aria-live="polite" hidden></div>
