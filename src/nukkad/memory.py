@@ -45,8 +45,10 @@ def reflect(key: str, request: Request):
     if not outcome["note"].strip():
         raise ValueError("Add your own return note before generating a reflection")
 
+    previous = store.get("journal", key)
+
     def action(stage):
-        stage("Selecting a grounded journal excerpt and tentative interests locally")
+        stage("Writing a grounded journal and tentative interests locally")
         model = Ollama(replace(request.app.state.config, model=settings(request).model))
         generated = generate_journal(outcome, model, time.monotonic() + 120)
         journal = {
@@ -63,7 +65,6 @@ def reflect(key: str, request: Request):
             "metrics": generated["metrics"],
             "created_at": now(),
         }
-        previous = store.get("journal", key)
         records = [("journal", key, journal), ("journal_version", journal["version_id"], journal)]
         if previous:
             previous_id = previous.get("version_id") or identity()

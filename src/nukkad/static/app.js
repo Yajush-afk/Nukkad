@@ -119,8 +119,8 @@ function jobText(text) {
       "Checking the route home and daylight…",
     "Writing observation prompts for the fixed route":
       "Adding something to notice at each stop…",
-    "Selecting a grounded journal excerpt and tentative interests locally":
-      "Finding a passage and possible interests in your note…",
+    "Writing a grounded journal and tentative interests locally":
+      "Writing a draft from your note…",
     "Saving reviewable drafts": "Saving a draft for you to review…",
   };
   return stages[text] || text;

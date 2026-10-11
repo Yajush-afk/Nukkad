@@ -81,3 +81,48 @@ def test_journal_versions_and_interest_review_are_separate(registry, monkeypatch
         assert any(item["text"] == "Their edited account." for item in versions)
         assert all(item["status"] != "accepted" for item in client.get("/api/interests").json())
     assert store.get("outcome", "visit") == source
+
+
+def test_journal_generation_cannot_overwrite_review_during_inference(registry, monkeypatch):
+    import threading
+
+    store = registry[1]
+    source = {"id": "visit", "note": "I enjoyed tree shapes.", "status": "completed"}
+    store.put("outcome", "visit", source)
+    old = {
+        "id": "visit",
+        "text": "Earlier draft",
+        "source_note": source["note"],
+        "status": "pending",
+    }
+    store.put("journal", "visit", old)
+    entered, release = threading.Event(), threading.Event()
+
+    def response(*args):
+        entered.set()
+        assert release.wait(3)
+        return draft(), {}
+
+    monkeypatch.setattr("nukkad.ollama.Ollama.generate", response)
+    with TestClient(create_app(registry[0].config), base_url="http://127.0.0.1") as client:
+        client.headers["X-Nukkad-Token"] = client.get("/api/session").json()["token"]
+        job = client.post("/api/outcomes/visit/reflect").json()
+        assert entered.wait(2)
+        try:
+            assert (
+                client.patch(
+                    "/api/outcomes/visit/journal",
+                    json={"status": "accepted", "text": "Their edited account."},
+                ).status_code
+                == 200
+            )
+        finally:
+            release.set()
+        deadline = time.monotonic() + 3
+        while time.monotonic() < deadline:
+            state = client.get("/api/jobs/" + job["id"]).json()
+            if state["status"] == "failed":
+                break
+            time.sleep(0.01)
+        assert state["status"] == "failed"
+        assert store.get("journal", "visit")["text"] == "Their edited account."
