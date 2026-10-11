@@ -119,3 +119,17 @@ The Neighbourhood map opens first for saved areas. Change neighbourhood or start
 Wheel scrolling passes through real maps. Touch pinch remains enabled; supported Ctrl+wheel pinch affects only the map beneath it. Neighbourhood 100% is zoom 15; My start restores that view without requesting GPS. Preview 100% is the fitted route. Settings contains snapshot provenance and frozen progress explanations. Linked OpenStreetMap attribution remains beside each real map.
 
 Dashboard preserves the history URL and shows distinct Location Card/place counts. Folder reading and manual editing do not wait for local vision readiness. Summaries remain within Location Cards; longer journals have a separate reading area. Unsaved card/journal text stays in the open tab. Success notices expire after five seconds excluding hover/focus time; errors require dismissal. Footer email copying occurs only on activation.
+
+### Experiences from a map place
+
+Selecting a saved place opens its experience form. Report this place switches the
+same panel to access/location reporting; saving an experience does not verify an
+entrance or make a place eligible for routing. A direct visit is self-reported and
+creates no quest or walk outcome. It uses the persistent place identity and appears
+in the existing Dashboard folder alongside visits reported through walks.
+
+Notes and up to five optional photos are saved locally. If an upload fails, the
+saved note and preceding photos remain; retry resumes with the remaining files.
+A request identity prevents duplicate visits from repeated submissions. Add another
+visit deliberately starts a new record. Direct visits and their media are included
+in backups; existing walk-linked experiences keep their original representation.

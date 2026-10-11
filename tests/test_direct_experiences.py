@@ -60,3 +60,48 @@ def test_map_visit_is_idempotent_personal_memory_without_a_quest(registry, tmp_p
     assert Store(restored).get("experience", key)["note"] == "A changed note"
     assert len(Store(restored).list("photo")) == 1
     assert Store(restored).get("snapshot", snapshot["id"]) == snapshot
+
+
+def test_alias_visits_stay_in_one_folder_and_note_edits_invalidate_dependents(registry):
+    maps, store, snapshot, _, _ = registry
+    source = snapshot["places"][0]["id"]
+    store.put(
+        "place_alias",
+        "historical-source",
+        {"id": "historical-source", "canonical_id": source, "record_version": 1},
+    )
+    with TestClient(create_app(maps.config), base_url="http://127.0.0.1") as client:
+        client.headers["X-Nukkad-Token"] = client.get("/api/session").json()["token"]
+        endpoint = "/api/places/historical-source/experiences/" + "c" * 32
+        visit = client.put(endpoint, json={"note": "A personally reported visit."}).json()
+        assert visit["place_id"] == source
+        store.put("journal", visit["id"], {"id": visit["id"], "status": "accepted"})
+        store.put(
+            "interest",
+            "proposal",
+            {"id": "proposal", "source_note_id": visit["id"], "status": "accepted"},
+        )
+        store.put(
+            "location_card_version",
+            "card",
+            {"id": "card", "experience_id": visit["id"], "stale": False},
+        )
+        changed = client.put(
+            endpoint,
+            json={"note": "A revised personal observation.", "source_revision": visit["revision"]},
+        )
+        assert changed.status_code == 200
+        assert changed.json()["original_note"] == "A personally reported visit."
+        assert store.get("journal", visit["id"])["status"] == "invalidated"
+        assert store.get("interest", "proposal")["status"] == "invalidated"
+        assert store.get("location_card_version", "card")["stale"]
+        assert (
+            client.put(
+                "/api/places/" + source + "/experiences/" + "d" * 32,
+                json={"note": "Another visit."},
+            ).status_code
+            == 200
+        )
+        collection = client.get("/api/collection").json()
+        assert len(collection["folders"]) == 1 and collection["folders"][0]["visits"] == 2
+        assert collection["card_count"] == 0

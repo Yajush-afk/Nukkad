@@ -274,17 +274,15 @@ function inspectPlace(place) {
   selectedPointLayer.clearLayers();
   $("change-neighbourhood").open=false;
   const target = $("place-detail");
+  target.dataset.placeId=place.id;
   target.replaceChildren(
     node("h2", place.name),
     node(
       "p",
       `${labelFor(place.kind)} · ${place.visited ? "You reported visiting" : "No visit reported"}`,
-      "hint",
+      "hint place-visit-status",
     ),
-    node("p", accessNote(place), "hint"),
   );
-  if (place.descriptors.length)
-    target.append(node("p", place.descriptors.join(" · "), "hint"));
   const actions = node("div", undefined, "selected-place-actions");
   const experienceButton = node("button", "Add experience");experienceButton.type="button";
   const reportButton = node("button", "Report this place");reportButton.type="button";
@@ -340,10 +338,15 @@ function inspectPlace(place) {
     }catch(error){if(current())report(error);}
     finally{placeEditorState.finish();button.disabled=false;}
   };
-  corrections.append(form);chooseMode("experience");
+  corrections.append(node("p",accessNote(place),"hint"),form);chooseMode("experience");
 
 }
-const placeExperience=NukkadPlaceExperience.create({node,api,notify:message,checkpoint:()=>navigation.checkpoint(),onSaved:()=>{areaNeedsRefresh=true;}});
+const placeExperience=NukkadPlaceExperience.create({node,api,notify:message,checkpoint:()=>navigation.checkpoint(),onSaved:(id)=>{
+  areaNeedsRefresh=true;
+  const place=area?.places.find(item=>item.id===id);if(place)place.visited=true;
+  const detail=$("place-detail"),status=detail.querySelector(".place-visit-status");
+  if(detail.dataset.placeId===id&&status)status.textContent=labelFor(place?.kind||"place")+" · You reported visiting";
+}});
 const placeEditorState = NukkadPlaceEditor.create();
 let placeEntranceReady = false, placeLocationSource = null, reportEntrance = null;
 function pointMarker(point) {
