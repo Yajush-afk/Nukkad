@@ -100,3 +100,13 @@ runtime. [MDN WebGL](https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API)
 [backdrop-filter](https://developer.mozilla.org/en-US/docs/Web/CSS/backdrop-filter)
 and [reduced motion](https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-reduced-motion)
 document the browser primitives used here.
+
+## Browser navigation
+
+Panel transitions use root-page query URLs and the History API. Only explicit
+navigation controls change screens; body styling attributes never bind click
+handlers. Each history entry stores a view, optional walk ID and scroll position.
+Back/Forward restore existing records without submitting forms. Pending route
+responses are ignored after newer navigation. Form drafts remain in memory in
+the open tab and are not placed in URLs or history. Refresh restores saved walks,
+not unsaved form edits.
