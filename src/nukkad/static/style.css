@@ -980,7 +980,15 @@ pre {
 
 /* Feedback never moves the document or takes keyboard focus. */
 .notification-rail { position: fixed; right: 24px; bottom: max(24px, env(safe-area-inset-bottom)); width: min(360px, calc(100vw - 32px)); z-index: 1200; pointer-events: none; }
-.notification-rail #job { position: static; inset: auto; transform: none; width: auto; max-width: none; margin: 0 0 10px; padding: 14px; pointer-events: auto; border-radius: 16px; }
+.notification-rail #job { position: static; inset: auto; transform: none; width: auto; max-width: none; margin: 0 0 10px; padding: 14px 16px; pointer-events: auto; border-radius: 999px; background: #fff; color: #292933; border: 1px solid #e6e6ef; gap: 12px; box-shadow: 0 8px 36px #23233c1c; }
+.thinking-orb { position: relative; flex: 0 0 44px; width: 44px; height: 44px; border-radius: 50%; background: radial-gradient(circle at 32% 22%, #b1c7ff 0%, #526dff 25%, #1638fa 48%, #071779 80%); box-shadow: inset -3px -4px 9px #08145988, inset 2px 2px 5px #dce7ff88; }
+.thinking-orb canvas { display: block; width: 100%; height: 100%; border-radius: inherit; }
+.thinking-copy { flex: 1; min-width: 0; }
+#job .thinking-copy strong { font-size: 14px; font-weight: 600; line-height: 1.4; }
+#job .thinking-copy #job-message { font-size: 11px; line-height: 1.5; color: #646473; overflow-wrap: anywhere; margin-top: 4px; }
+#job #cancel-job { flex: 0 0 auto; min-width: 44px; min-height: 44px; padding: 8px 10px; color: #454556; border: 1px solid #dedee9; font-size: 12px; }
+#job #cancel-job:hover { background: #f1f2fb; border-color: #9da9e6; }
+#job #cancel-job:focus-visible { outline: 3px solid #4263ed; outline-offset: 3px; }
 #notifications { display: grid; gap: 8px; }
 .notification { display: flex; align-items: start; gap: 10px; padding: 13px 14px; color: var(--forest); background: #f7faf4; border: 1px solid #d3dfcd; border-radius: 14px; box-shadow: 0 8px 30px #203d2520; pointer-events: auto; font-size: .85rem; }
 .notification-error { color: #753d28; background: #fff8f2; border-color: #e7cdbd; }

@@ -138,9 +138,19 @@ function jobText(text) {
   };
   return stages[text] || text;
 }
+const thinking = NukkadThinking.create({
+  canvas: $("thinking-orb"),
+  phrase: $("thinking-phrase"),
+  onChange: () => queueMicrotask(positionFeedback),
+});
 async function runJob(value, finished, current = navigation.checkpoint()) {
   activeJob = value.id;
   $("job").hidden = false;
+  $("cancel-job").disabled = false;
+  $("cancel-job").textContent = "Cancel";
+  $("job-message").textContent = jobText(value.message) || "Getting started…";
+  thinking.start();
+  positionFeedback();
   const buttons = [
     ...document.querySelectorAll(
       'form button[type="submit"], form button:not([type]), #reuse-map, #accept',
@@ -154,7 +164,11 @@ async function runJob(value, finished, current = navigation.checkpoint()) {
   try {
     while (activeJob === value.id) {
       const job = await api("/jobs/" + value.id);
-      $("job-message").textContent = jobText(job.message);
+      const stage = jobText(job.message);
+      if ($("job-message").textContent !== stage) {
+        $("job-message").textContent = stage;
+        positionFeedback();
+      }
       if (
         ["complete", "failed", "cancelled", "interrupted"].includes(job.status)
       ) {
@@ -177,7 +191,11 @@ async function runJob(value, finished, current = navigation.checkpoint()) {
     // A departed screen must not publish a delayed record error.
   } finally {
     activeJob = null;
+    thinking.stop();
     $("job").hidden = true;
+    $("cancel-job").disabled = false;
+    $("cancel-job").textContent = "Cancel";
+    positionFeedback();
     $("main").removeAttribute("aria-busy");
     buttons.forEach((button, index) => {
       button.disabled = states[index];
@@ -637,8 +655,23 @@ for (const [id, confirmation] of [
     });
   }
 }
-$("cancel-job").onclick = () =>
-  api("/jobs/" + activeJob + "/cancel", { method: "POST" }).catch(report);
+$("cancel-job").onclick = async () => {
+  const id = activeJob, button = $("cancel-job");
+  if (!id || button.disabled) return;
+  button.disabled = true;
+  button.textContent = "Cancelling…";
+  positionFeedback();
+  try {
+    await api("/jobs/" + id + "/cancel", { method: "POST" });
+  } catch (error) {
+    if (activeJob === id) {
+      button.disabled = false;
+      button.textContent = "Cancel";
+      positionFeedback();
+      report(error);
+    }
+  }
+};
 function clearLocationSelection() {
   locationRevision++;
   hasSelectedLocation = false;
@@ -1616,6 +1649,7 @@ function positionFeedback() {
   rail.style.bottom = "";
   if (window.innerWidth > 600) return;
   const active = document.activeElement;
+  if (rail.contains(active)) return;
   if (!active?.matches("input, textarea, select, button")) return;
   const rect = active.getBoundingClientRect();
   const viewportHeight = window.visualViewport?.height || window.innerHeight;
