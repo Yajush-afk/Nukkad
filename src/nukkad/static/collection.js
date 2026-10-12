@@ -46,10 +46,6 @@
       element.append(node("summary", title), ...children);
       return element;
     };
-    async function reload(place, current) {
-      const folder = await api(`/collection/${encodeURIComponent(place)}`);
-      if (current()) await renderFolder(folder, current);
-    }
     async function load(current) {
       const collection = await api("/collection");
       if (!current()) return;
@@ -140,6 +136,15 @@
       const parentCurrent = current,
         revision = ++folderRevision;
       current = () => parentCurrent() && revision === folderRevision;
+      async function reload(checkpoint = parentCurrent) {
+        if (!current() || !checkpoint()) return;
+        const refreshed = await api(`/collection/${encodeURIComponent(folder.id)}`);
+        if (current() && checkpoint()) {
+          // Retire this render, but keep the navigation lifetime of its successor.
+          // Passing current here would invalidate the new render as it increments revision.
+          await renderFolder(refreshed, () => parentCurrent() && checkpoint());
+        }
+      }
       $("folder-title").textContent = folder.name;
       $("folder-caption").textContent =
         `${folder.visits.length} ${folder.visits.length === 1 ? "visit" : "visits"} · ${folder.visits.reduce((total, visit) => total + visit.photos.length, 0)} photos · saved on this laptop`;
@@ -234,7 +239,7 @@
             if (newer !== submitted && updated?.id)
               drafts.set(updated.id, newer);
             drafts.delete(card.id);
-            if (checkpoint() && current()) await reload(folder.id, checkpoint);
+            if (checkpoint() && current()) await reload(checkpoint);
           } catch (error) {
             if (checkpoint() && current()) report(error);
           } finally {
@@ -304,7 +309,7 @@
               await runJob(
                 job,
                 async () => {
-                  if (checkpoint()) await reload(folder.id, checkpoint);
+                  if (checkpoint()) await reload(navigationCurrent);
                 },
                 checkpoint,
               );
@@ -409,7 +414,7 @@
               const live = () => current() && navigationCurrent();
               try {
                 await prepareVisit(visit, live, true);
-                if (live()) await reload(folder.id, live);
+                if (live()) await reload(navigationCurrent);
               } catch (error) {
                 if (live()) report(error);
               } finally {
@@ -427,7 +432,7 @@
               const state = await api(`/jobs/${job.id}`);
               if (!current()) return;
               if (!["queued", "running"].includes(state.status))
-                await reload(folder.id, current);
+                await reload();
               else {
                 generationStatus.textContent = state.message;
                 setTimeout(check, 1000);
@@ -451,7 +456,7 @@
             current,
             today,
             visit,
-            () => reload(folder.id, current),
+            () => reload(),
           );
           group.append(details("Edit experience and add photos", editor));
         } else if (visit.outcome_id) {
@@ -524,7 +529,7 @@
                     journalDrafts.set(updated.version_id, newer);
                   journalDrafts.delete(visit.journal.version_id);
                   if (checkpoint() && current())
-                    await reload(folder.id, checkpoint);
+                    await reload(checkpoint);
                 } catch (error) {
                   if (checkpoint()) report(error);
                 }
