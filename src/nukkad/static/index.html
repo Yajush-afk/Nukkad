@@ -12,6 +12,7 @@
     <script defer src="/static/collection.js"></script>
     <script defer src="/static/activity.js"></script>
     <script defer src="/static/notifications.js"></script>
+    <script defer src="/static/thinking.js"></script>
     <script defer src="/static/suggestions.js"></script>
     <script defer src="/static/place-editor.js"></script>
     <script defer src="/static/visit-memory.js"></script>
@@ -977,9 +978,13 @@
       </section>
     </main>
     <div class="notification-rail" aria-label="Task progress and notifications">
-      <aside id="job" hidden aria-live="polite">
-        <div><strong>Working on it…</strong><span id="job-message"></span></div>
-        <button id="cancel-job">Cancel</button>
+      <aside id="job" hidden aria-label="Task in progress">
+        <span class="thinking-orb" aria-hidden="true"><canvas id="thinking-orb" width="96" height="96"></canvas></span>
+        <div class="thinking-copy">
+          <strong id="thinking-phrase" aria-hidden="true">A little local magic…</strong>
+          <span id="job-message" role="status" aria-live="polite" aria-atomic="true"></span>
+        </div>
+        <button id="cancel-job" type="button">Cancel</button>
       </aside>
       <div id="notifications"></div>
     </div>
