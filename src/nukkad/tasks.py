@@ -53,6 +53,13 @@ def run_task(model, response_type, prompt, deadline, validator, schema=None, *, 
                     if not isinstance(error, ModelFailure)
                     and str(error)
                     in {
+                        "Keep photo IDs and metadata tags out of the summary; put IDs only in evidence_ids",
+                        "Location Card summary must be one or two sentences and at most 40 words",
+                        "Write the Location Card summary in third person",
+                        "Do not add access, history or health claims to the summary",
+                        "Do not infer dates or quantities from images",
+                        "Do not identify people, locations or names from photos",
+                        "Cite note evidence for personal feelings or events",
                         "Each passage needs an exact nonempty source quote",
                         "Write about the person's reported visit, not a generic scene caption",
                         "Retain the reported positive experience in the narrative",

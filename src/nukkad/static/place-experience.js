@@ -262,6 +262,11 @@
         dayLabel,
         photoLabel,
         photoHint,
+        node(
+          "p",
+          "Saving automatically prepares your story and, with photos, a Location Card. All photos stay in this place’s folder.",
+          "hint",
+        ),
         error,
         save,
         saved,

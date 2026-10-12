@@ -156,6 +156,12 @@ def generate_visit(
 
     def validate_writing(value):
         validate_evidence(value.evidence_ids, catalogue)
+        if any(key in value.summary for key in ids) or re.search(
+            r"</?ID>|\bphoto:", value.summary, re.I
+        ):
+            raise ValueError(
+                "Keep photo IDs and metadata tags out of the summary; put IDs only in evidence_ids"
+            )
         if (
             re.search(
                 r"\b(enjoyed|loved|liked|felt|reported|visited|reached)\b", value.summary, re.I
@@ -172,13 +178,13 @@ def generate_visit(
     summary, write_metrics = run_task(
         summary_model,
         CardSummary,
-        'Write an English THIRD-PERSON summary of one or two sentences, at most 40 words, for this ONE reported visit. Cite note and/or photo:<ID> in evidence_ids. Cite note for personal feelings or events; images cannot establish those. Visible scene details can support the summary. Example structure: {"summary":"They noticed shapes during their reported visit.","evidence_ids":["note"]}. Use the supplied data, not the example wording. '
+        'Write an English THIRD-PERSON summary of one or two sentences, at most 40 words, for this ONE reported visit. The summary is visible card prose: never include photo IDs, evidence references, filenames, XML/HTML tags or other metadata in it. Put supporting IDs ONLY in the evidence_ids JSON array: use "note" and/or an exact photo evidence ID from the schema. Cite note for personal feelings or events; images cannot establish those. Visible scene details can support the summary. Example structure: {"summary":"They noticed shapes during their reported visit.","evidence_ids":["note"]}. Use the supplied data, not the example wording. '
         + summary_context,
         deadline,
         validate_writing,
         schema,
         task="location_summary",
-        version=5,
+        version=6,
     )
     if journal_result is None and experience["note"].strip():
         stage("Writing a separate third-person experience journal")

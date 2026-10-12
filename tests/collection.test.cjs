@@ -232,6 +232,90 @@ test("stale readiness cannot enable a newer folder and failure keeps manual acti
     nodes.some((x) => x.textContent.includes("manual templates still work")),
   );
 });
+
+test("card generation refresh keeps local AI enabled and permits another generation", async () => {
+  const folder = sampleFolder();
+  let generated = 0;
+  const f = fixture({
+    api: async (path, options = {}) => {
+      if (path === "/readiness")
+        return { local_ai_ready: true, model_capabilities: ["vision"] };
+      if (options.method === "POST") { generated++; return { id: "job" }; }
+      return folder;
+    },
+    runJob: async (_job, finished) => finished({}),
+  });
+  await f.ui.renderFolder(folder, () => true);
+  await new Promise((r) => setImmediate(r));
+  const button = () => f.all(f.get("folder-content")).find((x) => x.textContent === "Regenerate with local AI");
+  assert.equal(button().disabled, false);
+  await button().onclick();
+  await new Promise((r) => setImmediate(r));
+  assert.equal(button().disabled, false, "Readiness must apply to the refreshed folder");
+  await button().onclick();
+  assert.equal(generated, 2);
+});
+
+test("a saved visit refresh retains readiness and its editor refresh callback", async () => {
+  const folder = { ...sampleFolder(), current_card: null };
+  folder.visits[0].source_kind = "place";
+  const refreshes = [];
+  const f = fixture({
+    api: async (path) => path === "/readiness"
+      ? { local_ai_ready: true, model_capabilities: ["vision"] } : folder,
+    renderVisitEditor: (...args) => refreshes.push(args[5]),
+  });
+  await f.ui.renderFolder(folder, () => true);
+  for (let i = 0; i < 3; i++) {
+    await refreshes.at(-1)();
+    await new Promise((r) => setImmediate(r));
+    const ai = f.all(f.get("folder-content")).find((x) => x.textContent === "Create with local AI");
+    assert.equal(ai.disabled, false);
+    assert.equal(refreshes.length, i + 2);
+  }
+});
+
+test("automatic preparation completion refresh keeps vision readiness live", async () => {
+  const folder = { ...sampleFolder(), current_card: null };
+  const pending = {
+    ...folder,
+    visits: [{ ...folder.visits[0], generation: { id: "automatic-job", status: "running" } }],
+  };
+  const f = fixture({
+    api: async (path) => {
+      if (path === "/readiness")
+        return { local_ai_ready: true, model_capabilities: ["vision"] };
+      if (path === "/jobs/automatic-job") return { status: "complete" };
+      return folder;
+    },
+  });
+  await f.ui.renderFolder(pending, () => true);
+  await new Promise((r) => setTimeout(r, 1100));
+  const nodes = f.all(f.get("folder-content"));
+  assert.equal(nodes.find((x) => x.textContent === "Create with local AI").disabled, false);
+  assert.ok(nodes.some((x) => x.textContent === "Local vision is available for photo selection and writing."));
+});
+
+test("a refresh from a retired folder cannot replace a newer folder", async () => {
+  const folder = sampleFolder();
+  let release;
+  const refreshes = [];
+  const f = fixture({
+    api: async (path) => path === "/readiness"
+      ? { local_ai_ready: true, model_capabilities: ["vision"] }
+      : new Promise((resolve) => { release = resolve; }),
+    renderVisitEditor: (...args) => refreshes.push(args[5]),
+  });
+  folder.visits[0].source_kind = "place";
+  await f.ui.renderFolder(folder, () => true);
+  const refresh = refreshes[0]();
+  await f.ui.renderFolder({ ...folder, id: "new-place", name: "New place" }, () => true);
+  release(folder);
+  await refresh;
+  await new Promise((r) => setImmediate(r));
+  assert.equal(f.get("folder-title").textContent, "New place");
+  assert.equal(refreshes.length, 2);
+});
 test("unsaved card text survives rerender including an empty edit", async () => {
   const f = fixture();
   const folder = sampleFolder();

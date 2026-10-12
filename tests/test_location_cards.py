@@ -213,6 +213,108 @@ def test_summary_requires_third_person_and_bounded_grounding():
         validate_summary("They felt calm beside 12 trees.", "I noticed outlines.", generated=True)
 
 
+def test_summary_metadata_is_repaired_before_card_publication(registry, monkeypatch):
+    _, photo, _, _ = prepared(registry)
+    valid_response = ai_response(photo)
+    prompts = []
+
+    def response(self, response_type, prompt, *args, **kwargs):
+        if response_type is CardSummary:
+            prompts.append(prompt)
+            if len(prompts) == 1:
+                return CardSummary(
+                    summary=f"They noticed tree outlines. <ID>{photo['id']}</ID>",
+                    evidence_ids=["note"],
+                ), {}
+            assert "put IDs only in evidence_ids" in prompt
+        return valid_response(self, response_type, prompt, *args, **kwargs)
+
+    monkeypatch.setattr("nukkad.ollama.Ollama.generate", response)
+    with TestClient(create_app(registry[0].config), base_url="http://127.0.0.1") as client:
+        token(client)
+        state = wait(client, client.post("/api/collection/osm-way-20/generate", json={}).json())
+        assert state["status"] == "complete", state
+        card = client.get("/api/collection/osm-way-20").json()["current_card"]
+        assert photo["id"] not in card["summary"] and "<ID>" not in card["summary"]
+        attempts = card["metrics"]["writing"]["attempts"]
+        assert [item["status"] for item in attempts] == ["rejected", "accepted"]
+        assert attempts[0]["validation_message"] == (
+            "Keep photo IDs and metadata tags out of the summary; put IDs only in evidence_ids"
+        )
+        assert len(prompts) == 2
+
+
+def test_automatic_preparation_uses_all_photos_and_keeps_them_in_the_folder(registry, monkeypatch):
+    experience, first, _, _ = prepared(registry)
+    output = io.BytesIO()
+    Image.new("RGB", (100, 80), "blue").save(output, "PNG")
+    second = save_photo(registry[0].config, registry[1], experience["id"], output.getvalue())
+    saved = registry[1].get("experience", experience["id"])
+    calls = []
+    valid_response = ai_response(second)
+
+    def response(self, response_type, prompt, deadline, schema=None, images=None, image_ids=None):
+        calls.append(response_type)
+        if response_type is CoverChoice:
+            assert len(images) == 2 and set(image_ids) == {first["id"], second["id"]}
+            assert saved["note"] in prompt
+            return CoverChoice(
+                photo_id=second["id"], reason="Selection: The clearest supplied tree outline."
+            ), {}
+        if response_type is CardSummary:
+            assert image_ids == [second["id"]] and len(images) == 1
+        return valid_response(self, response_type, prompt, deadline, schema, images, image_ids)
+
+    monkeypatch.setattr("nukkad.ollama.Ollama.generate", response)
+    with TestClient(create_app(registry[0].config), base_url="http://127.0.0.1") as client:
+        token(client)
+        request = {"source_revision": saved["revision"]}
+        endpoint = f"/api/experiences/{experience['id']}/prepare"
+        job = client.post(endpoint, json=request).json()
+        state = wait(client, job)
+        assert state["status"] == "complete", state
+        assert state["result"]["card_mode"] == "Local vision AI"
+        assert state["result"]["journal_mode"] == "local AI journal"
+        folder = client.get("/api/collection/osm-way-20").json()
+        assert folder["current_card"]["photo_id"] == second["id"]
+        assert len(folder["card_versions"]) == 1
+        assert {p["id"] for p in folder["visits"][0]["photos"]} == {first["id"], second["id"]}
+        for photo in [first, second]:
+            assert client.get(f"/api/photos/{photo['id']}/display").status_code == 200
+        assert client.post(endpoint, json=request).json()["id"] == job["id"]
+        assert calls.count(CoverChoice) == calls.count(CardSummary) == 1
+
+
+@pytest.mark.parametrize("metadata", ["raw", "tag", "reference"])
+def test_repeated_summary_metadata_failure_retains_safe_reason_without_publishing(
+    registry, monkeypatch, metadata
+):
+    _, photo, _, _ = prepared(registry)
+    suffix = {
+        "raw": photo["id"],
+        "tag": "<ID>photo</ID>",
+        "reference": "photo:placeholder",
+    }[metadata]
+    monkeypatch.setattr(
+        "nukkad.ollama.Ollama.generate",
+        lambda *args, **kwargs: (
+            CardSummary(summary=f"They noticed tree outlines. {suffix}", evidence_ids=["note"]),
+            {},
+        ),
+    )
+    with TestClient(create_app(registry[0].config), base_url="http://127.0.0.1") as client:
+        token(client)
+        state = wait(client, client.post("/api/collection/osm-way-20/generate", json={}).json())
+        assert state["status"] == "failed" and state["failure_category"] == "domain_validation"
+        assert state["diagnostics"]["prompt_version"] == 6
+        for attempt in state["diagnostics"]["attempts"]:
+            assert attempt["validation_message"] == (
+                "Keep photo IDs and metadata tags out of the summary; put IDs only in evidence_ids"
+            )
+            assert photo["id"] not in str(attempt)
+        assert client.get("/api/collection").json()["card_count"] == 0
+
+
 def test_card_job_cancellation_cannot_replace_current_version(registry, monkeypatch):
     _, photo, _, _ = prepared(registry)
     entered, release = threading.Event(), threading.Event()
