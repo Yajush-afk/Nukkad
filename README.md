@@ -6,6 +6,8 @@
 
 A little local AI. A short walk. Something you never noticed.
 
+[Read the project write-up on DEV](https://dev.to/yajush-afk/nukkad-your-neighborhood-is-a-map-you-havent-finished-kh0).
+
 Nukkad helps you discover the neighbourhood around you. Give it your interests and 20–60 minutes; it suggests nearby stops and prepares a return walk. Take the exported card outside on your phone or on paper, then bring back an observation, a story or a photo.
 
 ![Nukkad homepage with a pixel-cloud sky, centred navigation and Get started button](docs/images/image.png)
